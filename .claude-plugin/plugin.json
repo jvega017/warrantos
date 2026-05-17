@@ -1,0 +1,21 @@
+{
+  "name": "claude-provenance",
+  "version": "0.1.0",
+  "description": "The Provenance Loop. Every factual claim in Claude's output must carry a source or an explicit [CITE NEEDED] tag. Unsupported claims are logged and flagged, and can be hard-blocked in enforce mode.",
+  "author": {
+    "name": "Juan Vega",
+    "url": "https://prometheuspolicylab.com"
+  },
+  "homepage": "https://github.com/jvega017/claude-provenance",
+  "license": "MIT",
+  "keywords": [
+    "provenance",
+    "hallucination",
+    "citations",
+    "evidence",
+    "governance",
+    "epistemics"
+  ],
+  "hooks": "./hooks/hooks.json",
+  "commands": "./commands"
+}

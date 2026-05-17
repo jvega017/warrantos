@@ -1,0 +1,9 @@
+# Normalise all text to LF in the repository. The hook is invoked by a shell
+# command and the CI workflow is parsed on Linux: CRLF in either is a quiet
+# cross-platform failure mode this project should not ship.
+* text=auto eol=lf
+*.py  text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.sql text eol=lf
+*.md  text eol=lf

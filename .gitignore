@@ -1,0 +1,10 @@
+# Internal go-to-market notes — not for the public repo
+LAUNCH-POST.md
+
+# Runtime ledger
+.provenance/
+*.db
+
+# Python
+__pycache__/
+*.pyc
