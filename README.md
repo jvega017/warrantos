@@ -2,15 +2,15 @@
 
 [![ci](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml)
 
-**The Provenance Loop: every factual claim carries a source, or it gets caught.**
+**The Provenance Loop: every factual claim carries a source, that source is checked, or it gets caught.**
 
 Coding agents are judged on whether the code runs. Serious written work is
 judged on whether the claims are true. `claude-provenance` is a Claude Code
-plugin that closes that gap. It reads what the model just wrote, finds the
-sentences that assert a fact, and checks each one for a source or an explicit
-`[CITE NEEDED]` tag. Unsupported claims are logged to a portable ledger and
-surfaced. In `enforce` mode they are handed straight back to the model to fix
-before the turn can end.
+plugin that closes that gap. A fast in-session tripwire catches sentences that
+assert a fact with no source. An out-of-band verifier then fetches the cited
+source and judges whether it actually supports the claim. Results go to a
+portable ledger. In `enforce` mode an unsupported claim is handed back to the
+model before the turn can end.
 
 It is a small idea, applied strictly. That is the whole point.
 
@@ -20,31 +20,39 @@ This plugin is the operational form of a working paper, *From Citation to
 Epistemic Governance* (Prometheus Policy Lab, in preparation). The argument:
 AI failures in high-stakes work are rarely model-capability failures. They are
 epistemic failures. The model states something with confidence and no
-traceable source, and a human ships it. The fix is not a bigger model. It is a
-loop that refuses to let an unsourced factual claim pass silently.
+traceable source, a human under time pressure ships it, and the error was
+never about model size. The fix is a loop that refuses to let an unsourced or
+unverified claim pass silently.
 
-## What it catches (v0, by design)
+## Two axes: detection and verification
 
-The detector is a heuristic, deliberately. It targets the claim types that do
-the damage in policy and research writing:
+`claude-provenance` separates two questions that most tools conflate.
 
-- years and dates
-- percentages and "per cent"
-- magnitudes (million, billion, trillion)
-- statute and section references
-- attribution verbs ("according to", "found that", "estimated", "shows that")
+**Axis 1, detection (in-session, stdlib only, zero network).** The hook reads
+what the model wrote and classifies each factual sentence as **supported** (a
+source is present in its own sentence or the line directly below it),
+**tagged** (an explicit `[CITE NEEDED]`, treated as honest), or
+**unsupported** (nothing). A source two or more sentences away does not rescue
+a claim: that bleed was the v0 false negative and is closed by design. This
+axis stays a fast tripwire that never does network I/O and never breaks the
+session.
 
-A claim counts as **supported** when its own sentence carries a URL, a
-`(Source: ...)` note, a markdown link, a footnote, or an APA-style
-`(Author, Year)`, or when the sentence immediately after it is itself just a
-source (for example a `Source: https://...` line directly below the claim). A
-claim with an explicit `[CITE NEEDED]` is **tagged** and treated as honest,
-not as a violation. Everything else is **unsupported**. A source two or more
-sentences away does not rescue a claim: that bleed was the v0 false negative
-and is closed by design.
+**Axis 2, verification (out of band).** The verifier takes a detected claim,
+fetches the cited URL, and assigns one of: **verified**, **contradicted**,
+**not_addressed**, **unverifiable** (a citation exists but cannot be
+machine-checked, for example an `(Author, Year)` with no URL), **skipped**, or
+**error**. By default this uses an offline token-overlap heuristic. If
+`ANTHROPIC_API_KEY` is set it uses an LLM grader, and on any failure it falls
+back to the heuristic. The verifier is never called from the blocking hook.
 
-This will produce false positives and false negatives. It is a tripwire, not
-an oracle, and it does not replace human review. It is honest about that.
+The detector catches the cheap, common failure. The verifier targets the
+expensive one: a claim that is confidently cited and wrong.
+
+## The Provenance Loop
+
+The pattern is platform-independent: Extract, Bind, Verify, Adjudicate,
+Ledger. The Claude Code plugin is one instantiation. The full definition,
+scope, and limits are in [`docs/PROVENANCE-LOOP.md`](docs/PROVENANCE-LOOP.md).
 
 ## Install
 
@@ -60,30 +68,56 @@ Requires Python 3.8+ on `PATH`. No third-party packages.
 
 ## Configuration
 
-| Variable          | Values                     | Default                       |
-|-------------------|----------------------------|-------------------------------|
-| `PROVENANCE_MODE` | `report`, `enforce`, `off` | `report`                      |
-| `PROVENANCE_DB`   | path to SQLite file        | `./.provenance/provenance.db` |
+| Variable                  | Values                     | Default                       |
+|---------------------------|----------------------------|-------------------------------|
+| `PROVENANCE_MODE`         | `report`, `enforce`, `off` | `report`                      |
+| `PROVENANCE_DB`           | path to SQLite file        | `./.provenance/provenance.db` |
+| `ANTHROPIC_API_KEY`       | API key                    | unset (verifier stays offline)|
+| `PROVENANCE_GRADER_MODEL` | model id                   | `claude-haiku-4-5-20251001`   |
 
 - **report** logs every run and prints a summary. Non-blocking.
-- **enforce** blocks the end of a turn (or a file write) when an unsupported
+- **enforce** blocks the end of a turn or a file write when an unsupported
   factual claim is present, and returns the list to the model to source.
 - **off** disables the hook.
 
-The Stop hook is loop-safe: it never blocks the same turn twice.
+The Stop hook is loop-safe: it never blocks the same turn twice. With no API
+key the verifier degrades to the offline heuristic with no error.
 
-## Inspect the ledger
+## Verify a draft from the command line
 
-```
-/provenance-report
-```
-
-Or directly:
+The CLI runs the loop over a file, a directory, or stdin, outside a live
+session. Offline by default; `--verify` enables network fetch.
 
 ```
-sqlite3 .provenance/provenance.db \
-  "SELECT status, COUNT(*) FROM provenance_claim GROUP BY status;"
+python cli/provenance_cli.py path/to/draft.md            # offline detection
+python cli/provenance_cli.py --verify path/to/draft.md    # fetch and grade
+python cli/provenance_cli.py --ci docs/                   # exit 1 on a miss
+git diff --name-only | ... | python cli/provenance_cli.py --ci -
 ```
+
+`--ci` exits 1 if any claim is `contradicted` or `unsupported`, so it drops
+into a CI pipeline or pre-commit hook. `--json` emits machine-readable output.
+
+In a session, `/provenance-report` summarises the ledger and
+`/provenance-verify` runs the verification stage and returns recommendations.
+
+## Governance: epistemic debt
+
+The ledger is the point, not a side effect. `provenance/ledger.py` computes an
+**epistemic-debt** metric (load-bearing unsupported claims, normalised, with a
+direction over the last runs) and exports an evidence matrix to Markdown or
+CSV. Load-bearing is scored by `provenance/salience.py`: a statutory reference
+inside a recommendation is weighted above a date in passing. The governance
+question is not "is this sentence cited" but "is our AI-assisted output getting
+more or less sourced over time", and the ledger answers it.
+
+## Evaluation
+
+`eval/run_eval.py` runs the detector against a small hand-labelled corpus and
+prints precision, recall, and F1 computed at run time. The numbers are
+corpus-dependent and are not a claim of general accuracy: see
+[`eval/README.md`](eval/README.md), which states the limits plainly. The
+corpus is a regression and illustration seed, not a validated benchmark.
 
 ## Tests
 
@@ -93,16 +127,29 @@ Stdlib only, no test dependencies. From the repo root:
 python -m unittest discover -s tests -v
 ```
 
-The suite covers the heuristic (each trigger type, inline and adjacent
-sourcing, the closed v0 false negative), the loop-safety guard, enforce-mode
-blocking, and the rule that an internal error must never break the session.
+170 tests cover detection (every trigger, inline and adjacent sourcing, the
+closed v0 false negative), the loop-safety guard, enforce-mode blocking, the
+verifier (mocked network, LLM-failure fallback, no-key path), the CLI, the
+ledger and salience scoring, and the rule that an internal error must never
+break the session.
 
 ## Roadmap
 
-- v0: heuristic detector, ledger, report and enforce modes (this release)
-- v1: optional LLM grader for claim extraction and source-match quality
-- v2: auto-fetch a cited URL and check the claim is actually supported by it
-- v3: one-command export to an evidence matrix for a paper or brief
+- v0: heuristic detector, ledger, report and enforce modes. Done.
+- v0.2 (this release): out-of-band verifier with fetch and graceful LLM
+  grading, two-axis model, standalone CLI and CI mode, epistemic-debt metric
+  and evidence-matrix export, salience weighting, evaluation harness.
+- v1: stronger claim extraction and source-match quality from the LLM grader.
+- v2: deeper entailment, including PDF and paywalled-source handling.
+- v3: one-command evidence-matrix export wired into a paper or brief workflow.
+
+## Limits, stated plainly
+
+The detector is a heuristic and will produce false positives and false
+negatives. Offline verification only checks token overlap, not meaning. A
+correctly sourced claim can still be misleading or selectively cited. This
+tool makes an unsourced or unchecked claim expensive instead of invisible. It
+does not replace human review and does not claim to.
 
 ## Licence
 

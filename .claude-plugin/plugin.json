@@ -1,7 +1,7 @@
 {
   "name": "claude-provenance",
-  "version": "0.1.0",
-  "description": "The Provenance Loop. Every factual claim in Claude's output must carry a source or an explicit [CITE NEEDED] tag. Unsupported claims are logged and flagged, and can be hard-blocked in enforce mode.",
+  "version": "0.2.0",
+  "description": "The Provenance Loop. A stdlib in-session tripwire flags factual claims with no source; an out-of-band verifier fetches the cited source and judges whether it supports the claim. Results go to a portable ledger with an epistemic-debt metric, and can hard-block the turn in enforce mode.",
   "author": {
     "name": "Juan Vega",
     "url": "https://prometheuspolicylab.com"
