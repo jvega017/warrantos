@@ -1,0 +1,437 @@
+{
+  "meta": {
+    "date": "2026-05-21 17:09 UTC",
+    "corpus": "eval\\corpus\\grader.jsonl",
+    "annotator": "gemini-cli",
+    "timeout": 300,
+    "elapsed_seconds": 569.2
+  },
+  "metrics": {
+    "n": 60,
+    "agreement": 0.0,
+    "correct": 0,
+    "cohens_kappa": 0.0,
+    "per_class": {
+      "verified": {
+        "support": 14,
+        "correct": 0,
+        "recall": 0.0
+      },
+      "contradicted": {
+        "support": 16,
+        "correct": 0,
+        "recall": 0.0
+      },
+      "not_addressed": {
+        "support": 12,
+        "correct": 0,
+        "recall": 0.0
+      },
+      "unverifiable": {
+        "support": 9,
+        "correct": 0,
+        "recall": 0.0
+      },
+      "skipped": {
+        "support": 9,
+        "correct": 0,
+        "recall": 0.0
+      }
+    },
+    "confusion": {
+      "verified__verified": 0,
+      "verified__contradicted": 0,
+      "verified__not_addressed": 0,
+      "verified__unverifiable": 0,
+      "verified__skipped": 0,
+      "verified__error": 14,
+      "contradicted__verified": 0,
+      "contradicted__contradicted": 0,
+      "contradicted__not_addressed": 0,
+      "contradicted__unverifiable": 0,
+      "contradicted__skipped": 0,
+      "contradicted__error": 16,
+      "not_addressed__verified": 0,
+      "not_addressed__contradicted": 0,
+      "not_addressed__not_addressed": 0,
+      "not_addressed__unverifiable": 0,
+      "not_addressed__skipped": 0,
+      "not_addressed__error": 12,
+      "unverifiable__verified": 0,
+      "unverifiable__contradicted": 0,
+      "unverifiable__not_addressed": 0,
+      "unverifiable__unverifiable": 0,
+      "unverifiable__skipped": 0,
+      "unverifiable__error": 9,
+      "skipped__verified": 0,
+      "skipped__contradicted": 0,
+      "skipped__not_addressed": 0,
+      "skipped__unverifiable": 0,
+      "skipped__skipped": 0,
+      "skipped__error": 9
+    },
+    "error_count": 60
+  },
+  "results": [
+    {
+      "id": "g001",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Attempt 1 failed with status 503. Retrying with backoff... _ApiError: {\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please t"
+    },
+    {
+      "id": "g002",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-02-25-165Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g003",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-02-31-752Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g004",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-03-22-392Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g005",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-03-29-680Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g006",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Attempt 1 failed with status 503. Retrying with backoff... _ApiError: {\"error\":{\"message\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 503,\\n    \\\"message\\\": \\\"This model is currently experiencing high demand. S"
+    },
+    {
+      "id": "g007",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Attempt 1 failed with status 503. Retrying with backoff... _ApiError: {\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please t"
+    },
+    {
+      "id": "g008",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-04-27-786Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g009",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-04-35-841Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g010",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-04-48-050Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g011",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Attempt 1 failed with status 503. Retrying with backoff... _ApiError: {\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please t"
+    },
+    {
+      "id": "g012",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-05-08-734Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g013",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-05-13-879Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g014",
+      "gold": "verified",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-05-22-265Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g015",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-05-26-682Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g016",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-05-31-294Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g017",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Attempt 1 failed with status 503. Retrying with backoff... _ApiError: {\"error\":{\"code\":503,\"message\":\"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please t"
+    },
+    {
+      "id": "g018",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-06-01-757Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g019",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-06-409Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g020",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-11-806Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g021",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-16-509Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g022",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-21-911Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g023",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-26-713Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g024",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-31-709Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g025",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-37-161Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g026",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-41-842Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g027",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-46-965Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g028",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-51-196Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g029",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-06-56-217Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g030",
+      "gold": "contradicted",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-07-00-779Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g031",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-07-05-723Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g032",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-07-11-236Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g033",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-07-16-999Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g034",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-07-21-741Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g035",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-07-27-085Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g036",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-07-31-671Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g037",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-07-37-127Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g038",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-07-42-324Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g039",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-07-52-793Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g040",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-07-57-407Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g041",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-02-008Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g042",
+      "gold": "not_addressed",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-06-853Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g043",
+      "gold": "unverifiable",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-21T17-08-15-378Z.json TerminalQuotaError: You have e"
+    },
+    {
+      "id": "g044",
+      "gold": "unverifiable",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-19-217Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g045",
+      "gold": "unverifiable",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-24-756Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g046",
+      "gold": "unverifiable",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-29-308Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g047",
+      "gold": "unverifiable",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-34-366Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g048",
+      "gold": "unverifiable",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-39-247Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g049",
+      "gold": "unverifiable",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-44-887Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g050",
+      "gold": "unverifiable",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-49-443Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g051",
+      "gold": "unverifiable",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-54-014Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g052",
+      "gold": "skipped",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-08-58-607Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g053",
+      "gold": "skipped",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-09-03-177Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g054",
+      "gold": "skipped",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-09-07-713Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g055",
+      "gold": "skipped",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-09-13-193Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g056",
+      "gold": "skipped",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-09-17-967Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g057",
+      "gold": "skipped",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-09-22-451Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g058",
+      "gold": "skipped",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-09-26-859Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g059",
+      "gold": "skipped",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-09-30-892Z.json TerminalQuotaError: You have exhausted "
+    },
+    {
+      "id": "g060",
+      "gold": "skipped",
+      "pred": "error",
+      "error": "non-zero exit 1: stderr=Error generating content via API. Full report available at: C:\\Users\\jvega\\AppData\\Local\\Temp\\gemini-client-error-generateJson-api-2026-05-21T17-09-35-465Z.json TerminalQuotaError: You have exhausted "
+    }
+  ]
+}
