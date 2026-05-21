@@ -2,23 +2,40 @@
 
 ## STATUS: TOOLING FAILURE — NOT A FINDING
 
-This run produced 60 of 60 `error` predictions because the Gemini API
-was unavailable for the entire 569-second run window (44 generic
-generation errors, 11 transport errors, 5 explicit HTTP 503 "high
-demand" after Gemini's own retry/backoff exhaustion). The 0/60
-agreement and 0.0000 kappa below are NOT a label-reproducibility
-result. They are a record that the annotator model was not reachable.
+This run produced 60 of 60 `error` predictions because the Gemini
+free-tier daily quota was exhausted partway through (or before) the
+run window. A capacity check after the run returned the explicit
+diagnostic `TerminalQuotaError: You have exhausted your daily quota
+on this model`. The 44 generic generation errors and 11 transport
+errors recorded earlier in the 569-second run window were the same
+underlying condition surfacing through different error classes; the 5
+HTTP 503 "high demand" responses seen in the smoke test that
+preceded this run were also part of the same quota-exhaustion arc.
+The 0/60 agreement and 0.0000 kappa below are NOT a
+label-reproducibility result. They are a record that the annotator
+model was not callable.
 
 What this run does demonstrate: the Probe A harness handles the
 all-failure case as designed — no crash, every infrastructure failure
 mapped to a clean `error` predicted label, the `error` count reported
 explicitly, exit code 0 so a CI re-run will not break.
 
-What is required before a finding can be reported: re-run when Gemini
-is responsive (test with a trivial call first; if a one-word reply
-takes more than ~10 seconds, Gemini is still under load and the run
-should be deferred). The harness, corpus and gold labels are
-unchanged.
+What is required before a finding can be reported: re-run when the
+Gemini daily quota window has reset (next UTC day boundary by
+default on the free tier; consult the Gemini account dashboard for
+the exact reset clock). Before the re-run, a one-word probe (`gemini
+-p "Reply with exactly OK"`) must return within a few seconds and
+without `TerminalQuotaError`. The harness, corpus and gold labels
+are unchanged. The Probe A script and design spec at
+`eval/probe_label_reproducibility.py` and `eval/REALSRC-SLICE-DESIGN.md`
+do not require any change for the re-run; only run the same command.
+
+Operational implication, recorded for the run plan: 60 structured
+classification calls on the Gemini free tier appears to be near or
+above the daily quota envelope under load conditions, so the probe
+needs to be scheduled when there is headroom or run on a paid tier.
+This is a tooling-procurement fact, not a finding about the model
+or the corpus.
 
 ---
 
