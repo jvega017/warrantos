@@ -1,77 +1,77 @@
 {
   "meta": {
-    "date": "2026-05-23 02:02 UTC",
+    "date": "2026-05-23 07:21 UTC",
     "corpus": "eval\\corpus\\grader.jsonl",
     "annotator": "gemini-2.5-flash-lite",
     "model": "gemini-2.5-flash-lite",
     "timeout": 120,
-    "elapsed_seconds": 779.6
+    "elapsed_seconds": 916.7
   },
   "metrics": {
     "n": 60,
-    "agreement": 0.3333333333333333,
-    "correct": 20,
-    "cohens_kappa": 0.2671755725190839,
+    "agreement": 0.6166666666666667,
+    "correct": 37,
+    "cohens_kappa": 0.5454545454545455,
     "per_class": {
       "verified": {
         "support": 14,
-        "correct": 11,
-        "recall": 0.7857142857142857
+        "correct": 14,
+        "recall": 1.0
       },
       "contradicted": {
         "support": 16,
-        "correct": 9,
-        "recall": 0.5625
+        "correct": 14,
+        "recall": 0.875
       },
       "not_addressed": {
         "support": 12,
-        "correct": 0,
-        "recall": 0.0
+        "correct": 6,
+        "recall": 0.5
       },
       "unverifiable": {
         "support": 9,
-        "correct": 0,
-        "recall": 0.0
+        "correct": 2,
+        "recall": 0.2222222222222222
       },
       "skipped": {
         "support": 9,
-        "correct": 0,
-        "recall": 0.0
+        "correct": 1,
+        "recall": 0.1111111111111111
       }
     },
     "confusion": {
-      "verified__verified": 11,
+      "verified__verified": 14,
       "verified__contradicted": 0,
       "verified__not_addressed": 0,
       "verified__unverifiable": 0,
-      "verified__skipped": 3,
+      "verified__skipped": 0,
       "verified__error": 0,
       "contradicted__verified": 0,
-      "contradicted__contradicted": 9,
+      "contradicted__contradicted": 14,
       "contradicted__not_addressed": 0,
       "contradicted__unverifiable": 0,
-      "contradicted__skipped": 0,
-      "contradicted__error": 7,
+      "contradicted__skipped": 2,
+      "contradicted__error": 0,
       "not_addressed__verified": 0,
       "not_addressed__contradicted": 0,
-      "not_addressed__not_addressed": 0,
+      "not_addressed__not_addressed": 6,
       "not_addressed__unverifiable": 0,
-      "not_addressed__skipped": 0,
-      "not_addressed__error": 12,
+      "not_addressed__skipped": 3,
+      "not_addressed__error": 3,
       "unverifiable__verified": 0,
       "unverifiable__contradicted": 0,
       "unverifiable__not_addressed": 0,
-      "unverifiable__unverifiable": 0,
+      "unverifiable__unverifiable": 2,
       "unverifiable__skipped": 0,
-      "unverifiable__error": 9,
+      "unverifiable__error": 7,
       "skipped__verified": 0,
       "skipped__contradicted": 0,
       "skipped__not_addressed": 0,
       "skipped__unverifiable": 0,
-      "skipped__skipped": 0,
-      "skipped__error": 9
+      "skipped__skipped": 1,
+      "skipped__error": 8
     },
-    "error_count": 37
+    "error_count": 18
   },
   "results": [
     {
@@ -95,7 +95,7 @@
     {
       "id": "g004",
       "gold": "verified",
-      "pred": "skipped",
+      "pred": "verified",
       "error": null
     },
     {
@@ -149,13 +149,13 @@
     {
       "id": "g013",
       "gold": "verified",
-      "pred": "skipped",
+      "pred": "verified",
       "error": null
     },
     {
       "id": "g014",
       "gold": "verified",
-      "pred": "skipped",
+      "pred": "verified",
       "error": null
     },
     {
@@ -185,7 +185,7 @@
     {
       "id": "g019",
       "gold": "contradicted",
-      "pred": "contradicted",
+      "pred": "skipped",
       "error": null
     },
     {
@@ -215,224 +215,224 @@
     {
       "id": "g024",
       "gold": "contradicted",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-54-48-952Z.json TerminalQuotaError: You have e"
+      "pred": "contradicted",
+      "error": null
     },
     {
       "id": "g025",
       "gold": "contradicted",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-54-58-617Z.json TerminalQuotaError: You have e"
+      "pred": "contradicted",
+      "error": null
     },
     {
       "id": "g026",
       "gold": "contradicted",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-55-06-945Z.json TerminalQuotaError: You have e"
+      "pred": "skipped",
+      "error": null
     },
     {
       "id": "g027",
       "gold": "contradicted",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-55-14-830Z.json TerminalQuotaError: You have e"
+      "pred": "contradicted",
+      "error": null
     },
     {
       "id": "g028",
       "gold": "contradicted",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-55-22-663Z.json TerminalQuotaError: You have e"
+      "pred": "contradicted",
+      "error": null
     },
     {
       "id": "g029",
       "gold": "contradicted",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-55-30-741Z.json TerminalQuotaError: You have e"
+      "pred": "contradicted",
+      "error": null
     },
     {
       "id": "g030",
       "gold": "contradicted",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-55-39-955Z.json TerminalQuotaError: You have e"
+      "pred": "contradicted",
+      "error": null
     },
     {
       "id": "g031",
       "gold": "not_addressed",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-55-49-512Z.json TerminalQuotaError: You have e"
+      "pred": "not_addressed",
+      "error": null
     },
     {
       "id": "g032",
       "gold": "not_addressed",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-55-59-713Z.json TerminalQuotaError: You have e"
+      "pred": "not_addressed",
+      "error": null
     },
     {
       "id": "g033",
       "gold": "not_addressed",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-56-11-182Z.json TerminalQuotaError: You have e"
+      "pred": "not_addressed",
+      "error": null
     },
     {
       "id": "g034",
       "gold": "not_addressed",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-56-20-208Z.json TerminalQuotaError: You have e"
+      "pred": "skipped",
+      "error": null
     },
     {
       "id": "g035",
       "gold": "not_addressed",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-56-30-377Z.json TerminalQuotaError: You have e"
+      "pred": "skipped",
+      "error": null
     },
     {
       "id": "g036",
       "gold": "not_addressed",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-56-42-147Z.json TerminalQuotaError: You have e"
+      "pred": "not_addressed",
+      "error": null
     },
     {
       "id": "g037",
       "gold": "not_addressed",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-56-52-401Z.json TerminalQuotaError: You have e"
+      "pred": "skipped",
+      "error": null
     },
     {
       "id": "g038",
       "gold": "not_addressed",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-57-02-211Z.json TerminalQuotaError: You have e"
+      "pred": "not_addressed",
+      "error": null
     },
     {
       "id": "g039",
       "gold": "not_addressed",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-57-18-499Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-17-26-804Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g040",
       "gold": "not_addressed",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-57-31-790Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Attempt 1 failed with status 503. Retrying with backoff... _ApiError: {\"error\":{\"message\":\"{\\n  \\\"error\\\": {\\n    \\\"code\\\": 503,\\n    \\\"message\\\": \\\"This model is currently experiencing high demand. S"
     },
     {
       "id": "g041",
       "gold": "not_addressed",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-57-42-722Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-17-52-245Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g042",
       "gold": "not_addressed",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-57-51-727Z.json TerminalQuotaError: You have e"
+      "pred": "not_addressed",
+      "error": null
     },
     {
       "id": "g043",
       "gold": "unverifiable",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-58-00-572Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-18-16-229Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g044",
       "gold": "unverifiable",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-58-09-485Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-18-24-882Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g045",
       "gold": "unverifiable",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-58-18-943Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-18-33-529Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g046",
       "gold": "unverifiable",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-58-27-717Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-18-43-518Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g047",
       "gold": "unverifiable",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-58-35-043Z.json TerminalQuotaError: You have e"
+      "pred": "unverifiable",
+      "error": null
     },
     {
       "id": "g048",
       "gold": "unverifiable",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-58-42-338Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-19-05-415Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g049",
       "gold": "unverifiable",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T01-58-49-987Z.json TerminalQuotaError: You have e"
+      "pred": "unverifiable",
+      "error": null
     },
     {
       "id": "g050",
       "gold": "unverifiable",
       "pred": "error",
-      "error": "non-zero exit 3221226505: stderr="
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-19-29-476Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g051",
       "gold": "unverifiable",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T02-01-15-623Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-19-39-459Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g052",
       "gold": "skipped",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T02-01-27-562Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-19-49-034Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g053",
       "gold": "skipped",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T02-01-34-713Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-19-59-044Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g054",
       "gold": "skipped",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T02-01-41-741Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-20-08-048Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g055",
       "gold": "skipped",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T02-01-52-121Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-20-19-186Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g056",
       "gold": "skipped",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T02-02-02-537Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-20-27-702Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g057",
       "gold": "skipped",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T02-02-09-901Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-20-37-326Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g058",
       "gold": "skipped",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T02-02-15-679Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-20-45-568Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g059",
       "gold": "skipped",
       "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T02-02-23-824Z.json TerminalQuotaError: You have e"
+      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T07-20-54-872Z.json TerminalQuotaError: You have e"
     },
     {
       "id": "g060",
       "gold": "skipped",
-      "pred": "error",
-      "error": "non-zero exit 1: stderr=Error when talking to Gemini API Full report available at: C:\\Users\\<redacted>\\AppData\\Local\\Temp\\gemini-client-error-Turn.run-sendMessageStream-2026-05-23T02-02-31-411Z.json TerminalQuotaError: You have e"
+      "pred": "skipped",
+      "error": null
     }
   ]
 }
