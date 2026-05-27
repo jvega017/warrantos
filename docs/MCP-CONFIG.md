@@ -80,6 +80,23 @@ run `warrantos-mcp` directly from a terminal and look for the
 startup message; common failures are PATH issues or the SDK extra
 not being installed.
 
+## Verifying without an Anthropic API key
+
+If you do not want to set `ANTHROPIC_API_KEY` (no Anthropic account,
+strict data-egress rules, or you just prefer local), three options
+are documented in [`NO-API-KEY.md`](NO-API-KEY.md):
+
+1. **Local LLM grader** (Ollama, llama.cpp, vLLM) — point the server
+   at it via `PROVENANCE_LOCAL_GRADER_URL`.
+2. **Claude Code Stop hook** (`warrantos-verify-hook`) — verifies
+   inside the existing Claude Code session, no separate credentials.
+3. **MCP sampling** — designed for v0.9; documented as a gap until
+   then.
+
+All three avoid the Anthropic API entirely while still producing
+`contradicted` verdicts. The MCP server inherits whichever path the
+host environment makes available.
+
 ## Cost-aware defaults
 
 The MCP tools inherit the same offline-by-default discipline as the

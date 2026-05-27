@@ -37,12 +37,14 @@ stage above. **Zero credits consumed.**
 | Stage | Trigger | Per-call cost |
 |---|---|---|
 | Layer 7 G2 LLM grader | `--verify` flag AND `ANTHROPIC_API_KEY` env var set | One Anthropic API call per detected claim |
+| Layer 7 G2 Local LLM grader | `--verify` flag AND `PROVENANCE_LOCAL_GRADER_URL` env var set | **0 API credits**. Uses your local LLM (Ollama, llama.cpp, vLLM). See [`NO-API-KEY.md`](NO-API-KEY.md) §1. |
+| Layer 7 G2 Claude Code Stop hook | Hook wired to `~/.claude/settings.json` | **0 separate credits**. Verifies inside your Claude Code session using its existing auth. See [`NO-API-KEY.md`](NO-API-KEY.md) §2. |
 
-That is the entire cost surface. Without `ANTHROPIC_API_KEY`, the
-`--verify` flag falls back to the offline heuristic. The heuristic
-cannot emit `contradicted` by construction (it can only match tokens
-between claim and source), so the LLM grader is the only path to a
-real contradicted verdict.
+Three ways to get `contradicted` verdicts without paying Anthropic
+API credits. See [`docs/NO-API-KEY.md`](NO-API-KEY.md) for the
+decision tree and configuration. Without any of the three, `--verify`
+falls back to the offline heuristic, which cannot emit
+`contradicted` by construction.
 
 ## Spend-control flags
 

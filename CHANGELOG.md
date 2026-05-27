@@ -6,6 +6,52 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added — v0.8 no-API-key verification paths
+
+- **LocalLLMGrader** (`provenance.grade.LocalLLMGrader`). Posts to an
+  OpenAI-compatible `/v1/chat/completions` endpoint so the verifier
+  can produce `contradicted` verdicts using Ollama, llama.cpp's
+  server, LM Studio, vLLM, or any compatible local-LLM tool. Zero
+  external network egress; zero Anthropic API cost. Activated via
+  `PROVENANCE_LOCAL_GRADER_URL`; falls back to HeuristicGrader on any
+  failure. Stdlib only (uses `urllib.request`).
+- **`get_grader()` selection order**: LocalLLMGrader if
+  `PROVENANCE_LOCAL_GRADER_URL` is set; LLMGrader if
+  `ANTHROPIC_API_KEY` is set; HeuristicGrader otherwise. The local
+  path wins over the Anthropic path when both are configured because
+  the local choice indicates an explicit preference for zero data
+  egress.
+- **Claude Code Stop hook** (`hooks/claude_code_verify_hook.py`,
+  entry point `warrantos-verify-hook`). When wired to
+  `~/.claude/settings.json` under `hooks.Stop`, the hook reads the
+  latest run's verdict, identifies unsupported load-bearing claims,
+  and hands them back to the same Claude Code session via stderr +
+  exit code 2. The session verifies them in the next turn using its
+  existing auth. Loop-safe: a sentinel file in `.warrant/` prevents
+  re-blocking the same hold set twice.
+- **docs/NO-API-KEY.md**: complete guide to verifying claims without
+  an Anthropic API key, with a decision tree (local LLM vs Claude
+  Code hook vs MCP sampling) and configuration recipes per path.
+- **MCP sampling design**: documented as the canonical "no separate
+  API key" path; implementation is a v0.9 deferral with the gap
+  named honestly in NO-API-KEY.md §3 and in this CHANGELOG.
+
+### Documentation updates for v0.8
+
+- `pyproject.toml` adds the `warrantos-verify-hook` entry point.
+- `docs/QUICKSTART.md` links to NO-API-KEY.md.
+- `docs/COST.md` lists the local-LLM and Claude-Code-hook paths as
+  zero-API-cost options for `--verify`.
+- `docs/MCP-CONFIG.md` cross-references NO-API-KEY.md for the
+  three no-Anthropic-key paths.
+
+### Still deferred (post-v0.8)
+
+- **MCP sampling implementation**: the design lives in
+  NO-API-KEY.md §3. Implementation requires a new
+  `MCPSamplingGrader`, a `warrant_check(use_mcp_sampling=True)`
+  pathway, and host-side permission UX work. Tracked as v0.9.
+
 ### Added — v0.7 beta-ready packaging
 
 - **pyproject.toml** with three console entry points: `warrantos`
