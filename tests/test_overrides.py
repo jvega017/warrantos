@@ -213,5 +213,69 @@ class TestOverrideLedgerListing(unittest.TestCase):
         self.assertLess(rows[0].id, rows[1].id)
 
 
+class TestEscalationTaxonomy(unittest.TestCase):
+    """v0.9 SPEC-L8 carry-forward: documented escalation paths are
+    accepted verbatim; anything outside the canonical set is prefixed
+    `custom:` so it is visibly outside the taxonomy."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.db_path = Path(self._tmp.name) / "escalation.db"
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def _record(self, *, escalation):
+        return record_override(
+            self.db_path,
+            run_id="run_esc",
+            reviewer="human:director.so",
+            gate_id="G1",
+            failure_class="boundary",
+            risk_accepted="Test risk.",
+            compensating_control="Test control.",
+            escalation_path_taken=escalation,
+        )
+
+    def test_canonical_path_recorded_verbatim(self):
+        for canonical in (
+            "peer_review",
+            "director_signoff",
+            "legal_review",
+            "second_coder_review",
+        ):
+            with self.subTest(path=canonical):
+                row = self._record(escalation=canonical)
+                self.assertEqual(row.escalation_path_taken, canonical)
+
+    def test_non_canonical_path_gets_custom_prefix(self):
+        row = self._record(escalation="some bespoke path")
+        self.assertTrue(row.escalation_path_taken.startswith("custom:"))
+        self.assertIn("bespoke", row.escalation_path_taken)
+
+    def test_already_custom_prefixed_path_is_not_double_prefixed(self):
+        row = self._record(escalation="custom:already-tagged")
+        # Must not become "custom:custom:already-tagged"
+        self.assertEqual(
+            row.escalation_path_taken.count("custom:"), 1
+        )
+
+    def test_none_recorded_canonical_default(self):
+        row = self._record(escalation="")
+        self.assertEqual(row.escalation_path_taken, "none recorded")
+
+    def test_taxonomy_listing_includes_documented_paths(self):
+        from provenance.overrides import list_canonical_escalation_paths
+        paths = list_canonical_escalation_paths()
+        for p in (
+            "none recorded",
+            "peer_review",
+            "director_signoff",
+            "cabinet_office",
+            "legal_review",
+        ):
+            self.assertIn(p, paths)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

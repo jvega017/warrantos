@@ -38,7 +38,32 @@ CREATE TABLE IF NOT EXISTS human_override (
 
 CREATE INDEX IF NOT EXISTS idx_human_override_run_id  ON human_override(run_id);
 CREATE INDEX IF NOT EXISTS idx_human_override_gate_id ON human_override(gate_id);
+
+-- INV-004 storage-level enforcement: SPEC-L2-S002 append-only.
+-- Idempotent via IF NOT EXISTS. New in v0.9.
+CREATE TRIGGER IF NOT EXISTS prevent_update_human_override
+BEFORE UPDATE ON human_override
+BEGIN
+    SELECT RAISE(ABORT, 'INV-004: human_override is append-only per SPEC-L2-S002');
+END;
 """
+
+
+# Documented escalation paths. New in v0.9. SPEC-L8-S004 carry-forward:
+# `escalation_path_taken` was previously free text. v0.9 documents the
+# canonical set so a downstream auditor can rely on a stable taxonomy
+# for reporting. Any other string is accepted but prefixed with
+# `custom:` so it is visibly outside the canonical set.
+_CANONICAL_ESCALATION_PATHS = (
+    "none recorded",
+    "peer_review",
+    "director_signoff",
+    "executive_signoff",
+    "cabinet_office",
+    "legal_review",
+    "second_coder_review",
+    "external_auditor",
+)
 
 
 @dataclass(frozen=True)
@@ -168,6 +193,11 @@ def record_override(
     risk_clean = risk_accepted.strip()
     control_clean = compensating_control.strip()
     escalation_clean = (escalation_path_taken or "none recorded").strip() or "none recorded"
+    # v0.9: tag custom escalation paths so the downstream taxonomy is
+    # honest. Anything outside the canonical set is recorded verbatim
+    # with a `custom:` prefix.
+    if escalation_clean not in _CANONICAL_ESCALATION_PATHS and not escalation_clean.startswith("custom:"):
+        escalation_clean = "custom:" + escalation_clean
 
     con = open_override_db(db_path)
     try:
@@ -284,6 +314,15 @@ def list_overrides_for_run(
     finally:
         con.close()
     return [_row_to_override(r) for r in rows]
+
+
+def list_canonical_escalation_paths() -> List[str]:
+    """Return the documented escalation path taxonomy.
+
+    New in v0.9. Useful for callers building UI or validation around
+    the override-recording surface.
+    """
+    return list(_CANONICAL_ESCALATION_PATHS)
 
 
 def _require_non_empty(name: str, value: str, spec: str = "") -> None:

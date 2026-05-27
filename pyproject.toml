@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "claude-provenance"
-version = "0.7.0b1"
+version = "0.9.0b1"
 description = "WarrantOS reference implementation: a governance harness for AI-assisted writing that ships clean prose and a separate auditable provenance ledger"
 readme = "README.md"
 license = { file = "LICENSE" }

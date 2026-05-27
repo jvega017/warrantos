@@ -6,6 +6,24 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added — v0.9 beta-trial finalisation
+
+- **`prompt-template` profile** for G1 (`_PROFILE_RULES`). Empirical calibration: on 2026-05-27 all 10 morning brief-prompt templates triggered BLOCK with 29-59 violations under `brief-light`. The new profile drops the lexical-residue rules because the input IS the rule-list discussion, not a final artefact. Re-tested: BLOCK → HOLD with 0 violations (HOLDs are genuine unsupported-claim signal). Shadow observer default updated to use `prompt-template`.
+- **L3 ledger persistence** (`provenance.ledger_write.persist_context_transform`). Closes SPEC-L3-N001 SHALL: every derived requirement now produces a `context_transform` ledger row. New module `provenance/ledger_write.py` houses write-path helpers (kept separate from read-only `provenance/ledger.py`).
+- **INV-004 storage-level append-only triggers** (`provenance.ledger_write.enable_append_only_triggers`). SQLite `BEFORE UPDATE` triggers RAISE(ABORT) on every audit-bearing table. INV-004 moves from ASSERTED to ENFORCED. The `human_override` trigger is installed automatically when the override DB is opened.
+- **L8 escalation-path taxonomy** (`provenance.overrides`). Eight canonical paths documented (none recorded / peer_review / director_signoff / executive_signoff / cabinet_office / legal_review / second_coder_review / external_auditor). Non-canonical values accepted but tagged with a `custom:` prefix. `list_canonical_escalation_paths()` exposes the set.
+- **`warrantos status` command** (`provenance.status` + new CLI subcommand). Reports per-layer conformance against the 8 architecture layers plus the foundation row. Status values: BUILT / PARTIAL / STARTER / NOT_BUILT. Three output formats: text (default), `--json`, `--markdown`. `docs/STATUS.md` is the committed Markdown render.
+- **Version bump** in `pyproject.toml` to `0.9.0b1`.
+
+### Still deferred (post-v0.9, require Juan's domain input)
+
+These four items remain NOT_BUILT or STARTER. They cannot be fabricated; the adopter must supply the domain-specific input:
+
+- **SHALL-level classifier corpus (N >= 50 per class)** — SPEC-L1-S006 promotion to SHALL.
+- **G4 production threat-model corpus** — replaces the starter pattern list with a documented adversarial corpus.
+- **Foundation: Data Classification (sensitivity tiers)** — adopter declares the sensitivity taxonomy.
+- **Foundation: Retention & Deletion (tombstones)** — adopter specifies retention windows; INV-011 promotes from PROPOSITION when implemented.
+
 ### Added — v0.8 no-API-key verification paths
 
 - **LocalLLMGrader** (`provenance.grade.LocalLLMGrader`). Posts to an
