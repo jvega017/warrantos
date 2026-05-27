@@ -6,6 +6,64 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added — v0.6 deferred-list close-out
+
+- **Layer 7 G3 wired into the warrantos CLI**
+  (`cli/warrantos_cli.py`). New `--writer-model` and
+  `--verifier-model` flags trigger `check_self_grounding`. The result
+  lands in the report's `g3_self_grounding` field. When the verdict
+  is `requires_external_grounding` or `family_match`, the reason is
+  appended to the verdict reasons list as a `FLAG (G3 informational)`
+  annotation. SPEC-L7-N003 says SHALL FLAG, not SHALL BLOCK; G3
+  therefore does NOT promote PASS to HOLD/BLOCK.
+- **Layer 7 G4 contamination scan** (`provenance.gates.check_contamination`).
+  Replaces the v0.5 NotImplementedError stub with a regex scan
+  against a documented starter pattern list (ignore-instructions,
+  you-are-now, system-role inject, chat-template open/close,
+  override-role, end-of-prompt marker, repeat-above). Returns a
+  `ContaminationResult` with `verdict` in {pass, blocked}. The list
+  is explicitly a `starter` corpus; the result carries a note that
+  production deployments SHALL extend it.
+- **Layer 7 G5 calibration** (`provenance.gates.check_calibration`).
+  Replaces the v0.5 NotImplementedError stub with a Brier-score
+  implementation that reports explicit coverage: total verdicts,
+  typed rows ({verified, contradicted}), with-confidence rows, and
+  the Brier score over the with-confidence subset. When coverage is
+  zero (the offline-heuristic case), `brier` is None and the
+  honest-disclosure note explains why. SPEC-L7-R002.
+- **Layer 6 subprocess isolation**
+  (`provenance.clean_room.run_clean_room_subprocess`). Level 2
+  conformance for SPEC-L6-R001. Spawns a subprocess with a scrubbed
+  environment (PATH, SYSTEMROOT, TEMP, TMP, LANG, LC_ALL, HOME,
+  USERPROFILE, PYTHONIOENCODING; everything else is suppressed).
+  Delivers the InvocationPlan via stdin as JSON. Returns a
+  SubprocessRunResult with exit code, stdout, stderr, timed_out
+  flag, and the count of scrubbed-vs-kept env keys. Caller-supplied
+  `extra_env_allowlist` is the explicit path for threading a
+  credential (e.g. `ANTHROPIC_API_KEY`) through.
+- **SPEC-L1-S006 classifier corpus scaffold**
+  (`eval/classifier-corpus/seeds.jsonl`,
+  `eval/run_classifier_corpus.py`). Seed corpus with one
+  representative example per class (N = 1 per class) and a runner
+  that reports per-class precision and exits non-zero on regression.
+  SPEC-L1-S006 SHOULD level reached for v0.6; v0.3 promotion to
+  SHALL still requires N >= 50 per class.
+
+### Still deferred (post-v0.6)
+
+- **Promotion of SPEC-L1-S006 from SHOULD to SHALL**: requires
+  authoring N >= 50 labelled examples per class. Not fabricated;
+  awaits human authoring.
+- **G3 verdict promotion (BLOCK or HOLD)**: SPEC says SHALL FLAG.
+  Promoting to BLOCK would require a separate decision and SPEC
+  amendment.
+- **G4 production pattern list**: the starter set fires on the
+  obvious patterns; a production corpus requires red-team review
+  and threat-model authoring.
+- **G5 LLM-grader confidence wiring**: the heuristic verifier cannot
+  emit confidence by construction; using the LLM grader for every
+  claim is gated by ANTHROPIC_API_KEY and cost.
+
 ### Added — v0.5 follow-ups (Layer 5, Layer 6, Layer 7 G3, docs)
 
 - **Layer 5 clean-room writer pack** (`provenance/writer_pack.py`).
