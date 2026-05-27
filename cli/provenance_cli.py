@@ -47,6 +47,18 @@ import sys
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+# When invoked as `python cli/provenance_cli.py`, sys.path[0] is the cli/
+# directory rather than the repo root, so `import provenance.X` fails with
+# ModuleNotFoundError. The two test_context_cli.py failures in the
+# 2026-05-27 baseline traced to this: --cbom mode hit
+# _import_context_admissibility(), the lazy import returned None, and the
+# CLI emitted "context admissibility module is not available." with no
+# JSON or text output. The four lines below make the repository root
+# importable so the lazy imports actually find the package.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers

@@ -190,30 +190,36 @@ class TestWarrantosCliScaffold(unittest.TestCase):
         self.assertIn("draft file not found", proc.stderr)
 
     def test_check_text_output_summary(self):
-        """The text summary block names the run id, draft chars and the
-        Day-5 next-stage note. Day-4 always exits 0."""
+        """The text summary block names the run id, draft chars, and the
+        consolidated verdict. Default profile is final-prose without an
+        actor identity, so the verdict is NOT_ASSESSABLE per Codex C1."""
         proc = self._run("check", str(self.draft_path))
+        # NOT_ASSESSABLE with no --ci returns 0; with --ci returns 1.
         self.assertEqual(proc.returncode, 0, msg=proc.stderr)
-        self.assertIn("warrantos check (Day-4 scaffold)", proc.stdout)
+        self.assertIn("warrantos check", proc.stdout)
         self.assertIn("run id:", proc.stdout)
         self.assertIn("draft chars:", proc.stdout)
-        self.assertIn("next_stage_note" if False else "Day 5", proc.stdout)
+        self.assertIn("VERDICT:", proc.stdout)
+        # Without --actor-identity, final-prose default triggers NOT_ASSESSABLE.
+        self.assertIn("NOT_ASSESSABLE", proc.stdout)
 
     def test_check_json_output_parses(self):
         """`--json` emits a parsable JSON object with the documented keys."""
         proc = self._run("check", str(self.draft_path), "--json")
         self.assertEqual(proc.returncode, 0, msg=proc.stderr)
         data = json.loads(proc.stdout)
-        self.assertEqual(data["stage"], "day-4-scaffold")
         self.assertIn("run_id", data)
         self.assertIn("draft_chars", data)
         self.assertIn("by_context_type", data)
-        self.assertIn("by_ledger_bucket", data)
+        self.assertIn("verdict", data)
+        self.assertIn("reasons", data)
+        self.assertIn("cbom_schema", data)
+        self.assertEqual(data["cbom_schema"], "warrantos-cbom/v1")
 
     def test_check_with_context_classifies_review_role(self):
         """A context item with source_agent=policy-red-team is classified
         as review_finding, demonstrating the Day-3 SPEC-L1-S005 wiring
-        through the Day-4 CLI scaffold."""
+        through the CLI."""
         ctx_path = Path(self._tmp.name) / "context.json"
         ctx_path.write_text(
             json.dumps(

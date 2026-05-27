@@ -135,6 +135,10 @@ class TestCbom(unittest.TestCase):
         json.dumps(cbom)
 
     def test_admissibility_summary_is_stable(self):
+        """Stable v0.2 shape: the seven v0.1 keys plus the three v0.2
+        actor-visibility keys (can_be_seen_by, cannot_be_seen_by,
+        prohibited_use). Per INV-007 the v0.2 additions are additive;
+        the v0.1 keys still appear with the same semantics."""
         item = ContextItem(
             context_id="style_001",
             raw_text="Use Australian English.",
@@ -156,6 +160,9 @@ class TestCbom(unittest.TestCase):
                 "can_appear_in_final_prose": False,
                 "allowed_transformation": "style_rule",
                 "audit_status": "recorded",
+                "can_be_seen_by": [],
+                "cannot_be_seen_by": [],
+                "prohibited_use": [],
             },
         )
 
