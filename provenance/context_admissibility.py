@@ -12,7 +12,10 @@ import hashlib
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
+
+from provenance.cbom import ClassificationOverrideRecord
+from provenance.review_roles import is_review_role_output
 
 
 @dataclass(frozen=True)
@@ -85,13 +88,30 @@ _INSTRUCTION_RE = re.compile(
 _DEFAULT_VIEWERS = ("context_classifier", "semantic_reviewer", "ledger_writer")
 
 
-def classify_context(context_id: str, raw_text: str) -> ContextItem:
+def classify_context(
+    context_id: str,
+    raw_text: str,
+    source_agent: Optional[str] = None,
+) -> ContextItem:
     """Classify context and assign admissible-use controls.
 
     The classifier is deliberately conservative and transparent. It is a rule
     layer, not a semantic oracle.
+
+    SPEC-L1-S005 (new in v0.2): when *source_agent* identifies a documented
+    review-role agent (per ``provenance.review_roles.REVIEW_ROLE_REGISTRY``),
+    or when the text alone strongly signals a review-role output, the
+    classification is forced to ``review_finding`` regardless of other text
+    content. This closes the A1 classification-laundering attack identified
+    by the Wave A policy-red-team review on 2026-05-26: a review_finding
+    cannot be silently reclassified to ``private_reasoning`` (or any other
+    less-visible class) merely because its text contains a "chain of thought"
+    keyword. To override this classification, use ``classify_with_override``
+    with an override id from the human_override ledger.
     """
     text = raw_text or ""
+    if is_review_role_output(text, source_agent=source_agent):
+        return _review_finding_item(context_id, text)
     if _REASONING_RE.search(text):
         return ContextItem(
             context_id=context_id,
@@ -175,19 +195,7 @@ def classify_context(context_id: str, raw_text: str) -> ContextItem:
             prohibited_use=("final_prose",),
         )
     if _REVIEW_RE.search(text):
-        return ContextItem(
-            context_id=context_id,
-            raw_text=text,
-            context_type="review_finding",
-            ledger_bucket="synthesised",
-            can_influence_output=True,
-            can_appear_in_final_prose=False,
-            allowed_transformation="applied_recommendation",
-            audit_status="recorded",
-            can_be_seen_by=_DEFAULT_VIEWERS + ("revision_planner",),
-            cannot_be_seen_by=("clean_room_writer",),
-            prohibited_use=("final_prose",),
-        )
+        return _review_finding_item(context_id, text)
     if _CONVERSATION_RE.search(text):
         return ContextItem(
             context_id=context_id,
@@ -241,6 +249,162 @@ def classify_context(context_id: str, raw_text: str) -> ContextItem:
         can_be_seen_by=_DEFAULT_VIEWERS,
         cannot_be_seen_by=("clean_room_writer",),
         prohibited_use=("final_prose",),
+    )
+
+
+def _review_finding_item(context_id: str, text: str) -> ContextItem:
+    """Construct the canonical ``review_finding`` ContextItem.
+
+    Shared between the source_agent-driven SPEC-L1-S005 gate and the
+    text-pattern fallback below, so both code paths emit byte-identical
+    items.
+    """
+    return ContextItem(
+        context_id=context_id,
+        raw_text=text,
+        context_type="review_finding",
+        ledger_bucket="synthesised",
+        can_influence_output=True,
+        can_appear_in_final_prose=False,
+        allowed_transformation="applied_recommendation",
+        audit_status="recorded",
+        can_be_seen_by=_DEFAULT_VIEWERS + ("revision_planner",),
+        cannot_be_seen_by=("clean_room_writer",),
+        prohibited_use=("final_prose",),
+    )
+
+
+def classify_with_override(
+    context_id: str,
+    raw_text: str,
+    *,
+    source_agent: Optional[str],
+    override_id: str,
+    target_class: str,
+    override_rationale_summary: str = "",
+) -> Tuple[ContextItem, ClassificationOverrideRecord]:
+    """Reclassify a review-role-shaped input under a recorded override.
+
+    SPEC-L1-S005 path. The caller has already recorded a human_override
+    ledger row via ``provenance.overrides.record_override()`` and now
+    holds the override id. This function:
+
+    1. Verifies the input is review-role-shaped (source_agent in the
+       registry, or text heuristics fire). If not, raises ValueError;
+       this function exists only to handle the laundering-attack
+       boundary, not as a general-purpose reclassification path.
+    2. Verifies ``override_id`` is non-empty. SPEC-L1-S005 requires the
+       override exists; this function takes the id on trust because the
+       override ledger lives in a separate database.
+    3. Constructs the ContextItem with the requested ``target_class``
+       using that class's standard admissibility flags.
+    4. Returns a ``ClassificationOverrideRecord`` for inclusion in the
+       CBOM's ``classification_overrides`` field (SPEC §10.3).
+
+    Parameters
+    ----------
+    context_id
+        Stable identifier for this context input.
+    raw_text
+        The input text.
+    source_agent
+        Authoritative source-agent identifier, or None if unknown.
+    override_id
+        Non-empty pointer to a human_override ledger row recorded under
+        SPEC-L8-S004.
+    target_class
+        The class the input is being reclassified to. Common case is
+        ``private_reasoning``; other classes are permitted but the CBOM
+        will record the reclassification regardless.
+    override_rationale_summary
+        Optional short summary of the override rationale for CBOM
+        readability. The authoritative rationale lives on the
+        human_override row.
+
+    Returns
+    -------
+    (ContextItem, ClassificationOverrideRecord)
+
+    Raises
+    ------
+    ValueError
+        If override_id is empty, or the input is not review-role-shaped
+        (this function is not a general reclassifier).
+    """
+    if not override_id or not override_id.strip():
+        raise ValueError("SPEC-L1-S005: override_id SHALL be a non-empty string")
+
+    text = raw_text or ""
+    if not is_review_role_output(text, source_agent=source_agent):
+        raise ValueError(
+            "classify_with_override applies only to review-role-shaped input. "
+            "Pass source_agent or include a recognisable review-output signature."
+        )
+
+    item = _build_item_for_class(context_id, text, target_class)
+    override_record = ClassificationOverrideRecord(
+        context_id=context_id,
+        classified_as=target_class,
+        default_would_be="review_finding",
+        override_id=override_id.strip(),
+        override_rationale_summary=override_rationale_summary.strip(),
+    )
+    return item, override_record
+
+
+def _build_item_for_class(context_id: str, text: str, target_class: str) -> ContextItem:
+    """Build a ContextItem with the canonical flags for *target_class*.
+
+    Maps to the same per-class admissibility profile the rule-based
+    classifier would emit if it had reached that branch directly.
+    """
+    if target_class == "private_reasoning":
+        return ContextItem(
+            context_id=context_id,
+            raw_text=text,
+            context_type="private_reasoning",
+            ledger_bucket="excluded",
+            can_influence_output=False,
+            can_appear_in_final_prose=False,
+            allowed_transformation="none",
+            audit_status="excluded",
+            can_be_seen_by=("context_classifier", "ledger_writer"),
+            cannot_be_seen_by=("clean_room_writer", "final_writer"),
+            prohibited_use=("influence_output", "final_prose"),
+        )
+    if target_class == "synthesised_judgement":
+        return ContextItem(
+            context_id=context_id,
+            raw_text=text,
+            context_type="synthesised_judgement",
+            ledger_bucket="synthesised",
+            can_influence_output=True,
+            can_appear_in_final_prose=False,
+            allowed_transformation="derived_requirement",
+            audit_status="recorded",
+            can_be_seen_by=_DEFAULT_VIEWERS,
+            cannot_be_seen_by=("clean_room_writer",),
+            prohibited_use=("final_prose",),
+        )
+    if target_class == "review_finding":
+        return _review_finding_item(context_id, text)
+    if target_class == "operational_trace":
+        return ContextItem(
+            context_id=context_id,
+            raw_text=text,
+            context_type="operational_trace",
+            ledger_bucket="process",
+            can_influence_output=False,
+            can_appear_in_final_prose=False,
+            allowed_transformation="audit_record",
+            audit_status="audit_only",
+            can_be_seen_by=("context_classifier", "ledger_writer", "auditor"),
+            cannot_be_seen_by=("clean_room_writer", "final_writer"),
+            prohibited_use=("final_prose",),
+        )
+    raise ValueError(
+        "target_class %r is not a recognised SPEC §2.2 class for override path"
+        % target_class
     )
 
 
