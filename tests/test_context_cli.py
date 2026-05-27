@@ -10,14 +10,12 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI = REPO_ROOT / "cli" / "provenance_cli.py"
-WRITABLE_TMP = Path("C:/tmp")
 
 
 class TestContextCli(unittest.TestCase):
 
     def test_cbom_json_reports_context_and_boundary_pass(self):
-        WRITABLE_TMP.mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=str(WRITABLE_TMP)) as td:
+        with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             context = root / "context.json"
             final = root / "final.md"
@@ -62,8 +60,7 @@ class TestContextCli(unittest.TestCase):
             self.assertEqual(payload["results"][0]["report"]["prose_boundary"]["verdict"], "pass")
 
     def test_cbom_ci_fails_on_process_to_prose_leakage(self):
-        WRITABLE_TMP.mkdir(exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=str(WRITABLE_TMP)) as td:
+        with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             context = root / "context.txt"
             final = root / "final.md"
