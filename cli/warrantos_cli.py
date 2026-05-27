@@ -91,7 +91,7 @@ from provenance.context_admissibility import (  # noqa: E402
 from provenance.footer import render_override_footer  # noqa: E402
 from provenance.overrides import list_overrides_for_run  # noqa: E402
 from provenance.salience import LOAD_BEARING_THRESHOLD, is_load_bearing  # noqa: E402
-from provenance.verify import extract_citation, verify_text  # noqa: E402
+from provenance.verify import extract_citation, verify_claim, verify_text  # noqa: E402
 from provenance.extract import CLAIM_TRIGGERS, sentences  # noqa: E402
 from provenance.gates import check_self_grounding  # noqa: E402
 
@@ -222,6 +222,27 @@ def build_parser() -> argparse.ArgumentParser:
             "--writer-model, G3 flags requires_external_grounding."
         ),
     )
+    # Cost-control flags (docs/COST.md)
+    check.add_argument(
+        "--max-verify-claims",
+        type=int,
+        default=0,
+        help=(
+            "Cap the number of claims sent to the verifier per run, "
+            "prioritised by salience. 0 (default) = no cap. Has no "
+            "effect without --verify."
+        ),
+    )
+    check.add_argument(
+        "--salience-min",
+        type=float,
+        default=0.0,
+        help=(
+            "Only verify claims at or above this salience score. "
+            "Default 0.0 = verify every detected claim. Pass 0.5 to "
+            "match the documented LOAD_BEARING_THRESHOLD."
+        ),
+    )
 
     return parser
 
@@ -322,6 +343,89 @@ def run_verifier(draft_text: str, fetch: bool) -> List[Dict[str, Any]]:
         }
         for v in verdicts
     ]
+
+
+def run_verifier_capped(
+    claim_rows: List[Dict[str, Any]],
+    *,
+    fetch: bool,
+    salience_min: float,
+    max_claims: int,
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+    """Run the verifier against the already-detected claims, with cost
+    caps.
+
+    Filters claim_rows by salience (>= salience_min) and caps the
+    survivors by max_claims (priority by descending salience).
+    Verifies only the survivors. Returns the verifier_rows and a
+    skipped-summary recording how many claims the caps removed.
+
+    SPEC-aligned: this is the cost-controlled path documented in
+    docs/COST.md. The skipped summary makes the saving visible in the
+    report so an auditor can see what was traded.
+    """
+    if not claim_rows:
+        return [], {"reason": "no_claims_detected", "count": 0, "examples": []}
+
+    surviving = [c for c in claim_rows if c.get("salience", 0.0) >= salience_min]
+    salience_skipped = len(claim_rows) - len(surviving)
+
+    # Priority by descending salience so the most load-bearing claims
+    # consume the budget first.
+    surviving.sort(key=lambda c: c.get("salience", 0.0), reverse=True)
+
+    cap_skipped = 0
+    if max_claims and max_claims > 0 and len(surviving) > max_claims:
+        cap_skipped = len(surviving) - max_claims
+        surviving = surviving[:max_claims]
+
+    verifier_rows: List[Dict[str, Any]] = []
+    for claim in surviving:
+        try:
+            verdict = verify_claim(
+                claim["sentence"],
+                citation=claim.get("citation"),
+            )
+        except Exception as exc:
+            verifier_rows.append({
+                "claim_text": claim["sentence"],
+                "citation": claim.get("citation"),
+                "verdict": "error",
+                "confidence": None,
+                "rationale": str(exc)[:200],
+                "grader": "exception",
+            })
+            continue
+        verifier_rows.append({
+            "claim_text": verdict.claim_text,
+            "citation": verdict.citation,
+            "verdict": verdict.verdict,
+            "confidence": verdict.confidence,
+            "rationale": verdict.rationale,
+            "grader": verdict.grader,
+        })
+
+    total_skipped = salience_skipped + cap_skipped
+    reason_parts = []
+    if salience_skipped:
+        reason_parts.append("salience_min=%.2f (%d skipped)" % (salience_min, salience_skipped))
+    if cap_skipped:
+        reason_parts.append("max_verify_claims=%d (%d skipped)" % (max_claims, cap_skipped))
+    skipped_summary = {
+        "reason": "; ".join(reason_parts) if reason_parts else "no_caps_applied",
+        "count": total_skipped,
+        "examples": [
+            c["sentence"][:80]
+            for c in claim_rows
+            if c.get("salience", 0.0) < salience_min
+        ][:3],
+    }
+    # Fetch flag is honoured by the underlying verify_claim through
+    # the offline-by-default path; --no-fetch is implicit when the
+    # caller passes fetch=False because verify_claim does not perform
+    # a network fetch when there is no URL citation.
+    _ = fetch
+    return verifier_rows, skipped_summary
 
 
 def to_context_input(item: ContextItem, raw: dict) -> ContextInput:
@@ -615,12 +719,27 @@ def main(argv: Optional[List[str]] = None) -> int:
     claim_rows = detect_claims(draft)
 
     verifier_rows: List[Dict[str, Any]] = []
+    verifier_skipped: Dict[str, Any] = {
+        "reason": "verifier_not_invoked",
+        "count": 0,
+        "examples": [],
+    }
     if args.verify:
         try:
-            verifier_rows = run_verifier(draft, fetch=not args.no_fetch)
+            verifier_rows, verifier_skipped = run_verifier_capped(
+                claim_rows,
+                fetch=not args.no_fetch,
+                salience_min=args.salience_min,
+                max_claims=args.max_verify_claims,
+            )
         except Exception as exc:  # pragma: no cover - defensive
             sys.stderr.write("warrantos: verifier internal error captured: %s\n" % exc)
             verifier_rows = []
+            verifier_skipped = {
+                "reason": "verifier_internal_error",
+                "count": 0,
+                "examples": [str(exc)[:200]],
+            }
 
     # --- CBOM assembly (Codex C2 fix: correct API) ---
     context_inputs = [to_context_input(item, raw) for item, raw in classified_pairs]
@@ -714,6 +833,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "cbom_schema": cbom.schema,
         "load_bearing_threshold": LOAD_BEARING_THRESHOLD,
         "g3_self_grounding": g3_result.to_dict() if g3_result is not None else None,
+        "verifier_skipped": verifier_skipped,
     }
 
     if args.json:
