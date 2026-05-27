@@ -3,6 +3,7 @@ LAUNCH-POST.md
 
 # Runtime ledger
 .provenance/
+.warrant/
 *.db
 
 # Python
