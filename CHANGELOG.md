@@ -6,6 +6,64 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added — v0.5 follow-ups (Layer 5, Layer 6, Layer 7 G3, docs)
+
+- **Layer 5 clean-room writer pack** (`provenance/writer_pack.py`).
+  `compile_writer_pack()` builds the five required sections per SPEC
+  §6.2: Clean Brief (derived requirements only; no raw feedback),
+  Approved Sources (admitted empirical evidence), Style Rules (from
+  style signals), Acceptance Tests (default Layer 7 G1/G2/G3
+  coverage), and Banned Residue List (boundary rules promoted from
+  validation rules). Enforces SPEC-L4-S001 at the writer entry point:
+  any item whose `can_be_seen_by` excludes `clean_room_writer` is
+  rejected and the count is reported on the pack so the auditor can
+  see how much material was withheld from the writer.
+- **Layer 6 clean-room generation (discipline mode)**
+  (`provenance/clean_room.py`). `prepare_invocation()` builds an
+  `InvocationPlan` from a writer pack and a writer-model identifier.
+  Refuses arbitrary context kwargs at the API surface: only
+  `writer_pack`, `writer_model`, `writer_role`, `max_tokens`, and
+  `temperature` are accepted. Any other key (e.g. `context`,
+  `system_prompt`, `feedback`) raises ValueError. This is the
+  SPEC-L6-S001 discipline; subprocess isolation (SPEC-L6-R001) is
+  deferred to Level 2.
+- **Layer 7 G3 self-grounding gate** (`provenance/gates.py`).
+  `check_self_grounding(writer_model, verifier_model)` returns a
+  `SelfGroundingResult` with verdict in {`ok`, `family_match`,
+  `requires_external_grounding`}. Documented model-family registry
+  resolves Claude, GPT, Gemini, Llama, Grok, Mistral, and Cohere
+  identifiers (SPEC-L7-N004). INV-006 fires when writer and verifier
+  identifiers match (case-insensitively). `family_match` is permitted
+  per SPEC-L7-N004 but recorded for CBOM visibility.
+- **docs/OVERVIEW.md** — a fresh-reader's tour of the repository:
+  the eight-layer model, the four governance properties, the one
+  command that connects every layer, what is built today, and what
+  is explicitly NOT built with the rationale for each.
+
+### Deferred from v0.5 (with rationale)
+
+- **Layer 7 G4 (contamination)**: NOT BUILT. Requires a documented
+  prompt-injection threat model and a labelled pattern corpus.
+  Neither exists yet. The `check_contamination()` stub raises
+  `NotImplementedError` so callers detect the gap rather than receive
+  a silent pass.
+- **Layer 7 G5 (calibration)**: NOT BUILT. Requires the verifier
+  surface to emit a numeric confidence per claim. The offline
+  heuristic verifier emits None on most paths, which makes a Brier
+  score meaningless. `check_calibration()` raises.
+- **Layer 6 subprocess isolation**: NOT BUILT. Discipline mode ships;
+  subprocess isolation is Level 2 conformance work.
+- **G3 wiring into the consolidated verdict**: BUILT as a callable
+  module, NOT WIRED into `cli/warrantos_cli.py`'s consolidated
+  verdict. Wiring requires deciding whether `requires_external_grounding`
+  should HOLD or BLOCK; SPEC-L7-N003 says SHALL FLAG (not SHALL
+  BLOCK), so the prudent default is informational only. The flag is
+  available via `provenance.gates.check_self_grounding()`; CLI
+  integration is a deliberate next-version decision.
+- **SPEC-L1-S006 labelled classifier corpus**: NOT BUILT. Requires
+  authored examples per class (N >= 50). Not fabricated. Awaits
+  human-authored corpus.
+
 ### Added — Path X3 (WarrantOS upstream integration leg)
 
 - **CBOM v0.2 schema additions** (SPEC-F-S002, SPEC-L1-S005, §10.3).

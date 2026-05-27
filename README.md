@@ -73,6 +73,11 @@ on every row.
 
 See [`CHANGELOG.md`](CHANGELOG.md) for the full Path X3 + X4 entry.
 
+If you just landed on the repo and want the tour, start with
+[`docs/OVERVIEW.md`](docs/OVERVIEW.md). It walks through what is in
+the repository, in order, with explicit "what is built today" and
+"what is NOT built" lists.
+
 ## Why this exists
 
 This plugin is the operational form of a working paper, *From Citation to
