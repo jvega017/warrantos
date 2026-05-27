@@ -322,6 +322,137 @@ class LLMGrader:
 
 
 # ---------------------------------------------------------------------------
+# LocalLLMGrader (OpenAI-compatible endpoint; no Anthropic API key required)
+# ---------------------------------------------------------------------------
+
+# Speaks the OpenAI-compatible /v1/chat/completions request shape, which
+# Ollama, llama.cpp's server, LM Studio, vLLM, and most local-LLM tools
+# implement. Activated by setting PROVENANCE_LOCAL_GRADER_URL; falls
+# back to HeuristicGrader on any failure. No data leaves the local
+# host.
+
+
+_LOCAL_DEFAULT_MODEL = "llama3.2"
+
+
+class LocalLLMGrader:
+    """OpenAI-compatible grader for local LLM servers.
+
+    Posts a chat-completions request to ``PROVENANCE_LOCAL_GRADER_URL``
+    (e.g. ``http://localhost:11434/v1/chat/completions`` for Ollama).
+    Returns a Verdict using the same JSON envelope as ``LLMGrader``.
+    Falls back to ``HeuristicGrader`` on any failure: missing env var,
+    network error, non-200 response, JSON parse failure.
+
+    Environment variables:
+
+    - ``PROVENANCE_LOCAL_GRADER_URL`` (required to activate): the full
+      URL to the chat-completions endpoint.
+    - ``PROVENANCE_LOCAL_GRADER_MODEL`` (default ``llama3.2``): model
+      name passed in the request body.
+    - ``PROVENANCE_LOCAL_GRADER_API_KEY`` (optional): bearer token for
+      hosts that require auth (e.g. self-hosted vLLM behind nginx).
+      Most local-LLM tools accept no key at all.
+    - ``PROVENANCE_LOCAL_GRADER_TIMEOUT`` (default 60s).
+
+    The grader never imports any third-party SDK; the request is built
+    with ``urllib.request`` so the stdlib-only guarantee holds.
+    """
+
+    def grade(
+        self,
+        claim_text: str,
+        source_text: Optional[str],
+        citation: Optional[str],
+    ) -> Verdict:
+        endpoint = os.environ.get("PROVENANCE_LOCAL_GRADER_URL", "").strip()
+        if not endpoint:
+            return HeuristicGrader().grade(claim_text, source_text, citation)
+
+        model = os.environ.get("PROVENANCE_LOCAL_GRADER_MODEL", _LOCAL_DEFAULT_MODEL)
+        api_key = os.environ.get("PROVENANCE_LOCAL_GRADER_API_KEY", "").strip()
+        try:
+            timeout = float(os.environ.get("PROVENANCE_LOCAL_GRADER_TIMEOUT", "60"))
+        except (TypeError, ValueError):
+            timeout = 60.0
+
+        grader_label = (
+            "fetch+local-llm:" + model
+            if source_text is not None
+            else "local-llm:" + model
+        )
+
+        payload = json.dumps({
+            "model": model,
+            "messages": [
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": _build_user_message(claim_text, source_text, citation)},
+            ],
+            "max_tokens": 256,
+            "temperature": 0.0,
+            # OpenAI-style response_format request for structured JSON;
+            # many local servers honour this, but the grader does not
+            # depend on it (the JSON parser handles raw text too).
+            "response_format": {"type": "json_object"},
+        }).encode("utf-8")
+
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = "Bearer " + api_key
+
+        req = urllib.request.Request(endpoint, data=payload, method="POST", headers=headers)
+
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                if resp.status != 200:
+                    return HeuristicGrader().grade(claim_text, source_text, citation)
+                body = resp.read().decode("utf-8", errors="replace")
+        except Exception:
+            return HeuristicGrader().grade(claim_text, source_text, citation)
+
+        try:
+            outer = json.loads(body)
+            # OpenAI shape: choices[0].message.content
+            choices = outer.get("choices") or []
+            if not choices:
+                return HeuristicGrader().grade(claim_text, source_text, citation)
+            raw_text = choices[0].get("message", {}).get("content", "")
+            if not isinstance(raw_text, str):
+                raw_text = ""
+            # Some local servers wrap the JSON in ```json fences; strip
+            # them defensively.
+            raw_text = raw_text.strip()
+            if raw_text.startswith("```"):
+                raw_text = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.I | re.M)
+            parsed = json.loads(raw_text)
+        except Exception:
+            return HeuristicGrader().grade(claim_text, source_text, citation)
+
+        verdict_str = str(parsed.get("verdict", "error"))
+        if verdict_str not in _VALID_VERDICTS:
+            verdict_str = "error"
+
+        raw_conf = parsed.get("confidence")
+        try:
+            confidence = float(raw_conf) if raw_conf is not None else None
+            if confidence is not None:
+                confidence = max(0.0, min(1.0, confidence))
+        except (TypeError, ValueError):
+            confidence = None
+
+        raw_rationale = str(parsed.get("rationale", ""))[:200]
+
+        return Verdict(
+            claim_text=claim_text,
+            citation=citation,
+            verdict=verdict_str,
+            confidence=confidence,
+            rationale=raw_rationale,
+            grader=grader_label,
+        )
+
+
+# ---------------------------------------------------------------------------
 # CodexGrader
 # ---------------------------------------------------------------------------
 
@@ -556,11 +687,28 @@ class CodexGrader:
 # ---------------------------------------------------------------------------
 
 def get_grader():
-    """Return an LLMGrader if ANTHROPIC_API_KEY is set, else HeuristicGrader.
+    """Return the most capable grader available in the current environment.
 
-    CodexGrader is never auto-selected: it is an evaluation-only backend that
-    must be requested explicitly by the eval harness.
+    Selection order (first match wins):
+
+    1. ``LocalLLMGrader`` if ``PROVENANCE_LOCAL_GRADER_URL`` is set. No
+       data egress, no Anthropic API key required. See LocalLLMGrader
+       docstring for env vars.
+    2. ``LLMGrader`` if ``ANTHROPIC_API_KEY`` is set. Calls the
+       Anthropic Messages API.
+    3. ``HeuristicGrader`` otherwise. Local, free, deterministic, but
+       cannot emit ``contradicted`` by construction.
+
+    ``CodexGrader`` is never auto-selected: it is an evaluation-only
+    backend that must be requested explicitly by the eval harness.
+
+    Order rationale: a local LLM is the user's explicit preference
+    when configured (it suggests they want zero data egress, or no
+    Anthropic account). The Anthropic key path is the fallback when
+    no local model is available. The heuristic is the final fallback.
     """
+    if os.environ.get("PROVENANCE_LOCAL_GRADER_URL"):
+        return LocalLLMGrader()
     if os.environ.get("ANTHROPIC_API_KEY"):
         return LLMGrader()
     return HeuristicGrader()
