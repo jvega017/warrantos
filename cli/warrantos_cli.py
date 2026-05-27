@@ -93,6 +93,7 @@ from provenance.overrides import list_overrides_for_run  # noqa: E402
 from provenance.salience import LOAD_BEARING_THRESHOLD, is_load_bearing  # noqa: E402
 from provenance.verify import extract_citation, verify_text  # noqa: E402
 from provenance.extract import CLAIM_TRIGGERS, sentences  # noqa: E402
+from provenance.gates import check_self_grounding  # noqa: E402
 
 
 VERDICT_PASS = "PASS"
@@ -201,6 +202,24 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "When --verify is set, do not fetch cited URLs. Forces every "
             "verification to run against citation metadata only."
+        ),
+    )
+    check.add_argument(
+        "--writer-model",
+        default=None,
+        help=(
+            "Model identifier of the writer. Used by Layer 7 G3 "
+            "self-grounding check. Optional; G3 is informational only "
+            "(SPEC-L7-N003 SHALL FLAG, not SHALL BLOCK)."
+        ),
+    )
+    check.add_argument(
+        "--verifier-model",
+        default=None,
+        help=(
+            "Model identifier of the verifier. Used by Layer 7 G3 "
+            "self-grounding check. Optional. When equal to "
+            "--writer-model, G3 flags requires_external_grounding."
         ),
     )
 
@@ -623,6 +642,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         override_ledger_refs=[str(o.id) for o in overrides_on_record],
     )
 
+    # --- Layer 7 G3 self-grounding (informational; SPEC-L7-N003 SHALL FLAG) ---
+    g3_result = None
+    if args.writer_model:
+        g3_result = check_self_grounding(
+            writer_model=args.writer_model,
+            verifier_model=args.verifier_model,
+        )
+
     # --- Consolidated verdict ---
     verdict, reasons = consolidate_verdict(
         boundary,
@@ -632,6 +659,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         cbom.classification_overrides,
         args.profile,
     )
+
+    # G3 informational annotation in the reasons list. SPEC-L7-N003 SHALL
+    # FLAG, not SHALL BLOCK; the flag is recorded but does not promote
+    # the verdict to HOLD/BLOCK.
+    if g3_result is not None and g3_result.verdict != "ok":
+        reasons.append(
+            "FLAG (G3 informational): %s [%s]" % (g3_result.verdict, g3_result.reason)
+        )
 
     # --- Reader-facing footer (SPEC-L8-S005) ---
     footer_markdown = render_override_footer(overrides_on_record)
@@ -678,6 +713,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "out_dir": str(out_dir),
         "cbom_schema": cbom.schema,
         "load_bearing_threshold": LOAD_BEARING_THRESHOLD,
+        "g3_self_grounding": g3_result.to_dict() if g3_result is not None else None,
     }
 
     if args.json:
