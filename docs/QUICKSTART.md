@@ -116,6 +116,9 @@ form of that thesis, not as a correctness oracle.
   [`docs/OVERVIEW.md`](OVERVIEW.md)
 - **Adding the MCP server to Claude Code / Claude Desktop**:
   [`docs/MCP-CONFIG.md`](MCP-CONFIG.md)
+- **Verifying claims without an Anthropic API key**:
+  [`docs/NO-API-KEY.md`](NO-API-KEY.md) — local LLM, Claude Code
+  hook, or MCP sampling (v0.9).
 - **Keeping API costs predictable**:
   [`docs/COST.md`](COST.md)
 - **What gates exist and how to extend them**:
