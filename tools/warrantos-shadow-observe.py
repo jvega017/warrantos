@@ -175,17 +175,22 @@ def main(argv=None) -> int:
     )
     parser.add_argument(
         "--profile",
-        default="brief-light",
+        default="prompt-template",
         choices=(
             "final-prose",
             "brief-light",
             "paper-full",
+            "prompt-template",
             "audit",
             "methodology",
             "consultation_report",
             "changelog",
         ),
-        help="Layer 7 G1 boundary profile to apply during observation.",
+        help=(
+            "Layer 7 G1 boundary profile to apply during observation. "
+            "Default prompt-template is appropriate when --brief-dir "
+            "contains brief-prompt templates rather than rendered briefs."
+        ),
     )
     parser.add_argument(
         "--verify",

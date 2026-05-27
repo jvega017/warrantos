@@ -465,6 +465,15 @@ _PROFILE_RULES = {
     "final": _BASE_LEAKAGE_RULES + _BRIEF_LIGHT_RULES,
     "brief-light": _BASE_LEAKAGE_RULES + _BRIEF_LIGHT_RULES,
     "paper-full": _BASE_LEAKAGE_RULES,
+    # SPEC-v0.2 calibration profile added in v0.9 after empirical testing on
+    # 10/10 brief-template files BLOCKED at G1 (2026-05-27). Brief-prompt
+    # templates legitimately contain meta-content language that describes
+    # process-narration phrases the gate is meant to block in final prose.
+    # The prompt-template profile drops the lexical-residue rules entirely
+    # because the input IS the rule-list discussion, not the final artefact.
+    # Structural narration rules (the SPEC-L7-S004 SHOULD path) are NOT
+    # implemented in v0.9; when they are, this profile retains them.
+    "prompt-template": [],
     "audit": [],
     "methodology": [],
     "consultation_report": [],

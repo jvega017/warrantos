@@ -123,6 +123,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", metavar="<command>")
 
+    status_parser = sub.add_parser(
+        "status",
+        help="Print the per-layer WarrantOS conformance status.",
+        description=(
+            "Report which of the eight architecture layers (plus the "
+            "foundation row) are BUILT / PARTIAL / STARTER / NOT_BUILT "
+            "against the running install."
+        ),
+    )
+    status_parser.add_argument(
+        "--markdown",
+        action="store_true",
+        help="Emit Markdown (suitable for docs/STATUS.md).",
+    )
+    status_parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the status rows as a JSON list.",
+    )
+
     check = sub.add_parser(
         "check",
         help="Run the WarrantOS check pipeline over a draft artefact.",
@@ -154,12 +174,17 @@ def build_parser() -> argparse.ArgumentParser:
             "final-prose",
             "brief-light",
             "paper-full",
+            "prompt-template",
             "audit",
             "methodology",
             "consultation_report",
             "changelog",
         ),
-        help="Layer 7 G1 boundary profile (default: final-prose).",
+        help=(
+            "Layer 7 G1 boundary profile (default: final-prose). Use "
+            "prompt-template for brief-prompt artefacts that legitimately "
+            "discuss process-narration phrases."
+        ),
     )
     check.add_argument(
         "--run-id",
@@ -683,6 +708,21 @@ def format_text_report(report: Dict[str, Any]) -> str:
 def main(argv: Optional[List[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.command == "status":
+        from provenance.status import (
+            collect_status, render_markdown, render_text,
+        )
+        rows = collect_status()
+        if args.json:
+            sys.stdout.write(
+                json.dumps([r.to_dict() for r in rows], indent=2, sort_keys=True) + "\n"
+            )
+        elif args.markdown:
+            sys.stdout.write(render_markdown(rows))
+        else:
+            sys.stdout.write(render_text(rows) + "\n")
+        return 0
 
     if args.command != "check":
         parser.print_help()
