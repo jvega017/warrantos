@@ -392,6 +392,74 @@ class TestErrorContract(unittest.TestCase):
         self.assertIn("actor identity file invalid", proc.stderr)
 
 
+class TestCostControlFlags(unittest.TestCase):
+    """--salience-min and --max-verify-claims control verifier spend
+    by filtering and capping the claim set sent to the grader.
+    docs/COST.md."""
+
+    def setUp(self):
+        self.h = _Harness()
+        # Three claims of varying salience: one statute (~1.0), one
+        # magnitude (~0.55), one mild attribution (~-0.05 -> 0.0).
+        self.draft = self.h.write(
+            "draft.md",
+            "# Demo\n\n"
+            "The agency must comply with section 23 of the Privacy Act 1988.\n"
+            "The forecast cost is AUD 250 million.\n"
+            "Some commentators reported that the rollout was orderly.\n",
+        )
+        self.actor = self.h.write_json("actor.json", _FINAL_ACTOR)
+
+    def tearDown(self):
+        self.h.cleanup()
+
+    def test_salience_min_filters_low_salience_claims(self):
+        """--salience-min 0.5 keeps load-bearing claims and drops
+        descriptive ones. The skipped count is reported."""
+        proc = self.h.run(
+            str(self.draft),
+            "--profile", "final-prose",
+            "--actor-identity", str(self.actor),
+            "--verify",
+            "--no-fetch",
+            "--salience-min", "0.5",
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        skipped = data["verifier_skipped"]
+        self.assertGreater(skipped["count"], 0)
+        self.assertIn("salience_min", skipped["reason"])
+
+    def test_max_verify_claims_caps_at_one(self):
+        """--max-verify-claims 1 verifies exactly one claim regardless
+        of how many were detected."""
+        proc = self.h.run(
+            str(self.draft),
+            "--profile", "final-prose",
+            "--actor-identity", str(self.actor),
+            "--verify",
+            "--no-fetch",
+            "--max-verify-claims", "1",
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertLessEqual(data["verifier_total"], 1)
+        self.assertIn("max_verify_claims", data["verifier_skipped"]["reason"])
+
+    def test_no_verify_records_verifier_not_invoked(self):
+        """Without --verify, the skipped summary records the
+        non-invocation."""
+        proc = self.h.run(
+            str(self.draft),
+            "--profile", "final-prose",
+            "--actor-identity", str(self.actor),
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["verifier_skipped"]["reason"], "verifier_not_invoked")
+        self.assertEqual(data["verifier_total"], 0)
+
+
 class TestG3WiringThroughCli(unittest.TestCase):
     """SPEC-L7-N003 SHALL FLAG (not SHALL BLOCK). G3 is exposed via
     --writer-model and --verifier-model; the result lands in the

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "ctx_src_001",
+    "text": "Source: Queensland Treasury Bulletin, 2026, page 12.",
+    "source": "treasury-bulletin-2026.pdf"
+  },
+  {
+    "id": "ctx_feedback_001",
+    "text": "This is not commercial enough for the executive audience."
+  },
+  {
+    "id": "ctx_review_001",
+    "text": "Severity: P1\n# Findings\nA2: claim about savings lacks attribution.",
+    "source_agent": "policy-red-team"
+  }
+]

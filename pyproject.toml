@@ -1,0 +1,84 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-provenance"
+version = "0.7.0b1"
+description = "WarrantOS reference implementation: a governance harness for AI-assisted writing that ships clean prose and a separate auditable provenance ledger"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+authors = [
+    { name = "Juan Vega" }
+]
+maintainers = [
+    { name = "Juan Vega" }
+]
+keywords = [
+    "claude",
+    "provenance",
+    "governance",
+    "ai-safety",
+    "cbom",
+    "warrantos",
+    "mcp",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Text Processing :: Markup",
+]
+
+# Core runtime: stdlib only. The package ships with zero required
+# third-party dependencies. Optional extras live below.
+dependencies = []
+
+[project.optional-dependencies]
+# MCP server transport. Required only when running the warrantos-mcp
+# entry point against Claude Code / Claude Desktop. The Python API
+# (provenance.mcp_server.call_tool_in_process) works without this.
+mcp = ["mcp>=1.0.0"]
+
+# Development extras: the test suite is stdlib unittest so no testing
+# dep is required.
+dev = []
+
+[project.urls]
+Homepage = "https://github.com/jvega017/claude-provenance"
+Repository = "https://github.com/jvega017/claude-provenance"
+Issues = "https://github.com/jvega017/claude-provenance/issues"
+Changelog = "https://github.com/jvega017/claude-provenance/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/jvega017/claude-provenance/blob/main/docs/OVERVIEW.md"
+
+[project.scripts]
+# Single-command entry points so users can run the tool without
+# remembering a Python module path.
+warrantos = "cli.warrantos_cli:main"
+provenance = "cli.provenance_cli:main"
+warrantos-mcp = "provenance.mcp_server:run_stdio_server"
+warrantos-verify-hook = "hooks.claude_code_verify_hook:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["provenance*", "cli*", "hooks*"]
+exclude = [
+    "tests*",
+    "eval*",
+    "tools*",
+    "examples*",
+    "docs*",
+    ".warrant*",
+    ".provenance*",
+]

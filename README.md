@@ -1,18 +1,35 @@
 # claude-provenance
 
 [![ci](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml)
+![status: beta](https://img.shields.io/badge/status-beta-orange)
+![python: 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
+![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
 
 **The Provenance Loop: every factual claim carries a source, that source is checked, or it gets caught.**
 
 Coding agents are judged on whether the code runs. Serious written work is
-judged on whether the claims are true. `claude-provenance` is a Claude Code
-plugin that closes that gap. A fast in-session tripwire catches sentences that
-assert a fact with no source. An out-of-band verifier then fetches the cited
-source and judges whether it actually supports the claim. Results go to a
-portable ledger. In `enforce` mode an unsupported claim is handed back to the
-model before the turn can end.
+judged on whether the claims are true. `claude-provenance` is the reference
+implementation of WarrantOS: a governance harness for AI-assisted writing
+that ships clean prose and a separate auditable provenance ledger.
 
 It is a small idea, applied strictly. That is the whole point.
+
+## Quickstart
+
+```bash
+pip install claude-provenance
+
+# Run the bundled demo: writes per-run artefacts under .warrant/runs/
+warrantos check examples/quickstart-demo/draft.md \
+  --context examples/quickstart-demo/context.json \
+  --actor-identity examples/quickstart-demo/actor.json \
+  --profile final-prose
+```
+
+Five-minute tour: [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
+Connect to Claude Code / Claude Desktop: [`docs/MCP-CONFIG.md`](docs/MCP-CONFIG.md).
+Cost model and spend control: [`docs/COST.md`](docs/COST.md).
+Whole-repository tour: [`docs/OVERVIEW.md`](docs/OVERVIEW.md).
 
 ## WarrantOS framing
 
