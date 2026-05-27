@@ -88,7 +88,9 @@ Never blocks. Never modifies production scripts. Appends a single
 JSON-line summary per run to a shadow log with a "NOT enforced" marker
 on every row.
 
-See [`CHANGELOG.md`](CHANGELOG.md) for the full Path X3 + X4 entry.
+See [`CHANGELOG.md`](CHANGELOG.md) for the full Path X3 + X4 entry,
+and [`docs/STATUS.md`](docs/STATUS.md) for the live per-layer
+conformance dashboard (run `warrantos status` locally to refresh).
 
 If you just landed on the repo and want the tour, start with
 [`docs/OVERVIEW.md`](docs/OVERVIEW.md). It walks through what is in
