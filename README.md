@@ -36,6 +36,43 @@ prose-boundary rules, and
 [`docs/MULTI-AGENT-REVIEW.md`](docs/MULTI-AGENT-REVIEW.md) for the review
 workflow.
 
+## What is new (Path X3 + X4)
+
+The integration CLI `cli/warrantos_cli.py` now wires the WarrantOS upstream
+leg end-to-end: Layer 1 classification with SPEC-L1-S005 review-role gating,
+Layer 7 G1 prose-boundary scan, Layer 7 G2 claim detection, CBOM v0.2
+assembly with `actor_identity` and override-ledger references, and a
+four-state consolidated verdict (PASS, HOLD, BLOCK, NOT_ASSESSABLE):
+
+```
+python cli/warrantos_cli.py check draft.md \
+  --context context.json \
+  --actor-identity actor.json \
+  --profile final-prose \
+  --ci --json
+```
+
+The structured human-override ledger (`provenance.overrides`) enforces
+SPEC-L8-S004 at the write path: empty `risk_accepted` or
+`compensating_control` SHALL block the override, so the row does not
+exist if it cannot be recorded. SPEC-L8-S003 separation-of-duties:
+when the reviewer identity matches the writer-pack actor identity for a
+final-prose artefact, the role is downgraded to `draft`.
+
+The MCP server (`provenance/mcp_server.py`) wraps the pipeline as four
+tools (`warrant_check`, `warrant_classify`, `warrant_record_override`,
+`warrant_get_run`) callable from Claude Code or Claude Desktop. The
+`mcp` SDK is an optional dependency; `call_tool_in_process()` works
+without it as a plain Python API.
+
+The shadow observer (`tools/warrantos-shadow-observe.py`) runs the
+pipeline over an already-published artefact in observation mode only.
+Never blocks. Never modifies production scripts. Appends a single
+JSON-line summary per run to a shadow log with a "NOT enforced" marker
+on every row.
+
+See [`CHANGELOG.md`](CHANGELOG.md) for the full Path X3 + X4 entry.
+
 ## Why this exists
 
 This plugin is the operational form of a working paper, *From Citation to
