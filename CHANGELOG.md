@@ -6,6 +6,37 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added — v0.7 beta-ready packaging
+
+- **pyproject.toml** with three console entry points: `warrantos`
+  (the integration CLI), `provenance` (the legacy CLI), and
+  `warrantos-mcp` (the MCP server). Zero required dependencies; the
+  `mcp` package is an opt-in extra (`pip install
+  "claude-provenance[mcp]"`). Targets Python 3.8 - 3.13. Build status
+  marked `4 - Beta`.
+- **examples/quickstart-demo/** with `draft.md`, `context.json`,
+  `actor.json`, and a README walking through the expected HOLD
+  verdict line-by-line. Designed so every layer fires at least once
+  in a single invocation.
+- **docs/QUICKSTART.md** — install + demo + the four-verdict table +
+  the threat-model statement (what WarrantOS does and does NOT
+  claim).
+- **docs/MCP-CONFIG.md** — exact Claude Code and Claude Desktop
+  config snippets, sanity-check instructions, cost-aware defaults,
+  and troubleshooting.
+- **docs/COST.md** — explicit cost matrix: what runs locally (free)
+  vs what consumes Anthropic API credits, the three spend-control
+  flags, recommended profiles per use case (CI, daily brief,
+  Cabinet brief, academic paper), and order-of-magnitude pricing.
+- **Cost-control flags on `warrantos check`**: `--max-verify-claims
+  N` caps verifier spend by descending salience; `--salience-min
+  FLOAT` filters out low-salience claims before they reach the
+  verifier. Both report what was skipped in the new
+  `verifier_skipped` field so an auditor can see the trade-off.
+- **README quickstart** at the top with `pip install` + demo command
+  + pointers to the four new docs. Beta status, Python 3.8+, and
+  stdlib-only shields.
+
 ### Added — v0.6 deferred-list close-out
 
 - **Layer 7 G3 wired into the warrantos CLI**
