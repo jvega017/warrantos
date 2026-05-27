@@ -25,8 +25,11 @@ Stdlib only. Python 3.8 compatible.
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Sequence
 
 from provenance.writer_pack import WriterPack
 
@@ -140,3 +143,155 @@ def list_permitted_kwargs() -> List[str]:
     invocation surface.
     """
     return sorted(_PERMITTED_INVOCATION_KEYS)
+
+
+# ---------------------------------------------------------------------------
+# Subprocess isolation (Level 2 conformance, SPEC-L6-R001)
+# ---------------------------------------------------------------------------
+
+# Environment variables permitted into the subprocess. Everything else
+# is scrubbed. The allowlist below is the minimum needed for a Python
+# subprocess to run on Windows/Linux/macOS. Caller-supplied additions
+# go through the explicit `extra_env_allowlist` argument; this keeps
+# accidental credential leakage out of the writer subprocess.
+_DEFAULT_ENV_ALLOWLIST = frozenset({
+    "PATH",
+    "PYTHONIOENCODING",
+    "SYSTEMROOT",   # Windows: stdlib calls fail without it
+    "TEMP",         # Windows
+    "TMP",          # Windows
+    "LANG",         # POSIX locale
+    "LC_ALL",
+    "HOME",
+    "USERPROFILE",  # Windows home
+})
+
+
+@dataclass(frozen=True)
+class SubprocessRunResult:
+    """Result of a clean-room subprocess invocation."""
+
+    exit_code: int
+    stdout: str
+    stderr: str
+    timed_out: bool = False
+    scrubbed_env_keys: int = 0
+    kept_env_keys: int = 0
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "exit_code": self.exit_code,
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "timed_out": self.timed_out,
+            "scrubbed_env_keys": self.scrubbed_env_keys,
+            "kept_env_keys": self.kept_env_keys,
+        }
+
+
+def run_clean_room_subprocess(
+    plan: InvocationPlan,
+    command: Sequence[str],
+    *,
+    timeout: float = 60.0,
+    extra_env_allowlist: Optional[Sequence[str]] = None,
+    cwd: Optional[str] = None,
+) -> SubprocessRunResult:
+    """Run *command* as a subprocess with a scrubbed environment.
+
+    SPEC-L6-R001 Level 2 conformance. The subprocess receives the
+    InvocationPlan via stdin as a JSON object. The environment is
+    scrubbed to the documented allowlist plus any caller-supplied
+    extensions; any other variable from the parent process is
+    suppressed. The subprocess sees:
+
+    - stdin: ``plan.to_dict()`` serialised as JSON, no trailing
+      newline.
+    - env: only the allowlisted keys, with their parent values.
+    - cwd: caller's choice (defaults to the parent's cwd).
+
+    The subprocess SHOULD parse stdin as the writer pack + writer
+    model + temperature/max_tokens. The caller is responsible for
+    writing the model client; this function does not import any LLM
+    SDK.
+
+    Parameters
+    ----------
+    plan
+        The InvocationPlan from `prepare_invocation()`.
+    command
+        Argv list for the subprocess (e.g. ``[sys.executable, "writer.py"]``).
+    timeout
+        Subprocess timeout in seconds. On timeout, returns a
+        SubprocessRunResult with `timed_out=True` and exit_code=-1.
+    extra_env_allowlist
+        Additional environment variable names to pass through. Useful
+        for an `ANTHROPIC_API_KEY` or similar credential the writer
+        needs; passing through is explicit, not silent.
+    cwd
+        Working directory for the subprocess. Defaults to None (the
+        parent's cwd).
+
+    Returns
+    -------
+    SubprocessRunResult
+    """
+    if not isinstance(plan, InvocationPlan):
+        raise TypeError(
+            "plan must be an InvocationPlan (got %r)" % type(plan).__name__
+        )
+    if not command:
+        raise ValueError("command SHALL be a non-empty argv sequence")
+
+    parent_env = dict(os.environ)
+    allowlist = set(_DEFAULT_ENV_ALLOWLIST)
+    if extra_env_allowlist:
+        for name in extra_env_allowlist:
+            if name and isinstance(name, str):
+                allowlist.add(name)
+
+    kept_env: Dict[str, str] = {}
+    for key in allowlist:
+        if key in parent_env:
+            kept_env[key] = parent_env[key]
+
+    scrubbed = len(parent_env) - len(kept_env)
+    kept = len(kept_env)
+
+    plan_json = json.dumps(plan.to_dict())
+    try:
+        completed = subprocess.run(
+            list(command),
+            input=plan_json,
+            capture_output=True,
+            text=True,
+            env=kept_env,
+            cwd=cwd,
+            timeout=timeout,
+        )
+    except subprocess.TimeoutExpired as exc:
+        return SubprocessRunResult(
+            exit_code=-1,
+            stdout=(exc.stdout or "") if isinstance(exc.stdout, str) else "",
+            stderr=(exc.stderr or "") if isinstance(exc.stderr, str) else "",
+            timed_out=True,
+            scrubbed_env_keys=scrubbed,
+            kept_env_keys=kept,
+        )
+
+    return SubprocessRunResult(
+        exit_code=completed.returncode,
+        stdout=completed.stdout or "",
+        stderr=completed.stderr or "",
+        timed_out=False,
+        scrubbed_env_keys=scrubbed,
+        kept_env_keys=kept,
+    )
+
+
+def list_default_env_allowlist() -> List[str]:
+    """Return the sorted list of env var names passed through to the
+    clean-room subprocess by default. Callers needing to thread a
+    credential through SHALL extend this via `extra_env_allowlist`.
+    """
+    return sorted(_DEFAULT_ENV_ALLOWLIST)

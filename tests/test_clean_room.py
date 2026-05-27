@@ -107,5 +107,120 @@ class TestListPermittedKwargs(unittest.TestCase):
             self.assertIn(k, keys)
 
 
+class TestRunCleanRoomSubprocess(unittest.TestCase):
+    """SPEC-L6-R001 Level 2: env scrubbed to allowlist, plan delivered
+    via stdin, subprocess result captured."""
+
+    def setUp(self):
+        import os
+        import sys
+
+        self.pack = compile_writer_pack([], run_id="run_subprocess")
+        self.plan = prepare_invocation(
+            self.pack, writer_model="claude-opus-4-7"
+        )
+        self.python = sys.executable
+        self.os = os
+
+    def test_subprocess_receives_plan_via_stdin(self):
+        from provenance.clean_room import run_clean_room_subprocess
+
+        # The subprocess echoes its stdin to stdout. We assert the plan
+        # JSON is delivered intact.
+        result = run_clean_room_subprocess(
+            self.plan,
+            command=[self.python, "-c", "import sys; sys.stdout.write(sys.stdin.read())"],
+            timeout=15.0,
+        )
+        self.assertEqual(result.exit_code, 0, msg=result.stderr)
+        self.assertFalse(result.timed_out)
+        # The stdout is the plan JSON; check a known field is present.
+        self.assertIn("warrantos-invocation-plan/v1", result.stdout)
+        self.assertIn("claude-opus-4-7", result.stdout)
+
+    def test_subprocess_env_is_scrubbed(self):
+        """An env var that is NOT in the allowlist is suppressed."""
+        from provenance.clean_room import run_clean_room_subprocess
+
+        # Set a sentinel env var in the parent. It must NOT reach the
+        # subprocess.
+        self.os.environ["WARRANTOS_TEST_LEAK"] = "should_not_be_visible"
+        try:
+            result = run_clean_room_subprocess(
+                self.plan,
+                command=[
+                    self.python, "-c",
+                    "import os, sys; sys.stdout.write(os.environ.get('WARRANTOS_TEST_LEAK', 'absent'))",
+                ],
+                timeout=15.0,
+            )
+        finally:
+            del self.os.environ["WARRANTOS_TEST_LEAK"]
+
+        self.assertEqual(result.exit_code, 0, msg=result.stderr)
+        # The subprocess reports 'absent' because WARRANTOS_TEST_LEAK
+        # was scrubbed by the allowlist.
+        self.assertEqual(result.stdout.strip(), "absent")
+        self.assertGreater(result.scrubbed_env_keys, 0)
+
+    def test_extra_env_allowlist_lets_a_named_key_through(self):
+        from provenance.clean_room import run_clean_room_subprocess
+
+        self.os.environ["WARRANTOS_TEST_ALLOWED"] = "deliberate"
+        try:
+            result = run_clean_room_subprocess(
+                self.plan,
+                command=[
+                    self.python, "-c",
+                    "import os, sys; sys.stdout.write(os.environ.get('WARRANTOS_TEST_ALLOWED', 'absent'))",
+                ],
+                timeout=15.0,
+                extra_env_allowlist=["WARRANTOS_TEST_ALLOWED"],
+            )
+        finally:
+            del self.os.environ["WARRANTOS_TEST_ALLOWED"]
+
+        self.assertEqual(result.exit_code, 0)
+        self.assertEqual(result.stdout.strip(), "deliberate")
+
+    def test_subprocess_timeout_sets_timed_out_flag(self):
+        from provenance.clean_room import run_clean_room_subprocess
+
+        result = run_clean_room_subprocess(
+            self.plan,
+            command=[self.python, "-c", "import time; time.sleep(5)"],
+            timeout=0.5,
+        )
+        self.assertTrue(result.timed_out)
+        self.assertEqual(result.exit_code, -1)
+
+    def test_non_plan_type_raises(self):
+        from provenance.clean_room import run_clean_room_subprocess
+
+        with self.assertRaises(TypeError):
+            run_clean_room_subprocess(
+                {"not": "a plan"},  # type: ignore[arg-type]
+                command=[self.python, "-c", "pass"],
+            )
+
+    def test_empty_command_raises(self):
+        from provenance.clean_room import run_clean_room_subprocess
+
+        with self.assertRaises(ValueError):
+            run_clean_room_subprocess(self.plan, command=[])
+
+
+class TestListDefaultEnvAllowlist(unittest.TestCase):
+
+    def test_returns_documented_keys(self):
+        from provenance.clean_room import list_default_env_allowlist
+
+        keys = list_default_env_allowlist()
+        # PATH is essential on every platform; assert it is allowlisted.
+        self.assertIn("PATH", keys)
+        # Sorted return.
+        self.assertEqual(keys, sorted(keys))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

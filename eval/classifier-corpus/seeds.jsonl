@@ -1,0 +1,11 @@
+{"id": "seed_empirical_001", "text": "Source: Queensland Treasury Bulletin, 2026, page 12.", "expected_context_type": "empirical_evidence"}
+{"id": "seed_instruction_001", "text": "Goal: produce a Cabinet briefing on the policy proposal.", "expected_context_type": "instruction"}
+{"id": "seed_style_001", "text": "Tone: formal Australian English, short sentences.", "expected_context_type": "style_signal"}
+{"id": "seed_user_feedback_001", "text": "This is not commercial enough for the target audience.", "expected_context_type": "user_feedback"}
+{"id": "seed_prior_artefact_001", "text": "The prior draft used a longer introduction.", "expected_context_type": "prior_artefact"}
+{"id": "seed_process_history_001", "text": "As discussed, the deadline is Friday.", "expected_context_type": "process_history"}
+{"id": "seed_operational_trace_001", "text": "Tool trace: WebFetch returned 200 after 3 attempts. Build manifest applied.", "expected_context_type": "operational_trace"}
+{"id": "seed_review_finding_001", "text": "Severity: P0 — A1 classification laundering identified by policy-red-team.", "expected_context_type": "review_finding"}
+{"id": "seed_validation_rule_001", "text": "Banned phrase: 'as we previously discussed'. This is a validation rule.", "expected_context_type": "validation_rule"}
+{"id": "seed_synthesised_judgement_001", "text": "On balance the proposal seems internally coherent.", "expected_context_type": "synthesised_judgement"}
+{"id": "seed_private_reasoning_001", "text": "Private reasoning: the model is uncertain about the user's intent.", "expected_context_type": "private_reasoning"}

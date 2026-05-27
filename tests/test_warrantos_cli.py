@@ -392,5 +392,79 @@ class TestErrorContract(unittest.TestCase):
         self.assertIn("actor identity file invalid", proc.stderr)
 
 
+class TestG3WiringThroughCli(unittest.TestCase):
+    """SPEC-L7-N003 SHALL FLAG (not SHALL BLOCK). G3 is exposed via
+    --writer-model and --verifier-model; the result lands in the
+    report's g3_self_grounding field and in the reasons list when
+    the verdict is not 'ok', but does NOT promote the verdict to
+    HOLD/BLOCK."""
+
+    def setUp(self):
+        self.h = _Harness()
+        self.draft = self.h.write(
+            "draft.md",
+            "# Note\n\nA clean paragraph.\n",
+        )
+        self.actor = self.h.write_json("actor.json", _FINAL_ACTOR)
+
+    def tearDown(self):
+        self.h.cleanup()
+
+    def test_same_model_flags_requires_external_grounding_but_does_not_block(self):
+        proc = self.h.run(
+            str(self.draft),
+            "--profile", "final-prose",
+            "--actor-identity", str(self.actor),
+            "--writer-model", "claude-opus-4-7",
+            "--verifier-model", "claude-opus-4-7",
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        # Verdict stays PASS; G3 is informational only.
+        self.assertEqual(data["verdict"], "PASS")
+        self.assertIsNotNone(data["g3_self_grounding"])
+        self.assertEqual(
+            data["g3_self_grounding"]["verdict"], "requires_external_grounding"
+        )
+        # Reason recorded as a FLAG annotation, not a BLOCK or HOLD.
+        self.assertTrue(any("FLAG (G3 informational)" in r for r in data["reasons"]))
+
+    def test_family_match_records_in_g3_field(self):
+        proc = self.h.run(
+            str(self.draft),
+            "--profile", "final-prose",
+            "--actor-identity", str(self.actor),
+            "--writer-model", "claude-opus-4-7",
+            "--verifier-model", "claude-haiku-4-5",
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["g3_self_grounding"]["verdict"], "family_match")
+
+    def test_cross_family_is_ok_no_flag_in_reasons(self):
+        proc = self.h.run(
+            str(self.draft),
+            "--profile", "final-prose",
+            "--actor-identity", str(self.actor),
+            "--writer-model", "claude-opus-4-7",
+            "--verifier-model", "gpt-5.4",
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["g3_self_grounding"]["verdict"], "ok")
+        # No FLAG line when verdict is ok.
+        self.assertFalse(any("FLAG (G3 informational)" in r for r in data["reasons"]))
+
+    def test_g3_omitted_when_writer_model_not_supplied(self):
+        proc = self.h.run(
+            str(self.draft),
+            "--profile", "final-prose",
+            "--actor-identity", str(self.actor),
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertIsNone(data["g3_self_grounding"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
