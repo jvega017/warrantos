@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, List, Optional
 
 
 # ---------------------------------------------------------------------------
@@ -184,40 +184,215 @@ def check_self_grounding(
 # G4 contamination, G5 calibration (NOT BUILT)
 # ---------------------------------------------------------------------------
 
-def check_contamination(*_args, **_kwargs):  # pragma: no cover - stub
-    """SPEC-L7-R001 G4: NOT BUILT in v0.5.
+# ---------------------------------------------------------------------------
+# G4 contamination scan (starter pattern list)
+# ---------------------------------------------------------------------------
 
-    A useful G4 implementation requires a documented prompt-injection
-    threat model and a labelled corpus of contamination patterns.
-    Neither exists yet. v0.5 ships the stub so callers can detect that
-    G4 has not been wired and either supply their own check or skip.
+# Starter list of prompt-injection patterns. This list is DELIBERATELY
+# INCOMPLETE. A production deployment SHALL replace or extend the list
+# with a documented threat model and labelled corpus. The list below is
+# drawn from publicly known prompt-injection literature (Greshake et al.
+# 2023; Liu et al. 2023; Anthropic's prompt-injection guidance) and is
+# intended only as a starter so the gate can fire on the most common
+# patterns rather than silently passing every input.
+_CONTAMINATION_PATTERNS = (
+    ("ignore_instructions", re.compile(
+        r"\b(?:ignore|disregard)\b[^.]{0,40}\b(?:previous|prior|earlier|all)\b[^.]{0,40}\b(?:instructions?|prompt|rules?)\b",
+        re.I,
+    )),
+    ("you_are_now", re.compile(r"\byou\s+are\s+now\b", re.I)),
+    ("system_role_inject", re.compile(r"^\s*system\s*:", re.I | re.M)),
+    ("chat_template_open", re.compile(r"<\|im_start\|>|<\|system\|>|\[INST\]|<\|begin_of_text\|>", re.I)),
+    ("chat_template_close", re.compile(r"<\|im_end\|>|<\|/system\|>|\[/INST\]|<\|end_of_text\|>", re.I)),
+    ("override_role", re.compile(r"\b(?:role\s*[:=]\s*system|act\s+as\s+(?:an?\s+)?admin|developer\s+mode)\b", re.I)),
+    ("end_of_prompt_marker", re.compile(r"\b(?:END\s+OF\s+PROMPT|END\s+OF\s+INSTRUCTIONS?)\b", re.I)),
+    ("repeat_above", re.compile(r"\brepeat\s+(?:the\s+)?(?:above|previous|earlier)\b[^.]{0,40}\b(?:prompt|instructions?|text)\b", re.I)),
+)
 
-    Raises
-    ------
-    NotImplementedError
+
+@dataclass(frozen=True)
+class ContaminationMatch:
+    """A single contamination-pattern hit."""
+
+    rule_id: str
+    matched_text: str
+    line_number: int
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "rule_id": self.rule_id,
+            "matched_text": self.matched_text,
+            "line_number": self.line_number,
+        }
+
+
+@dataclass(frozen=True)
+class ContaminationResult:
+    """SPEC-L7-R001 G4 result.
+
+    Attributes
+    ----------
+    verdict
+        `pass` if no patterns matched; `blocked` if at least one did.
+    matches
+        List of ContaminationMatch rows.
+    corpus_completeness
+        Always `starter`. v0.6 ships a starter list only; a production
+        deployment SHALL replace or extend with a documented corpus.
     """
-    raise NotImplementedError(
-        "Gate G4 (contamination) is NOT BUILT in v0.5. Required: a "
-        "documented prompt-injection threat model and a labelled "
-        "corpus. Tracked as a deferred SHOULD in CHANGELOG."
+
+    verdict: str
+    matches: List[ContaminationMatch]
+    corpus_completeness: str = "starter"
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "verdict": self.verdict,
+            "matches": [m.to_dict() for m in self.matches],
+            "corpus_completeness": self.corpus_completeness,
+            "note": (
+                "The contamination pattern list is a starter set. "
+                "Production deployments SHALL replace or extend it "
+                "with a documented threat model and labelled corpus."
+            ),
+        }
+
+
+def check_contamination(text: str) -> ContaminationResult:
+    """Scan text for prompt-injection patterns.
+
+    SPEC-L7-R001 G4. Returns `blocked` if any pattern matches;
+    otherwise `pass`. The pattern list is a documented starter set;
+    callers in production SHALL extend it.
+    """
+    if not text:
+        return ContaminationResult(verdict="pass", matches=[])
+
+    matches: List[ContaminationMatch] = []
+    lines = text.splitlines() or [text]
+    for line_number, line in enumerate(lines, 1):
+        for rule_id, pattern in _CONTAMINATION_PATTERNS:
+            for hit in pattern.finditer(line):
+                matches.append(ContaminationMatch(
+                    rule_id=rule_id,
+                    matched_text=hit.group(0)[:120],
+                    line_number=line_number,
+                ))
+
+    return ContaminationResult(
+        verdict="blocked" if matches else "pass",
+        matches=matches,
     )
 
 
-def check_calibration(*_args, **_kwargs):  # pragma: no cover - stub
-    """SPEC-L7-R002 G5: NOT BUILT in v0.5.
+# ---------------------------------------------------------------------------
+# G5 calibration (Brier score with explicit coverage)
+# ---------------------------------------------------------------------------
 
-    A useful G5 implementation requires the verifier to emit a
-    confidence per claim. The offline heuristic verifier emits None
-    for confidence on most paths, which makes a Brier score
-    meaningless. v0.5 ships the stub; G5 is deferred until the
-    verifier surface guarantees a numeric confidence.
+# Map verdict labels to a binary "claim was correct" interpretation
+# used by Brier scoring. `verified` is treated as true; `contradicted`
+# is treated as false. Every other verdict label (`not_addressed`,
+# `unverifiable`, `skipped`, `error`) is OUTSIDE the calibration
+# universe and is excluded from the score.
+_CALIBRATION_TRUE_LABELS = frozenset({"verified"})
+_CALIBRATION_FALSE_LABELS = frozenset({"contradicted"})
+_CALIBRATION_TYPED_LABELS = _CALIBRATION_TRUE_LABELS | _CALIBRATION_FALSE_LABELS
 
-    Raises
-    ------
-    NotImplementedError
+
+@dataclass(frozen=True)
+class CalibrationResult:
+    """SPEC-L7-R002 G5 result.
+
+    Attributes
+    ----------
+    total
+        Total verdict rows considered.
+    typed
+        Rows with a verdict in {verified, contradicted} (i.e. the
+        rows that contribute a ground-truth label).
+    with_confidence
+        Rows in `typed` that also carry a numeric confidence value.
+    coverage
+        with_confidence / total. The fraction of all verdicts that
+        contribute to the Brier score.
+    brier
+        Brier score over the rows in `with_confidence`. None when
+        with_confidence is 0.
+    note
+        Honest-disclosure note about the offline-heuristic confidence
+        gap.
     """
-    raise NotImplementedError(
-        "Gate G5 (calibration) is NOT BUILT in v0.5. Required: a "
-        "verifier surface that emits a numeric confidence per claim. "
-        "Tracked as a deferred SHOULD in CHANGELOG."
+
+    total: int
+    typed: int
+    with_confidence: int
+    coverage: float
+    brier: Optional[float]
+    note: str = ""
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "total": self.total,
+            "typed": self.typed,
+            "with_confidence": self.with_confidence,
+            "coverage": self.coverage,
+            "brier": self.brier,
+            "note": self.note,
+        }
+
+
+def check_calibration(verdicts) -> CalibrationResult:
+    """SPEC-L7-R002 G5: compute a Brier score with explicit coverage.
+
+    Accepts an iterable of verdict dicts (each at minimum carrying a
+    `verdict` field and optionally a `confidence` field). Computes:
+
+    - `total`: count of all verdicts.
+    - `typed`: count of verdicts in {verified, contradicted}; only
+      typed rows have a ground-truth label suitable for Brier.
+    - `with_confidence`: typed rows that ALSO carry a numeric
+      confidence value.
+    - `coverage`: with_confidence / total.
+    - `brier`: Brier score over `with_confidence` rows. None when
+      no rows qualify.
+
+    SPEC-L7-R002 honesty: the offline heuristic verifier emits None
+    confidence on most paths and cannot emit `contradicted` by
+    construction. Coverage is the honest signal; brier is meaningful
+    only when coverage is non-zero. v0.6 returns both so the caller
+    can report the gap rather than smooth it away.
+    """
+    rows = list(verdicts) if verdicts else []
+    total = len(rows)
+
+    typed_rows = [
+        r for r in rows
+        if isinstance(r, dict) and r.get("verdict") in _CALIBRATION_TYPED_LABELS
+    ]
+
+    scored: List[float] = []
+    for row in typed_rows:
+        conf = row.get("confidence")
+        if isinstance(conf, (int, float)):
+            label = 1.0 if row.get("verdict") in _CALIBRATION_TRUE_LABELS else 0.0
+            scored.append((float(conf) - label) ** 2)
+
+    coverage = (len(scored) / total) if total else 0.0
+    brier = (sum(scored) / len(scored)) if scored else None
+
+    note = (
+        "Brier score is meaningful only across the with_confidence subset. "
+        "Coverage is the honest signal: when coverage is 0 the verifier "
+        "did not emit confidence values, typically because the offline "
+        "heuristic returns None on most paths. Production deployments "
+        "SHALL use an LLM grader that emits numeric confidence."
+    )
+
+    return CalibrationResult(
+        total=total,
+        typed=len(typed_rows),
+        with_confidence=len(scored),
+        coverage=coverage,
+        brier=brier,
+        note=note,
     )
