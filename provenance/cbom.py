@@ -90,8 +90,50 @@ class ReviewFindingRecord:
 
 
 @dataclass(frozen=True)
+class ClassificationOverrideRecord:
+    """A Layer 1 classification override per SPEC-L1-S005.
+
+    Recorded when a review-role agent output is classified as something
+    other than `review_finding`, or when any classification deviates from
+    the default classifier verdict. The override row points back to a
+    human_override ledger row via `override_id`.
+    """
+
+    context_id: str
+    classified_as: str
+    default_would_be: str
+    override_id: str
+    override_rationale_summary: str = ""
+
+    def to_dict(self) -> Dict[str, object]:
+        return {
+            "context_id": self.context_id,
+            "classified_as": self.classified_as,
+            "default_would_be": self.default_would_be,
+            "override_id": self.override_id,
+            "override_rationale_summary": self.override_rationale_summary,
+        }
+
+
+@dataclass(frozen=True)
 class CBOM:
-    """A serialisable WarrantOS Context Bill of Materials."""
+    """A serialisable WarrantOS Context Bill of Materials.
+
+    SPEC-v0.2 additions (additive per INV-007 schema stability):
+
+    - `actor_identity` (SPEC-F-S002): map from role name to actor identity
+      string. Required for `context_classifier`, `insight_compiler`,
+      `source_curator`, `clean_room_writer`, `reviewer_qa`, `auditor`.
+      Identity may be user name, API key id, model identifier, or tuple.
+    - `classification_overrides` (SPEC-L1-S005): list of every Layer 1
+      classification override recorded for this run.
+    - `override_ledger_refs` (SPEC O-S004 supporting field): pointers by id
+      to every override ledger row associated with the run.
+
+    All three fields default to empty for backwards compatibility with
+    callers from before SPEC-v0.2. The canonical schema name remains
+    `warrantos-cbom/v1` per INV-007 (additive change only).
+    """
 
     artefact_id: str
     context_inputs: List[ContextInput]
@@ -99,6 +141,9 @@ class CBOM:
     claims: List[ClaimRecord]
     review_findings: List[ReviewFindingRecord]
     schema: str = "warrantos-cbom/v1"
+    actor_identity: Dict[str, str] = field(default_factory=dict)
+    classification_overrides: List[ClassificationOverrideRecord] = field(default_factory=list)
+    override_ledger_refs: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
         admitted = [item for item in self.context_inputs if item.admitted]
@@ -113,6 +158,8 @@ class CBOM:
                 "transformations": len(self.transformations),
                 "claims": len(self.claims),
                 "review_findings": len(self.review_findings),
+                "classification_overrides": len(self.classification_overrides),
+                "override_ledger_refs": len(self.override_ledger_refs),
             },
             "context_inputs": [item.to_dict() for item in self.context_inputs],
             "admitted_material": [item.to_dict() for item in admitted],
@@ -120,6 +167,9 @@ class CBOM:
             "transformations": [item.to_dict() for item in self.transformations],
             "claims": [item.to_dict() for item in self.claims],
             "review_findings": [item.to_dict() for item in self.review_findings],
+            "actor_identity": dict(self.actor_identity),
+            "classification_overrides": [item.to_dict() for item in self.classification_overrides],
+            "override_ledger_refs": list(self.override_ledger_refs),
         }
 
 
@@ -129,21 +179,64 @@ def build_cbom(
     claims: Optional[Iterable[ClaimRecord]] = None,
     review_findings: Optional[Iterable[ReviewFindingRecord]] = None,
     artefact_id: str = "",
+    actor_identity: Optional[Dict[str, str]] = None,
+    classification_overrides: Optional[Iterable[ClassificationOverrideRecord]] = None,
+    override_ledger_refs: Optional[Iterable[str]] = None,
 ) -> CBOM:
-    """Build and validate a CBOM."""
+    """Build and validate a CBOM.
+
+    SPEC-v0.2 additions (`actor_identity`, `classification_overrides`,
+    `override_ledger_refs`) are accepted as optional kwargs with empty
+    defaults. Existing v0.1 callers continue to work unchanged.
+    """
     input_list = list(context_inputs or [])
     transform_list = list(transformations or [])
     claim_list = list(claims or [])
     finding_list = list(review_findings or [])
+    actor_map = dict(actor_identity or {})
+    override_list = list(classification_overrides or [])
+    override_refs = list(override_ledger_refs or [])
 
     _validate_references(input_list, transform_list, claim_list)
+    _validate_classification_overrides(override_list, input_list)
     return CBOM(
         artefact_id=artefact_id,
         context_inputs=input_list,
         transformations=transform_list,
         claims=claim_list,
         review_findings=finding_list,
+        actor_identity=actor_map,
+        classification_overrides=override_list,
+        override_ledger_refs=override_refs,
     )
+
+
+def _validate_classification_overrides(
+    overrides: List[ClassificationOverrideRecord],
+    context_inputs: List[ContextInput],
+) -> None:
+    """Validate that every classification override refers to a known context_id.
+
+    The override_id is a free-form pointer to a human_override ledger row
+    that lives outside the CBOM; we cannot validate that reference here.
+    SPEC-L1-S005 enforcement that the override exists with non-empty
+    risk_accepted / compensating_control happens at the override-ledger
+    layer, not in CBOM assembly.
+    """
+    if not overrides:
+        return
+    known_ids = {item.context_id for item in context_inputs}
+    for override in overrides:
+        if override.context_id not in known_ids:
+            raise ValueError(
+                "classification override %s references unknown context_id: %s"
+                % (override.override_id, override.context_id)
+            )
+        if not override.override_id:
+            raise ValueError(
+                "classification override for context_id %s has empty override_id"
+                % override.context_id
+            )
 
 
 def _validate_references(
