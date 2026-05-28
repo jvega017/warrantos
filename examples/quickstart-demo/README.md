@@ -1,20 +1,18 @@
-# Quickstart demo
+# Quickstart demo (HOLD)
 
-A two-minute, copy-paste end-to-end run of the warrantos pipeline.
-Demonstrates every layer that ships in the v0.7 beta: Layer 1
-classification, Layer 7 G1 prose-boundary scan, Layer 7 G2 claim
-detection (offline, no API key), CBOM v0.2 with actor_identity, and
-the four-state consolidated verdict.
+A two-minute, copy-paste end-to-end run of the warrantos pipeline. Demonstrates every layer that ships in v0.9.0b1: Layer 1 classification, Layer 7 G1 prose-boundary scan, Layer 7 G2 claim detection (offline, no API key), CBOM v0.2 with actor_identity, and the four-state consolidated verdict.
+
+This example produces `HOLD`. For the other three verdicts (`PASS`, `BLOCK`, `NOT_ASSESSABLE`), see [`examples/README.md`](../README.md) for the full gallery.
 
 ## Files
 
-- `draft.md` — a sample brief paragraph with one unsupported
+- `draft.md`: a sample brief paragraph with one unsupported
   load-bearing claim. Designed to produce a `HOLD` verdict so the
   demo shows the gate firing.
-- `context.json` — three context items: a source citation, a
+- `context.json`: three context items: a source citation, a
   user-feedback line, and a `policy-red-team` review finding that
   exercises SPEC-L1-S005 review-role gating.
-- `actor.json` — the six-role actor identity map that turns
+- `actor.json`: the six-role actor identity map that turns
   `NOT_ASSESSABLE` into a real verdict for the `final-prose`
   profile.
 
@@ -29,7 +27,7 @@ python cli/warrantos_cli.py check examples/quickstart-demo/draft.md \
   --profile final-prose
 ```
 
-Or, after `pip install claude-provenance`:
+Or, after `python -m pip install -e .` from the repository root:
 
 ```bash
 warrantos check examples/quickstart-demo/draft.md \
@@ -44,7 +42,7 @@ warrantos check examples/quickstart-demo/draft.md \
 warrantos check
   run id:        run_<short>
   profile:       final-prose
-  draft chars:   320
+  draft chars:   239
   context items: 3
   by context_type:
     empirical_evidence     1
@@ -57,8 +55,7 @@ warrantos check
   overrides on record: 0
 
 VERDICT: HOLD
-  - HOLD: unsupported load-bearing claim (salience=0.55): The Act
-    will save AUD 250 million over the forward estimates.
+  - HOLD: unsupported load-bearing claim (salience=1.00): The Act will save AUD 250 million over the forward estimates.
 
 artefacts written to: .warrant/runs/run_<short>
 ```

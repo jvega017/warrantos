@@ -1,7 +1,7 @@
 {
   "name": "claude-provenance",
-  "version": "0.2.0",
-  "description": "The Provenance Loop. A stdlib in-session tripwire flags factual claims with no source; an out-of-band verifier fetches the cited source and judges whether it supports the claim. Results go to a portable ledger with an epistemic-debt metric, and can hard-block the turn in enforce mode.",
+  "version": "0.9.0b1",
+  "description": "WarrantOS reference implementation. A stdlib-first governance harness for AI-assisted writing: claim provenance, context admissibility, CBOM v0.2, four-state verdict (PASS/HOLD/BLOCK/NOT_ASSESSABLE), structured human-override ledger, and an explicit per-layer conformance dashboard. MCP server, Claude Code Stop hook, and a shadow observer for read-only beta deployment are included.",
   "author": {
     "name": "Juan Vega",
     "url": "https://prometheuspolicylab.com"
@@ -9,11 +9,14 @@
   "homepage": "https://github.com/jvega017/claude-provenance",
   "license": "MIT",
   "keywords": [
+    "warrantos",
     "provenance",
-    "hallucination",
-    "citations",
-    "evidence",
     "governance",
+    "ai-safety",
+    "cbom",
+    "mcp",
+    "evidence",
+    "citations",
     "epistemics"
   ],
   "hooks": "./hooks/hooks.json",

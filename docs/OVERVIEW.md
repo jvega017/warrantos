@@ -109,57 +109,72 @@ can call it directly.
 ## What is built today
 
 - All eight layers have at least minimum conformance code on `main`.
-- 365+ tests across 14 test modules, all passing on Python 3.8-3.13.
+- The full test suite passes on Python 3.8-3.13. See the CI badge in
+  `README.md` for the live count; for a per-layer build state see
+  [`STATUS.md`](STATUS.md).
 - CBOM canonical schema name `warrantos-cbom/v1` is stable per
   INV-007.
 - The A1 classification-laundering attack and the A4 override
   permission-slip attack identified in Wave A QA are structurally
   closed at the schema and runtime layers.
+- The override ledger uses storage-level append-only enforcement via
+  SQLite BEFORE UPDATE triggers (INV-004), not application-level
+  discipline.
+
+For the authoritative per-layer status, run `warrantos status` or
+read [`STATUS.md`](STATUS.md). At v0.9.0b1 the rollup is **12 BUILT /
+3 PARTIAL / 2 STARTER / 2 NOT_BUILT**.
 
 ## What is explicitly NOT built
 
-- **Layer 7 G4 (contamination).** Requires a documented prompt-
-  injection threat model and a labelled pattern corpus. The
-  `provenance.gates.check_contamination()` stub raises
-  `NotImplementedError` so callers detect the gap.
-- **Layer 7 G5 (calibration).** Requires the verifier surface to
-  emit a numeric confidence per claim, which the offline heuristic
-  cannot guarantee. The `check_calibration()` stub raises.
-- **Layer 6 subprocess isolation.** Level 2 conformance work; v0.5
-  ships discipline mode only (kwarg refusal at the API surface).
+- **Layer 7 G4 (contamination)**: STARTER. Eight starter patterns
+  ship; production deployments need a documented prompt-injection
+  threat model and a labelled corpus. v1.0 deferral.
+- **Layer 7 G5 (calibration)**: STARTER. Coverage is typically 0
+  with the heuristic grader because it does not emit confidence; the
+  gate becomes meaningful only with an LLM grader configured.
+- **Layer 6 subprocess isolation**: BUILT in v0.6. Discipline mode
+  refuses arbitrary kwargs at the writer entry point; subprocess
+  isolation is wired for Level 2 conformance.
 - **Offline heuristic `contradicted` verdict.** The heuristic
   verifier cannot emit `contradicted` by construction. The BLOCK-on-
   contradicted branch fires only when an LLM grader is configured.
 - **SPEC-L1-S006 labelled classifier corpus.** A useful regression
   corpus requires authored examples per class (N >= 50). Not
   fabricated by the pipeline; awaits a human-authored corpus.
+- **Data Classification** and **Retention/Tombstones** foundation
+  rows: NOT_BUILT. Both require domain-specific input (sensitivity
+  taxonomy, retention windows) from the adopter and cannot be
+  fabricated. v1.0 deferrals.
 
-These limits are documented in CHANGELOG.md and surfaced through the
-test suite (the deferred-gate stubs raise, the test verifies the
-raise, the gap is visible).
+These limits are documented in CHANGELOG.md and in [`STATUS.md`](STATUS.md).
+The deferred-gate stubs surface through the test suite (the test
+verifies the raise, the gap is visible).
 
 ## Where to start reading
 
 For a fresh contributor:
 
-- **README.md** — the original Provenance Loop pitch and the v0.4
-  "What is new" section.
-- **docs/STACK.md** — the five-surface implementation map (older
-  v0.1 framing; still accurate at the implementation surface
-  level).
-- **docs/CONTEXT-ADMISSIBILITY.md** — the per-class admissibility
+- **README.md**: current front door, with quickstart, tooling map,
+  four-verdict model, and v0.9 release notes in user-outcome
+  language.
+- **docs/STATUS.md**: the per-layer build-state dashboard. Read
+  this before evaluating scope.
+- **docs/STACK.md**: product surfaces and the layer map; the
+  canonical architecture diagram lives here.
+- **docs/CONTEXT-ADMISSIBILITY.md**: the per-class admissibility
   rules.
-- **docs/MULTI-AGENT-REVIEW.md** — the review-panel pattern.
-- **CHANGELOG.md** — what landed in each version, with explicit
+- **docs/MULTI-AGENT-REVIEW.md**: the review-panel pattern.
+- **CHANGELOG.md**: what landed in each version, with explicit
   scope-out lists.
-- **cli/warrantos_cli.py** — the one entrypoint that pulls every
+- **cli/warrantos_cli.py**: the one entrypoint that pulls every
   layer together; reading this file is the fastest way to see how
   the layers connect.
 
 ## The honest pitch
 
 `claude-provenance` does not guarantee AI-assisted writing is
-correct. It guarantees three things instead:
+correct. It guarantees five things instead:
 
 1. Unsourced or unsupported claims are expensive instead of
    invisible.
@@ -167,8 +182,16 @@ correct. It guarantees three things instead:
    transformation.
 3. Overrides cannot reach the public artefact without a structured
    rationale and a reader-facing footer.
+4. The override ledger cannot be written if the rationale fields
+   are empty, and recorded rows cannot be silently edited
+   (storage-level append-only via SQLite `BEFORE UPDATE` triggers,
+   not application-level discipline).
+5. When the reviewer identity matches the writer identity, a
+   final-prose artefact downgrades to draft (separation of duties
+   at the verdict layer, not by policy).
 
 The remaining failure modes need writer-side discipline, human
-review, and the four-paper coupling thesis that motivates the whole
-exercise. The repository ships the operational form of that thesis,
-nothing more, nothing less.
+review, and the WarrantOS coupling thesis (`docs/PROBLEM-STACK.md`
+in the WarrantOS project, currently external to this repo). The
+repository ships the operational form of that thesis, nothing more,
+nothing less.

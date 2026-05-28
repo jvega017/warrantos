@@ -1,23 +1,25 @@
 # claude-provenance
 
 [![ci](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml)
-![status: beta](https://img.shields.io/badge/status-beta-orange)
-![python: 3.8+](https://img.shields.io/badge/python-3.8%2B-blue)
+[![layers: 12B / 3P / 2S / 2NB](https://img.shields.io/badge/layers-12B%20%2F%203P%20%2F%202S%20%2F%202NB-blue)](docs/STATUS.md)
+![version: 0.9.0b1](https://img.shields.io/badge/version-0.9.0b1-orange)
+![python: 3.8--3.13](https://img.shields.io/badge/python-3.8--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
 
-**The Provenance Loop: every factual claim carries a source, that source is checked, or it gets caught.**
+**WarrantOS reference implementation: an auditable governance harness for AI-assisted writing.** Every claim, source, context use, and human override is recorded as evidence, not promise. Stdlib-first core. MIT.
 
-Coding agents are judged on whether the code runs. Serious written work is
-judged on whether the claims are true. `claude-provenance` is the reference
-implementation of WarrantOS: a governance harness for AI-assisted writing
-that ships clean prose and a separate auditable provenance ledger.
+`claude-provenance` wraps AI-assisted writing in an eight-layer pipeline so that the final artefact ships clean prose, while a separate audit ledger carries the sources, the feedback, the review history, the transformations, and the structured overrides that produced it. A four-state verdict (`PASS` / `HOLD` / `BLOCK` / `NOT_ASSESSABLE`) tells you what to do next; the per-layer status dashboard tells you exactly what is built and what is not.
 
-It is a small idea, applied strictly. That is the whole point.
+> **v0.9.0b1 beta.** Build state: **12 BUILT / 3 PARTIAL / 2 STARTER / 2 NOT_BUILT**. See [`docs/STATUS.md`](docs/STATUS.md) before evaluating scope. The two `NOT_BUILT` rows (Data Classification, Retention/Tombstones) are explicit v1.0 deferrals that require domain input from the adopter and cannot be fabricated.
 
 ## Quickstart
 
+`claude-provenance` is not yet on PyPI. Install from source until the first published release:
+
 ```bash
-pip install claude-provenance
+git clone https://github.com/jvega017/claude-provenance.git
+cd claude-provenance
+python -m pip install -e ".[mcp]"
 
 # Run the bundled demo: writes per-run artefacts under .warrant/runs/
 warrantos check examples/quickstart-demo/draft.md \
@@ -26,76 +28,53 @@ warrantos check examples/quickstart-demo/draft.md \
   --profile final-prose
 ```
 
-Five-minute tour: [`docs/QUICKSTART.md`](docs/QUICKSTART.md).
-Connect to Claude Code / Claude Desktop: [`docs/MCP-CONFIG.md`](docs/MCP-CONFIG.md).
-Cost model and spend control: [`docs/COST.md`](docs/COST.md).
-Whole-repository tour: [`docs/OVERVIEW.md`](docs/OVERVIEW.md).
+Expected verdict: `HOLD` with one unsupported load-bearing claim. The demo is wired so every layer fires at least once.
 
-## WarrantOS framing
+| Where to go next | Doc |
+|---|---|
+| Five-minute tour with explanation of each output line | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) |
+| Per-layer conformance dashboard (BUILT / PARTIAL / STARTER / NOT_BUILT) | [`docs/STATUS.md`](docs/STATUS.md) |
+| Whole-repository tour | [`docs/OVERVIEW.md`](docs/OVERVIEW.md) |
+| Connect to Claude Code or Claude Desktop as MCP tools | [`docs/MCP-CONFIG.md`](docs/MCP-CONFIG.md) |
+| Verify without an Anthropic API key (local LLM, Stop hook) | [`docs/NO-API-KEY.md`](docs/NO-API-KEY.md) |
+| Cost model and spend control | [`docs/COST.md`](docs/COST.md) |
+| Architecture and layer map | [`docs/STACK.md`](docs/STACK.md) |
 
-`claude-provenance` is now framed as an early WarrantOS implementation: a
-warrant layer for AI-assisted work that makes claims, sources, context use and
-release gates inspectable. The current repo does not implement a complete
-compliance platform. It implements useful pieces of the stack:
+## Tooling map
 
-- the Provenance Ledger for claim detection, verification outcomes and
-  epistemic-debt tracking;
-- Context Admissibility for deciding which process context may influence final
-  prose;
-- CBOM export for a compact Context Bill of Materials;
-- a Prose Boundary Gate for blocking process narration in reader-facing text;
-- BriefLock and Multi-Agent Review as product and workflow frames over the
-  existing hook, CLI, ledger and review surfaces.
+| Entry point | What it does | When to use |
+|---|---|---|
+| `warrantos` | Full pipeline (classify > admissibility > gates > verdict > CBOM) | Default. This is the one. |
+| `warrantos-mcp` | Stdio MCP server exposing four tools to Claude Code / Claude Desktop | When you want Claude to call the pipeline as tools |
+| `warrantos-verify-hook` | Claude Code Stop-hook entry point for in-session verification | When you want the loop closed without a separate API key |
+| `provenance` | Legacy v0.3 citation-only CLI | Kept for v0.3 users; new users should use `warrantos` |
 
-Start with [`docs/STACK.md`](docs/STACK.md) for the product map,
-[`docs/CONTEXT-ADMISSIBILITY.md`](docs/CONTEXT-ADMISSIBILITY.md) for CBOM and
-prose-boundary rules, and
-[`docs/MULTI-AGENT-REVIEW.md`](docs/MULTI-AGENT-REVIEW.md) for the review
-workflow.
+## The four-verdict model
 
-## What is new (Path X3 + X4)
+| Verdict | Trigger | Action |
+|---|---|---|
+| `PASS` | No boundary violation, no unsupported load-bearing claim, no contradicted verifier verdict, actor identity present for final-prose | Ship the artefact |
+| `HOLD` | Unsupported or unverifiable load-bearing claim | Add a citation or downgrade the claim |
+| `BLOCK` | Boundary violation in final-prose, or a contradicted verifier verdict | Rewrite the offending text |
+| `NOT_ASSESSABLE` | Final-prose without `--actor-identity` | Supply actor identity or use a non-final-prose profile |
 
-The integration CLI `cli/warrantos_cli.py` now wires the WarrantOS upstream
-leg end-to-end: Layer 1 classification with SPEC-L1-S005 review-role gating,
-Layer 7 G1 prose-boundary scan, Layer 7 G2 claim detection, CBOM v0.2
-assembly with `actor_identity` and override-ledger references, and a
-four-state consolidated verdict (PASS, HOLD, BLOCK, NOT_ASSESSABLE):
+`NOT_ASSESSABLE` is deliberate. Most tools binary-ise into pass/fail. The fourth state names the case where the artefact is missing the metadata required to certify, instead of certifying on incomplete information.
 
-```
-python cli/warrantos_cli.py check draft.md \
-  --context context.json \
-  --actor-identity actor.json \
-  --profile final-prose \
-  --ci --json
-```
+## What landed in v0.9.0b1
 
-The structured human-override ledger (`provenance.overrides`) enforces
-SPEC-L8-S004 at the write path: empty `risk_accepted` or
-`compensating_control` SHALL block the override, so the row does not
-exist if it cannot be recorded. SPEC-L8-S003 separation-of-duties:
-when the reviewer identity matches the writer-pack actor identity for a
-final-prose artefact, the role is downgraded to `draft`.
+User-outcome language; SPEC IDs in [`CHANGELOG.md`](CHANGELOG.md).
 
-The MCP server (`provenance/mcp_server.py`) wraps the pipeline as four
-tools (`warrant_check`, `warrant_classify`, `warrant_record_override`,
-`warrant_get_run`) callable from Claude Code or Claude Desktop. The
-`mcp` SDK is an optional dependency; `call_tool_in_process()` works
-without it as a plain Python API.
+- One CLI runs the full pipeline end-to-end (`warrantos check`).
+- Human overrides cannot be recorded without a written risk-acceptance rationale and a compensating-control note. The check is at the write path, so the row does not exist if the rationale is missing. A SQLite `BEFORE UPDATE` trigger means recorded rows cannot be silently edited later (storage-level append-only, not application-level discipline).
+- When the reviewer identity matches the writer identity, a final-prose artefact downgrades to draft. Separation of duties at the verdict layer.
+- MCP server exposes four tools (`warrant_check`, `warrant_classify`, `warrant_record_override`, `warrant_get_run`) callable from any MCP host.
+- Shadow-mode observer runs over an already-published artefact in read-only mode. Never blocks. Never modifies production scripts.
+- `warrantos status` reports a per-layer build state, and `docs/STATUS.md` carries the rendered table.
+- Empirical calibration: the prose-boundary gate ships a `prompt-template` profile after a 10-brief calibration pass produced unactionable false positives under the `brief-light` profile.
 
-The shadow observer (`tools/warrantos-shadow-observe.py`) runs the
-pipeline over an already-published artefact in observation mode only.
-Never blocks. Never modifies production scripts. Appends a single
-JSON-line summary per run to a shadow log with a "NOT enforced" marker
-on every row.
+## How it works: the Provenance Loop
 
-See [`CHANGELOG.md`](CHANGELOG.md) for the full Path X3 + X4 entry,
-and [`docs/STATUS.md`](docs/STATUS.md) for the live per-layer
-conformance dashboard (run `warrantos status` locally to refresh).
-
-If you just landed on the repo and want the tour, start with
-[`docs/OVERVIEW.md`](docs/OVERVIEW.md). It walks through what is in
-the repository, in order, with explicit "what is built today" and
-"what is NOT built" lists.
+The Provenance Loop is the original v0.3 mental model: **Extract** the claim, **Bind** a source to it, **Verify** the source supports the claim, **Adjudicate** the verdict, **Ledger** the result. In v0.9 the loop is one component of the eight-layer WarrantOS pipeline, specifically Layer 2 (Ledger) and Layer 7-G2 (Source and Warrant Check). For the full architecture see [`docs/OVERVIEW.md`](docs/OVERVIEW.md); for the loop itself see [`docs/PROVENANCE-LOOP.md`](docs/PROVENANCE-LOOP.md).
 
 ## Why this exists
 
@@ -131,75 +110,47 @@ back to the heuristic. The verifier is never called from the blocking hook.
 The detector catches the cheap, common failure. The verifier targets the
 expensive one: a claim that is confidently cited and wrong.
 
-## The Provenance Loop
+## Install as a Claude Code plugin
 
-The pattern is platform-independent: Extract, Bind, Verify, Adjudicate,
-Ledger. The Claude Code plugin is one instantiation. The full definition,
-scope, and limits are in [`docs/PROVENANCE-LOOP.md`](docs/PROVENANCE-LOOP.md).
-
-## Install
-
-Local (development):
+If you would rather install as a Claude Code plugin than pip, the hooks and slash commands ship under `.claude-plugin/`:
 
 ```
 /plugin marketplace add /path/to/claude-provenance
 /plugin install claude-provenance
 ```
 
-Or copy the folder into your plugins directory and restart Claude Code.
-Requires Python 3.8+ on `PATH`. No third-party packages.
+The plugin install gives you the in-session Stop hook and slash commands. For the `warrantos` CLI and the MCP server you still need the pip install above. Requires Python 3.8+ on `PATH`. No third-party packages for the core; the `[mcp]` extra adds the `mcp` SDK.
 
 ## Configuration
 
-| Variable                  | Values                     | Default                       |
-|---------------------------|----------------------------|-------------------------------|
-| `PROVENANCE_MODE`         | `report`, `enforce`, `off` | `report`                      |
-| `PROVENANCE_DB`           | path to SQLite file        | `./.provenance/provenance.db` |
-| `ANTHROPIC_API_KEY`       | API key                    | unset (verifier stays offline)|
-| `PROVENANCE_GRADER_MODEL` | model id                   | `claude-haiku-4-5-20251001`   |
+Environment variables. See [`docs/COST.md`](docs/COST.md) for spend-control flags and [`docs/NO-API-KEY.md`](docs/NO-API-KEY.md) for local-LLM and Stop-hook configuration.
 
-- **report** logs every run and prints a summary. Non-blocking.
-- **enforce** blocks the end of a turn or a file write when an unsupported
-  factual claim is present, and returns the list to the model to source.
-- **off** disables the hook.
+| Variable                            | Values                     | Default                       |
+|-------------------------------------|----------------------------|-------------------------------|
+| `PROVENANCE_MODE`                   | `report`, `enforce`, `off` | `report`                      |
+| `PROVENANCE_DB`                     | path to SQLite file        | `./.provenance/provenance.db` |
+| `WARRANTOS_DB`                      | path to SQLite file        | `./.warrant/provenance.db`    |
+| `ANTHROPIC_API_KEY`                 | API key                    | unset (verifier stays offline)|
+| `PROVENANCE_GRADER_MODEL`           | model id                   | `claude-haiku-4-5-20251001`   |
+| `PROVENANCE_LOCAL_GRADER_URL`       | URL                        | unset (use heuristic)         |
+| `PROVENANCE_LOCAL_GRADER_MODEL`     | model name                 | `llama3.2`                    |
 
-The Stop hook is loop-safe: it never blocks the same turn twice. With no API
-key the verifier degrades to the offline heuristic with no error.
+`PROVENANCE_MODE` controls the legacy Stop hook: **report** logs every run and prints a summary, non-blocking; **enforce** blocks the end of a turn or a file write when an unsupported factual claim is present; **off** disables the hook. The Stop hook is loop-safe and never blocks the same turn twice. With no API key the verifier degrades to the offline heuristic with no error.
 
-## Verify a draft from the command line
+## Legacy v0.3 CLI
 
-The CLI runs the loop over a file, a directory, or stdin, outside a live
-session. Offline by default; `--verify` enables network fetch.
+The `provenance` entry point is kept for users on the v0.3 mental model (citations only). New users should use `warrantos` instead, which wraps detection, verification, admissibility, gates, and the override ledger as one pipeline. The legacy CLI runs the detection-and-verification loop over a file, a directory, or stdin, outside a live session:
 
 ```
-python cli/provenance_cli.py path/to/draft.md            # offline detection
+python cli/provenance_cli.py path/to/draft.md             # offline detection
 python cli/provenance_cli.py --verify path/to/draft.md    # fetch and grade
 python cli/provenance_cli.py --ci docs/                   # exit 1 on a miss
-git diff --name-only | ... | python cli/provenance_cli.py --ci -
-```
-
-`--ci` exits 1 if any claim is `contradicted` or `unsupported`, so it drops
-into a CI pipeline or pre-commit hook. `--json` emits machine-readable output.
-
-In a session, `/provenance-report` summarises the ledger and
-`/provenance-verify` runs the verification stage and returns recommendations.
-
-## Build a Context Bill of Materials
-
-CBOM mode checks a different boundary from claim provenance. It classifies
-context material, records allowed transformations, and scans final prose for
-process leakage.
-
-```
 python cli/provenance_cli.py --cbom --context context.json final.md
-python cli/provenance_cli.py --cbom --context context.json --json final.md
-python cli/provenance_cli.py --cbom --context context.txt --ci final.md
 ```
 
-`--context` accepts JSON items such as
-`{"id": "feedback_017", "text": "This is not commercial enough."}` or plain
-text with one context item per non-empty line. In `--ci` mode, process leakage
-such as "based on your feedback" causes a failing exit code.
+`--ci` exits 1 if any claim is `contradicted` or `unsupported`. `--json` emits machine-readable output. CBOM mode (`--cbom`) classifies context material and scans final prose for process leakage such as "based on your feedback".
+
+In a Claude session, `/provenance-report` summarises the ledger and `/provenance-verify` runs the verification stage.
 
 ## Governance: epistemic debt
 
@@ -213,19 +164,7 @@ more or less sourced over time", and the ledger answers it.
 
 ## Evaluation
 
-`eval/run_eval.py` runs the detector against the seed corpus and prints
-precision, recall and F1 at run time. From v0.3 the harness also runs a
-grader-precision-recall evaluation against a 60-item labelled corpus
-(`eval/corpus/grader.jsonl`) and reports per-class metrics, a five-by-six
-confusion matrix and a governance-framed caveat block. An evaluation-only
-cross-model backend (`python eval/run_eval.py --grader codex`) drives a
-local Codex CLI for a same-task different-model probe; it is never
-auto-selected and never run in CI. The numbers are corpus-dependent and
-not a claim of general accuracy: see [`eval/README.md`](eval/README.md),
-which states the limits, the analytic nature of the contradicted-class
-zero for the offline heuristic and the relevant prior art (McCoy, Pavlick
-and Linzen 2019; Gao et al. 2023) plainly. The corpora are regression and
-illustration seeds, not validated benchmarks.
+`eval/run_eval.py` runs the detector against the seed corpus and prints precision, recall and F1 at run time. The harness also runs a grader-precision-recall evaluation against a 60-item labelled corpus (`eval/corpus/grader.jsonl`) and reports per-class metrics, a five-by-six confusion matrix and a governance-framed caveat block. An evaluation-only cross-model backend (`python eval/run_eval.py --grader codex`) drives a local Codex CLI for a same-task different-model probe; it is never auto-selected and never run in CI. The numbers are corpus-dependent and not a claim of general accuracy. See [`eval/README.md`](eval/README.md), which states the limits, the analytic nature of the contradicted-class zero for the offline heuristic, and the relevant prior art (McCoy, Pavlick and Linzen 2019; Gao et al. 2023) plainly. The corpora are regression and illustration seeds, not validated benchmarks.
 
 ## Tests
 
@@ -235,28 +174,13 @@ Stdlib only, no test dependencies. From the repo root:
 python -m unittest discover -s tests -v
 ```
 
-247 tests cover detection (every trigger, inline and adjacent sourcing, the
-closed v0 false negative), the loop-safety guard, enforce-mode blocking, the
-verifier (mocked network, LLM-failure fallback, no-key path), the CLI, the
-ledger and salience scoring, the grader-eval path (`sys.modules`-isolated
-under a unique spec name) and the Codex grader graceful-failure path. The
-rule that an internal error must never break the session is enforced
-throughout.
+The suite covers detection (every trigger, inline and adjacent sourcing, the closed v0 false negative); the loop-safety guard; enforce-mode blocking; the verifier (mocked network, LLM-failure fallback, no-key path); the CBOM v0.2 schema (`actor_identity`, `classification_overrides`, `override_ledger_refs`); the four-state verdict including `NOT_ASSESSABLE`; the override ledger (SPEC-L8-S004 write-path validation, SPEC-L8-S003 separation-of-duties, INV-004 append-only triggers); the writer pack and clean-room generation; the five output-integrity gates G1-G5; the MCP server dispatch and the in-process API; the Claude Code Stop hook with loop-safety sentinel; the local LLM grader path; the per-layer status dashboard; and the grader-eval path (`sys.modules`-isolated under a unique spec name). The CI matrix runs the full suite on Python 3.8 through 3.13. See the CI badge above for the live count and pass status.
 
-## Roadmap
+The rule that an internal error must never break the session is enforced throughout.
 
-- v0: heuristic detector, ledger, report and enforce modes. Done.
-- v0.2: out-of-band verifier with fetch and graceful LLM grading, two-axis
-  model, standalone CLI and CI mode, epistemic-debt metric and
-  evidence-matrix export, salience weighting, evaluation harness.
-- v0.3 (this release): grader precision/recall evaluation with a labelled
-  60-item corpus and per-class P/R/F1; evaluation-only cross-model grader
-  backend (`--grader codex`) for same-task different-model comparison;
-  governance reframe of the eval documentation, positioning the contribution
-  against HANS and ALCE rather than as a rediscovery of negation-blindness.
-- v1: stronger claim extraction and source-match quality from the LLM grader.
-- v2: deeper entailment, including PDF and paywalled-source handling.
-- v3: one-command evidence-matrix export wired into a paper or brief workflow.
+## Release status
+
+Current: **v0.9.0b1 beta**. See [`CHANGELOG.md`](CHANGELOG.md) for full release history and [`docs/STATUS.md`](docs/STATUS.md) for the current per-layer conformance dashboard. Next: publish to PyPI, close STARTER and NOT_BUILT rows that have adopter input, add release-evidence packaging for end-to-end traceability.
 
 ## Limits, stated plainly
 

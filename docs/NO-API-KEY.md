@@ -2,7 +2,7 @@
 
 Three paths to get the `contradicted` verdict (or any LLM verdict)
 without setting `ANTHROPIC_API_KEY`. Pick one based on what you have
-available. All three are documented surface area — none uses hidden
+available. All three are documented surface area; none uses hidden
 inheritance.
 
 ## Decision tree
@@ -11,7 +11,7 @@ inheritance.
 |---|---|
 | A local LLM (Ollama, llama.cpp, LM Studio, vLLM) | **Local LLM grader** (this page §1) |
 | Claude Code installed, with hooks enabled | **Claude Code Stop hook** (this page §2) |
-| Claude Desktop with sampling support | **MCP sampling** (this page §3 — design only; ships v0.9) |
+| Claude Desktop with sampling support | **MCP sampling** (this page §3: design only; deferred to v0.10) |
 | None of the above | Heuristic grader (default). Free, deterministic, cannot emit `contradicted`. |
 
 ## §1. Local LLM grader
@@ -143,7 +143,7 @@ launch the hook by entry point:
   the hook explicitly asks Claude to flag uncertainty rather than
   hallucinate a verdict.
 
-## §3. MCP sampling (design only; v0.9)
+## §3. MCP sampling (design only; deferred to v0.10)
 
 The MCP protocol supports a `sampling/createMessage` request type: an
 MCP server can ask the **host** (Claude Code, Claude Desktop) to make
@@ -154,8 +154,15 @@ This is the **canonical "no separate API key" path** for the warrantos
 MCP server: when `warrant_check` is invoked over MCP, the server
 would call back through sampling to verify each detected claim.
 
-**Status:** designed, not implemented in v0.8. The MCP SDK exposes
-`CreateMessageRequest`; wiring it through the grader requires:
+**Status:** designed, not implemented in v0.9.0b1. v0.9 shipped
+empirical calibration on real briefs, INV-004 storage-level append-
+only triggers, and the per-layer conformance dashboard. MCP sampling
+implementation requires host-side permission UX work that is still
+scoped: most current MCP hosts surface each sampling call as an
+interactive permission prompt, and the unattended trade-off has not
+been resolved.
+
+The wiring requires:
 
 1. A new `MCPSamplingGrader` class that takes a sampling callback.
 2. `tool_warrant_check` accepting an optional `use_mcp_sampling=True`
@@ -164,7 +171,7 @@ would call back through sampling to verify each detected claim.
    must approve each sampling call by default in current Claude
    hosts; the trade-off vs unattended runs is a real UX decision).
 
-Tracked as a v0.9 deferral in CHANGELOG. Until v0.9 ships:
+Tracked as a v0.10 deferral in CHANGELOG. Today:
 
 - For interactive Claude Code use, prefer §2 (Stop hook).
 - For unattended use without an Anthropic API key, prefer §1 (local
@@ -177,5 +184,5 @@ Tracked as a v0.9 deferral in CHANGELOG. Until v0.9 ships:
 | Heuristic (default) | None | 0 | No (only the URL fetch) | Cannot emit `contradicted` |
 | §1 Local LLM | None | 0 | No | Model-dependent |
 | §2 Claude Code hook | None separately | Your Claude session cost | Yes (to Claude session) | Session-model-dependent |
-| §3 MCP sampling (v0.9) | None separately | Your host's session cost | Yes (to host) | Host-model-dependent |
+| §3 MCP sampling (deferred, v0.10) | None separately | Your host's session cost | Yes (to host) | Host-model-dependent |
 | Anthropic LLM grader | `ANTHROPIC_API_KEY` | Per claim, ~USD 0.01 | Yes (to Anthropic) | Highest |

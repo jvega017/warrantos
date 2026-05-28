@@ -44,10 +44,10 @@ Claude Code runs outside it), use the explicit Python path:
 
 Restart Claude Code. The four tools should appear in the tool list:
 
-- `warrant_check` — run the full pipeline over a draft.
-- `warrant_classify` — classify a single context item.
-- `warrant_record_override` — record a structured human override.
-- `warrant_get_run` — read back the per-run artefacts.
+- `warrant_check`: run the full pipeline over a draft.
+- `warrant_classify`: classify a single context item.
+- `warrant_record_override`: record a structured human override.
+- `warrant_get_run`: read back the per-run artefacts.
 
 ## Claude Desktop (`claude_desktop_config.json`)
 
@@ -86,12 +86,12 @@ If you do not want to set `ANTHROPIC_API_KEY` (no Anthropic account,
 strict data-egress rules, or you just prefer local), three options
 are documented in [`NO-API-KEY.md`](NO-API-KEY.md):
 
-1. **Local LLM grader** (Ollama, llama.cpp, vLLM) — point the server
+1. **Local LLM grader** (Ollama, llama.cpp, vLLM): point the server
    at it via `PROVENANCE_LOCAL_GRADER_URL`.
-2. **Claude Code Stop hook** (`warrantos-verify-hook`) — verifies
+2. **Claude Code Stop hook** (`warrantos-verify-hook`): verifies
    inside the existing Claude Code session, no separate credentials.
-3. **MCP sampling** — designed for v0.9; documented as a gap until
-   then.
+3. **MCP sampling**: designed, deferred to v0.10; documented as a
+   gap. See [`NO-API-KEY.md`](NO-API-KEY.md) §3 for the rationale.
 
 All three avoid the Anthropic API entirely while still producing
 `contradicted` verdicts. The MCP server inherits whichever path the
@@ -137,7 +137,7 @@ shared across runs, pin it explicitly:
 Then pass `db_path` from `WARRANTOS_DB` when calling
 `warrant_record_override`. (At time of writing the server does not
 auto-read this env var; passing the path explicitly is the supported
-path. The env-driven default is a planned v0.8 improvement.)
+path. Auto-resolution of `WARRANTOS_DB` is a tracked v0.10 item.)
 
 ## Troubleshooting
 
