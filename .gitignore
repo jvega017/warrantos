@@ -1,4 +1,4 @@
-# Internal go-to-market notes — not for the public repo
+# Internal go-to-market notes, not for the public repo
 LAUNCH-POST.md
 
 # Runtime ledger
@@ -9,3 +9,6 @@ LAUNCH-POST.md
 # Python
 __pycache__/
 *.pyc
+*.egg-info/
+build/
+dist/
