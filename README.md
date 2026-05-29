@@ -28,7 +28,7 @@ warrantos check examples/quickstart-demo/draft.md \
   --profile final-prose
 ```
 
-Expected verdict: `HOLD` with one unsupported load-bearing claim. The demo is wired so every layer fires at least once.
+Expected verdict: `HOLD` with one unsupported load-bearing claim. The bundled command exercises Layer 1 classification, Layer 4 admissibility, Layer 7 G1 (boundary), Layer 7 G2 detection, CBOM assembly, and the four-state verdict consolidator; add `--verify` to run the G2 verifier and `--writer-model`/`--verifier-model` to run G3. G4 and G5 ship as STARTER and are not exercised by the demo.
 
 | Where to go next | Doc |
 |---|---|
@@ -69,7 +69,7 @@ The four verdicts are exercised end-to-end in the [`examples/`](examples/) galle
 1. **Unsourced claims are expensive, not invisible.** The detector logs every unsupported factual sentence; the ledger keeps the count over time.
 2. **Process material cannot leak into final prose silently.** The Layer 7 G1 boundary gate blocks "based on your feedback" and the rest of the lexical-residue pattern set under the `final-prose` profile.
 3. **Overrides cannot reach the public artefact without a structured rationale.** Empty `risk_accepted` or `compensating_control` blocks the write; SQLite `BEFORE UPDATE` triggers (INV-004) prevent silent post-hoc edits.
-4. **Separation of duties is a verdict-layer property, not a policy.** When the reviewer identity matches the writer identity, a final-prose artefact downgrades to draft automatically.
+4. **Separation of duties is enforced where overrides are recorded.** The helper `enforce_single_actor_rule` at `provenance/overrides.py` flags a same-actor reviewer/writer pair when an override is being recorded; the reader-facing footer surfaces the flag. At v0.9.0b1 the helper is callable but not wired into the default `warrantos check` verdict path; an in-flight item for v0.9.1 wires it into `consolidate_verdict()` as a verdict-layer property.
 5. **The four-state verdict refuses to certify on incomplete information.** `NOT_ASSESSABLE` fires when the metadata required to certify is missing, instead of `PASS` masking the gap.
 
 What this does **not** guarantee: that the underlying model produced correct text, that a cited source is the strongest available source, or that adopters' domain-specific Data Classification and Retention/Tombstones rows (both `NOT_BUILT` at v0.9.0b1) are sound. Those remain adopter-supplied.
@@ -80,7 +80,7 @@ User-outcome language; SPEC IDs in [`CHANGELOG.md`](CHANGELOG.md).
 
 - One CLI runs the full pipeline end-to-end (`warrantos check`).
 - Human overrides cannot be recorded without a written risk-acceptance rationale and a compensating-control note. The check is at the write path, so the row does not exist if the rationale is missing. A SQLite `BEFORE UPDATE` trigger means recorded rows cannot be silently edited later (storage-level append-only, not application-level discipline).
-- When the reviewer identity matches the writer identity, a final-prose artefact downgrades to draft. Separation of duties at the verdict layer.
+- Separation-of-duties helper (`provenance/overrides.py::enforce_single_actor_rule`) detects a reviewer-equals-writer pair when an override is recorded and surfaces it in the reader-facing footer. v0.9.1 wires the same check into the default verdict path.
 - MCP server exposes four tools (`warrant_check`, `warrant_classify`, `warrant_record_override`, `warrant_get_run`) callable from any MCP host.
 - Shadow-mode observer runs over an already-published artefact in read-only mode. Never blocks. Never modifies production scripts.
 - `warrantos status` reports a per-layer build state, and `docs/STATUS.md` carries the rendered table.
@@ -124,16 +124,16 @@ back to the heuristic. The verifier is never called from the blocking hook.
 The detector catches the cheap, common failure. The verifier targets the
 expensive one: a claim that is confidently cited and wrong.
 
-## Install as a Claude Code plugin
+## Install as a Claude Code plugin (legacy v0.3 hook)
 
-If you would rather install as a Claude Code plugin than pip, the hooks and slash commands ship under `.claude-plugin/`:
+The Claude Code plugin currently wires the **legacy v0.3** in-session Stop hook (`hooks/provenance_check.py`), not the WarrantOS surfaces. It remains a fast, stdlib-only citation tripwire for live Claude Code sessions. For the v0.9 WarrantOS pipeline (CLI + MCP server + per-layer dashboard + four-state verdict) use the source install above; the WarrantOS plugin wiring is a v0.10 design item.
 
 ```
 /plugin marketplace add /path/to/claude-provenance
 /plugin install claude-provenance
 ```
 
-The plugin install gives you the in-session Stop hook and slash commands. For the `warrantos` CLI and the MCP server you still need the pip install above. Requires Python 3.8+ on `PATH`. No third-party packages for the core; the `[mcp]` extra adds the `mcp` SDK.
+The plugin install gives you the in-session Stop hook and slash commands (`/provenance-report`, `/provenance-verify`). Requires Python 3.8+ on `PATH`. No third-party packages for the core; the `[mcp]` extra adds the `mcp` SDK.
 
 ## Configuration
 

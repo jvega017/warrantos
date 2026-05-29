@@ -5,8 +5,12 @@ inside any Claude session.
 
 ## Install with the MCP extra
 
+`claude-provenance` is not yet on PyPI. Install from source until the first published release:
+
 ```bash
-pip install "claude-provenance[mcp]"
+git clone https://github.com/jvega017/claude-provenance.git
+cd claude-provenance
+python -m pip install -e ".[mcp]"
 ```
 
 The `[mcp]` extra pulls in the `mcp` SDK. The core repo is stdlib

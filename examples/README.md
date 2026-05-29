@@ -1,6 +1,6 @@
 # Examples gallery
 
-Four runnable cases, one per verdict in the WarrantOS four-state model. Each example is self-contained: a `draft.md`, a `context.json`, an `actor.json`, and a per-example `README.md` explaining which line in the draft causes that verdict.
+Four runnable cases, one per verdict in the WarrantOS four-state model. Each example is self-contained: a `draft.md`, a `context.json`, and a per-example `README.md` explaining which line in the draft causes that verdict. Three of the four cases also include an `actor.json`; the `NOT_ASSESSABLE` case deliberately omits actor identity, because the verdict it produces is precisely what happens when a final-prose artefact has no actor identity supplied.
 
 | Verdict | Example | What triggers it |
 |---|---|---|

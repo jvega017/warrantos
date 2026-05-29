@@ -5,7 +5,7 @@ Thanks for the interest. This project ships honest governance machinery; contrib
 ## Before you start
 
 1. **Read [`docs/STATUS.md`](docs/STATUS.md) first.** The per-layer build state names what is `BUILT`, `PARTIAL`, `STARTER`, and `NOT_BUILT`. If your contribution moves a row, the PR description must say so explicitly. If it does not move a row, do not claim it does.
-2. **Read [`docs/OVERVIEW.md`](docs/OVERVIEW.md) and the relevant SPEC section.** The eight-layer model and the SPEC normative requirements (SPEC-L*-S*) are the design language. PRs that conflict with a normative requirement need an explicit SPEC-amendment note.
+2. **Read [`docs/OVERVIEW.md`](docs/OVERVIEW.md) for the eight-layer model and the design language.** Code and tests cite SPEC IDs of the form `SPEC-L*-S*` and invariants of the form `INV-*`. The normative SPEC document (`SPEC-v0.2`) is not yet committed to this repository; the SPEC IDs in code, test names, and status notes are the source of truth at v0.9.0b1. PRs that conflict with an existing SPEC ID should call that out in the description so the maintainer can resolve it.
 3. **The two `NOT_BUILT` foundation rows (Data Classification, Retention/Tombstones) require domain input.** They cannot be fabricated. If you want to close them for your adopter context, propose the taxonomy first in an issue.
 
 ## Local development

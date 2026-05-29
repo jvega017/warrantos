@@ -80,8 +80,12 @@ These four items remain NOT_BUILT or STARTER. They cannot be fabricated; the ado
   marked `4 - Beta`.
 - **examples/quickstart-demo/** with `draft.md`, `context.json`,
   `actor.json`, and a README walking through the expected HOLD
-  verdict line-by-line. Designed so every layer fires at least once
-  in a single invocation.
+  verdict line-by-line. The bundled command exercises Layer 1
+  classification, Layer 4 admissibility, Layer 7 G1 boundary, Layer
+  7 G2 detection, CBOM assembly, and the four-state consolidator;
+  G2 verification (`--verify`) and G3 (`--writer-model`/
+  `--verifier-model`) are opt-in flags. G4 and G5 ship as STARTER
+  and are not invoked by the bundled demo.
 - **docs/QUICKSTART.md** — install + demo + the four-verdict table +
   the threat-model statement (what WarrantOS does and does NOT
   claim).

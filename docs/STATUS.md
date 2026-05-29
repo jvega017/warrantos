@@ -6,7 +6,7 @@ Status values: **BUILT** (full SHALL coverage + tests + runtime enforcement); **
 
 | Layer | Status | Module | Notes |
 |---|---|---|---|
-| **L1 Context Classification (11 classes)** | `BUILT` | `provenance.context_admissibility` | 11 canonical SPEC ง2.2 classes via regex; SPEC-L1-S005 review-role gating via source_agent kwarg. |
+| **L1 Context Classification (11 classes)** | `BUILT` | `provenance.context_admissibility` | 11 canonical SPEC ยง2.2 classes via regex; SPEC-L1-S005 review-role gating via source_agent kwarg. |
 | **L2 Provenance Ledger (5 sub-ledgers + override)** | `BUILT` | `provenance.ledger_write, provenance.overrides` | INV-004 storage-level enforcement added in v0.9 via SQLite BEFORE UPDATE triggers. |
 | **L3 Applied Insight Compiler** | `BUILT` | `provenance.context_admissibility, provenance.ledger_write` | SPEC-L3-N001 closure: persist_context_transform() writes the ledger row per derived requirement (v0.9). |
 | **L4 Context Admissibility Engine (6 actor roles)** | `BUILT` | `provenance.context_admissibility, provenance.cbom` | Per-item flags + 6-role actor identity in CBOM v0.2. |
@@ -18,11 +18,11 @@ Status values: **BUILT** (full SHALL coverage + tests + runtime enforcement); **
 | **L7-G4 G4 Safety & Contamination** | `STARTER` | `provenance.gates` | Production deployments SHALL replace or extend with a documented threat-model corpus. v1.0 deferral. |
 | **L7-G5 G5 Evaluation & Calibration** | `STARTER` | `provenance.gates` | Coverage typically 0 with HeuristicGrader (no confidence emitted). Becomes meaningful with LLM grader. |
 | **L8 Human Review & Decision Authority** | `BUILT` | `provenance.overrides, provenance.footer` | Escalation routing is a documented taxonomy not an automated workflow. |
-| **F-policy Foundation: Policy & Role Definitions** | `PARTIAL` | `docs/STACK.md, SPEC-v0.2` | Roles are documented and the CBOM actor_identity field carries them. A runtime registry is not built. |
+| **F-policy Foundation: Policy & Role Definitions** | `PARTIAL` | `docs/STACK.md; SPEC IDs in code` | Roles are documented and the CBOM actor_identity field carries them. A runtime registry is not built. The normative SPEC document is not yet committed to this repository; SPEC IDs in code and tests are the source of truth at v0.9.0b1. |
 | **F-classification Foundation: Data Classification (sensitivity tiers)** | `NOT_BUILT` | `-` | Requires a domain-specific sensitivity taxonomy from the adopter. v1.0 deferral; cannot be fabricated. |
 | **F-audit Foundation: Audit Logging** | `BUILT` | `SQLite ledger + per-run JSON artefacts` | Audit lives in SQLite (cross-run) + per-run JSON (single-run snapshot) + shadow log (observation history). |
 | **F-retention Foundation: Retention & Deletion (tombstones)** | `NOT_BUILT` | `-` | INV-011 PROPOSITION. Requires the adopter to specify retention windows. v1.0 deferral. |
-| **F-compliance Foundation: Compliance & Standards (ISO / NIST / Gov)** | `PARTIAL` | `docs/SPEC-v0.2.md` | No automated compliance check; the SPEC's normative language is the compliance surface. |
+| **F-compliance Foundation: Compliance & Standards (ISO / NIST / Gov)** | `PARTIAL` | `SPEC IDs in code (SPEC document not yet in repo)` | No automated compliance check; the SPEC IDs in code and tests are the compliance surface. The normative SPEC document is in preparation and will be committed alongside a future release. |
 | **F-override Foundation: Human Override** | `BUILT` | `provenance.overrides` | Most complete of the foundation items. |
 | **F-metrics Foundation: Metrics & Monitoring** | `PARTIAL` | `tools/warrantos-shadow-observe.py` | Shadow log is the closest thing to metrics today. A full metrics pipeline is v1.0+. |
 

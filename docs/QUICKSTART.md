@@ -40,13 +40,17 @@ warrantos check examples/quickstart-demo/draft.md \
 ```
 
 Expected verdict: **`HOLD`** with one unsupported load-bearing claim.
-The demo is wired so every layer fires at least once. See
+The bundled command exercises Layer 1, Layer 4, Layer 7 G1, Layer 7
+G2 (detection), CBOM assembly, and the four-state verdict
+consolidator. Add `--verify` to run the G2 verifier and
+`--writer-model`/`--verifier-model` to run G3; G4 and G5 ship as
+STARTER and are not exercised by the bundled demo. See
 [`examples/quickstart-demo/README.md`](../examples/quickstart-demo/README.md)
 for the explanation of each line of output.
 
 ## What just happened
 
-The CLI ran your draft through every layer of the WarrantOS pipeline:
+The CLI ran your draft through these layers of the WarrantOS pipeline:
 
 1. **Layer 1** classified the three context items into eleven canonical
    classes. The `policy-red-team` review finding was forced to

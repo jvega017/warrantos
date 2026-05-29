@@ -1,6 +1,6 @@
 # Quickstart demo (HOLD)
 
-A two-minute, copy-paste end-to-end run of the warrantos pipeline. Demonstrates every layer that ships in v0.9.0b1: Layer 1 classification, Layer 7 G1 prose-boundary scan, Layer 7 G2 claim detection (offline, no API key), CBOM v0.2 with actor_identity, and the four-state consolidated verdict.
+A two-minute, copy-paste end-to-end run of the warrantos pipeline. The bundled command exercises Layer 1 classification, Layer 4 admissibility, Layer 7 G1 prose-boundary scan, Layer 7 G2 claim detection (offline, no API key), CBOM v0.2 with actor_identity, and the four-state consolidated verdict. G2 verification (`--verify`) and G3 (`--writer-model`/`--verifier-model`) are opt-in; G4 and G5 ship as STARTER and are not invoked by this demo.
 
 This example produces `HOLD`. For the other three verdicts (`PASS`, `BLOCK`, `NOT_ASSESSABLE`), see [`examples/README.md`](../README.md) for the full gallery.
 

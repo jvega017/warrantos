@@ -108,92 +108,132 @@ repo currently implements parts of the pattern for Claude Code and CLI
 workflows. It should not be described as a general benchmark winner, a full
 entailment engine, or a complete compliance product.
 
-## Layer 1: Claim Provenance
+## Layer 1: Context Classification
 
-The original Provenance Ledger remains the base layer. It extracts factual
-claims, binds nearby sources, verifies cited material when requested, applies
-`report` or `enforce` policy, and writes results to a SQLite ledger.
+`provenance.context_admissibility.classify_context()` tags every incoming
+chunk into one of eleven canonical SPEC §2.2 classes: `empirical_evidence`,
+`instruction`, `style_signal`, `user_feedback`, `prior_artefact`,
+`process_history`, `operational_trace`, `review_finding`, `validation_rule`,
+`synthesised_judgement`, `private_reasoning`. SPEC-L1-S005 review-role gating
+threads the `source_agent` keyword through so a `policy-red-team` review
+item stays a `review_finding` rather than collapsing into `user_feedback`.
+The classifier is rule-based and intentionally inspectable; see
+[`CONTEXT-ADMISSIBILITY.md`](CONTEXT-ADMISSIBILITY.md) for the per-class
+admissibility table.
 
-Implemented surfaces:
+## Layer 2: Provenance Ledger
 
-- `hooks/provenance_check.py` for Claude Code hook checks.
-- `cli/provenance_cli.py` for file, directory, stdin, CI, and JSON runs.
-- `provenance/ledger.py` for durable records and evidence-matrix export.
-- `docs/PROVENANCE-LOOP.md` for the Extract, Bind, Verify, Adjudicate,
-  Ledger pattern.
+`provenance.ledger_write` and `provenance.overrides` persist every
+classified context item and every human override into append-only SQLite
+tables under `.warrant/provenance.db`. Storage-level append-only
+enforcement is via SQLite `BEFORE UPDATE` triggers (INV-004); the row
+schema is in `schema/provenance.sql`. The legacy v0.3 claim ledger at
+`provenance.ledger` continues to support the `report`/`enforce` Stop-hook
+loop and the evidence-matrix export.
 
-Current limits:
+## Layer 3: Applied Insight Compiler
 
-- Detection is heuristic.
-- Offline verification is token-overlap based.
-- Online verification depends on reachable sources and grader quality.
-- The corpora are regression and illustration seeds, not validated
-  benchmarks.
+`provenance.context_admissibility.derive_requirement()` transforms admitted
+process material (user feedback, review findings, validation rules, style
+signals) into structured derived requirements before the writer ever sees
+it. Raw process text never reaches Layer 5; what reaches the writer pack
+is the derived requirement. SPEC-L3-N001 closure: every transformation
+writes a ledger row via `persist_context_transform()`.
 
-## Layer 2: Context Admissibility
+## Layer 4: Context Admissibility Engine
 
-Context Admissibility handles material that is not a source citation but can
-still shape output: user feedback, prior drafts, tool traces, style signals,
-operator notes, and private reasoning. The question is not "is this true";
-the question is "may this context influence the final artefact, and may it
-appear in final prose".
+Per-item admissibility flags decide which of six actor roles (classifier,
+writer, reviewer, auditor, override-recorder, footer-renderer) can see
+which `context_id`. The CBOM v0.2 carries the per-item flags so the
+admissibility decision is auditable after the fact and not just a
+configuration at runtime.
 
-Implemented surfaces in the current working tree:
+## Layer 5: Clean-Room Writer Pack
 
-- `provenance/context_admissibility.py` classifies context items.
-- `derive_requirement()` transforms admissible context into instructions.
-- `scan_prose_boundary()` detects process-to-prose leakage.
-- `compile_cbom()` emits a CBOM-style report.
-- `cli/provenance_cli.py --cbom --context PATH` runs the boundary gate.
+`provenance.writer_pack.compile_writer_pack()` composes the only context
+the writer ever sees: a Clean Brief, the Approved Sources list, the Style
+Rules, the Acceptance Tests, and the Banned Residue List. The five
+sections map to SPEC §6.2. Private reasoning and process history are
+excluded from the pack by construction, not by configuration.
 
-This layer is currently rule-based. It is deliberately transparent and
-conservative, not a semantic classifier.
+## Layer 6: Clean-Room Generation
 
-## Layer 3: BriefLock
+`provenance.clean_room.prepare_invocation()` enforces discipline mode: the
+writer entry point refuses arbitrary context kwargs and runs the writer
+model against the pack alone. SPEC-L6-S001 (discipline-mode) ships in
+v0.6; SPEC-L6-R001 (subprocess isolation, Level 2 conformance) is wired
+via `run_clean_room_subprocess()`. WarrantOS does not call any LLM
+itself; the caller invokes their writer model through the
+`InvocationPlan`.
 
-BriefLock is the release posture: a brief, paper, policy note, or client-ready
-artefact should not be treated as final until the relevant gates have run.
+## Layer 7: Output Integrity Gates
 
-In the present repo, BriefLock is a framing over existing mechanics rather
-than a separate product module:
+Five gates run over the writer's output:
 
-- provenance CLI in CI mode can fail on unsupported or contradicted claims;
-- CBOM mode can fail on process leakage;
-- ledger exports can support human release review.
+- **G1 Prose Boundary** (BUILT): `scan_prose_boundary()` flags
+  process-narration leakage ("based on your feedback", "this version is
+  more commercial", etc.) under a named profile. v0.9 added a
+  `prompt-template` profile after empirical calibration on real briefs.
+- **G2 Source and Warrant Check** (BUILT): `provenance.verify` and
+  `provenance.grade` provide three graders: a stdlib heuristic (default,
+  no network), an Anthropic LLM grader (paid), and a local LLM grader
+  (free, OpenAI-compatible). The heuristic cannot emit `contradicted` by
+  construction; the LLM graders can.
+- **G3 Non-Self-Grounding** (BUILT): `provenance.gates` flags the case
+  where the writer model and the verifier model are the same family;
+  wired into `warrantos check` via `--writer-model` / `--verifier-model`.
+  Informational FLAG per SPEC-L7-N003, not BLOCK.
+- **G4 Safety and Contamination** (STARTER): eight starter prompt-
+  injection patterns ship; production deployments must extend with a
+  documented threat-model corpus. v1.0 deferral.
+- **G5 Evaluation and Calibration** (STARTER): gate becomes meaningful
+  when an LLM grader is configured (the heuristic emits no confidence).
 
-A full BriefLock product would add explicit release manifests, configured
-gate profiles by artefact type, reviewer sign-off, and packaged evidence
-bundles. Those pieces are not yet implemented here.
+## Layer 8: Human Review and Decision Authority
 
-## Layer 4: CBOM
+`provenance.overrides.record_override()` rejects an override write if the
+`risk_accepted` or `compensating_control` field is empty (SPEC-L8-S004).
+`enforce_single_actor_rule()` flags a same-actor reviewer/writer pair when
+an override is being recorded (SPEC-L8-S003). `render_override_footer()`
+emits a reader-facing footer that surfaces every recorded override
+(SPEC-L8-S005). Escalation routing is a documented taxonomy, not an
+automated workflow.
 
-A Context Bill of Materials is the context equivalent of a software bill of
-materials. It records the inputs that shaped an artefact without exposing raw
-private reasoning or treating every process note as final-prose material.
+## The four-state verdict
 
-The current CBOM schema is intentionally small:
+`cli/warrantos_cli.py::consolidate_verdict()` consolidates Layer 7 gate
+outputs, the Layer 4 admissibility verdict, and the actor identity into
+one of four states:
 
-- summary counts;
-- per-item admissibility summaries;
-- allowed transformations;
-- prose-boundary verdict and violations.
+- `PASS` ship the artefact
+- `HOLD` add a citation or downgrade a load-bearing claim
+- `BLOCK` rewrite the offending text
+- `NOT_ASSESSABLE` supply actor identity or use a non-final-prose profile
 
-This is enough to support local review and CI checks. It is not yet a stable
-external standard.
+The thesis is that binary pass/fail loses information; `NOT_ASSESSABLE`
+names the case where the artefact is missing the metadata required to
+certify, instead of certifying on incomplete information.
 
-## Layer 5: Multi-Agent Review
+## Foundation rows (cross-cutting)
 
-WarrantOS assumes that important artefacts should not rely on a single model
-pass. A practical workflow separates roles:
+Five foundation rows wrap the eight layers:
 
-- Writer: produces the draft.
-- Provenance checker: detects and verifies factual claims.
-- Context reviewer: checks whether process context was transformed properly.
-- Adversarial reviewer: looks for unsupported, misleading, or leaked material.
-- Release owner: decides whether the artefact is ready to ship.
+- **F-policy** (PARTIAL): role taxonomy documented; runtime registry not
+  built.
+- **F-classification: Data Classification** (NOT_BUILT): adopter-supplied
+  sensitivity taxonomy required.
+- **F-audit: Audit Logging** (BUILT): SQLite cross-run + per-run JSON +
+  shadow log.
+- **F-retention: Retention and Tombstones** (NOT_BUILT): adopter-supplied
+  retention windows required.
+- **F-compliance: Compliance and Standards** (PARTIAL): RFC 2119
+  conformance language in SPEC IDs; no automated compliance check.
+- **F-override: Human Override** (BUILT): see Layer 8.
+- **F-metrics: Metrics and Monitoring** (PARTIAL): shadow log only;
+  full metrics pipeline is v1.0+.
 
-The repository supports parts of this through CLI and hook entrypoints. It
-does not yet orchestrate agents or enforce reviewer separation by itself.
+For the live status counts, run `warrantos status` or read
+[`STATUS.md`](STATUS.md).
 
 ## Product Positioning
 

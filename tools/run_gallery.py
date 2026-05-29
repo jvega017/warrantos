@@ -2,11 +2,14 @@
 """Run the four-verdict gallery and assert each example produces its
 documented verdict.
 
-This is the thesis demo: one command exercises every layer of the
-WarrantOS pipeline (Layer 1 classification, Layer 4 admissibility,
-Layer 7 G1 boundary, Layer 7 G2 detection, CBOM assembly, the
-four-state verdict consolidator) across four canonical drafts and
-asserts that each ends at the verdict the documentation promises.
+This is the thesis demo: one command exercises Layer 1
+classification, Layer 4 admissibility, Layer 7 G1 boundary, Layer 7
+G2 detection, CBOM assembly, and the four-state verdict
+consolidator across four canonical drafts and asserts that each
+ends at the verdict the documentation promises. G2 verification,
+G3 self-grounding, and the STARTER G4/G5 gates are not exercised by
+the bundled invocations; pass `--verify` and `--writer-model`/
+`--verifier-model` to a manual `warrantos check` to exercise them.
 
 Exit codes:
     0  every example produced its expected verdict

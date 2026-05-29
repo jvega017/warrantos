@@ -237,9 +237,9 @@ def collect_status() -> List[LayerStatus]:
         layer_id="F-policy",
         name="Foundation: Policy & Role Definitions",
         status="PARTIAL",
-        module="docs/STACK.md, SPEC-v0.2",
+        module="docs/STACK.md; SPEC IDs in code",
         surfaces=["6-role taxonomy documented; actor_identity field enforced in CBOM"],
-        notes="Roles are documented and the CBOM actor_identity field carries them. A runtime registry is not built.",
+        notes="Roles are documented and the CBOM actor_identity field carries them. A runtime registry is not built. The normative SPEC document is not yet committed to this repository; SPEC IDs in code and tests are the source of truth at v0.9.0b1.",
     ))
 
     rows.append(LayerStatus(
@@ -277,9 +277,9 @@ def collect_status() -> List[LayerStatus]:
         layer_id="F-compliance",
         name="Foundation: Compliance & Standards (ISO / NIST / Gov)",
         status="PARTIAL",
-        module="docs/SPEC-v0.2.md",
-        surfaces=["RFC 2119 conformance language; SPEC references"],
-        notes="No automated compliance check; the SPEC's normative language is the compliance surface.",
+        module="SPEC IDs in code (SPEC document not yet in repo)",
+        surfaces=["RFC 2119 conformance language; SPEC-ID references in tests and modules"],
+        notes="No automated compliance check; the SPEC IDs in code and tests are the compliance surface. The normative SPEC document is in preparation and will be committed alongside a future release.",
     ))
 
     rows.append(LayerStatus(

@@ -46,7 +46,7 @@ row. The eight layers map directly to the SPEC sections under
 | 4 | Context admissibility | Decides per-item what each actor (classifier, writer, reviewer, auditor) is permitted to see | `provenance/context_admissibility.py` |
 | 5 | Clean-room writer pack | Composes the only context the writer ever sees: Clean Brief, Approved Sources, Style Rules, Acceptance Tests, Banned Residue List | `provenance/writer_pack.py:compile_writer_pack()` |
 | 6 | Clean-room generation (discipline mode) | Refuses arbitrary context kwargs at the writer entry point; the writer runs against only the pack | `provenance/clean_room.py:prepare_invocation()` |
-| 7 | Output integrity gates | G1 prose boundary, G2 claim provenance, G3 self-grounding (BUILT); G4 contamination, G5 calibration (NOT BUILT, stubs explicit) | `provenance/context_admissibility.py:scan_prose_boundary()`, `provenance/verify.py`, `provenance/gates.py` |
+| 7 | Output integrity gates | G1 prose boundary, G2 claim provenance, G3 self-grounding (BUILT); G4 contamination, G5 calibration (STARTER, see [`STATUS.md`](STATUS.md) and §"What is explicitly NOT built" below) | `provenance/context_admissibility.py:scan_prose_boundary()`, `provenance/verify.py`, `provenance/gates.py` |
 | 8 | Human review and decision authority | Structured override schema: empty `risk_accepted` or `compensating_control` SHALL block the override; separation of duties downgrades final-prose to draft when the reviewer is also the writer | `provenance/overrides.py` |
 | F | Foundation | Reader-facing override footer (SPEC-L8-S005), MCP server wrapper, shadow-mode observer | `provenance/footer.py`, `provenance/mcp_server.py`, `tools/warrantos-shadow-observe.py` |
 
@@ -186,12 +186,17 @@ correct. It guarantees five things instead:
    are empty, and recorded rows cannot be silently edited
    (storage-level append-only via SQLite `BEFORE UPDATE` triggers,
    not application-level discipline).
-5. When the reviewer identity matches the writer identity, a
-   final-prose artefact downgrades to draft (separation of duties
-   at the verdict layer, not by policy).
+5. Separation of duties is enforced where overrides are recorded:
+   the helper `enforce_single_actor_rule` at
+   `provenance/overrides.py` flags a same-actor reviewer/writer
+   pair when an override is recorded, and the reader-facing footer
+   surfaces the flag. v0.9.0b1 does not invoke this from
+   `consolidate_verdict()`; wiring the same check into the default
+   verdict path is the next-release item.
 
 The remaining failure modes need writer-side discipline, human
-review, and the WarrantOS coupling thesis (`docs/PROBLEM-STACK.md`
-in the WarrantOS project, currently external to this repo). The
-repository ships the operational form of that thesis, nothing more,
-nothing less.
+review, and the WarrantOS coupling thesis. The coupling thesis is
+documented in the working paper *From Citation to Epistemic
+Governance* (Prometheus Policy Lab, in preparation; SSRN handle
+pending). The repository ships the operational form of that
+thesis, nothing more, nothing less.
