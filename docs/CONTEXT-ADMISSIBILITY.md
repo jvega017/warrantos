@@ -35,14 +35,14 @@ The eleven canonical SPEC §2.2 context classes implemented in
 | Context type | Ledger bucket | Can influence output | Can appear in final prose | Allowed transformation |
 | --- | --- | --- | --- | --- |
 | `empirical_evidence` | `empirical` | yes | yes | `claim_or_citation` |
-| `instruction` | `synthesised` | yes | no | `derived_requirement` |
+| `instruction` | `process` | yes | no | `derived_requirement` |
 | `style_signal` | `synthesised` | yes | no | `style_rule` |
 | `user_feedback` | `synthesised` | yes | no | `derived_requirement` |
 | `prior_artefact` | `process` | yes | no | `derived_requirement` |
-| `process_history` | `process` | no | no | `audit_record` |
+| `process_history` | `process` | yes | no | `derived_requirement` |
 | `operational_trace` | `process` | no | no | `audit_record` |
-| `review_finding` | `synthesised` | yes | no | `derived_requirement` |
-| `validation_rule` | `synthesised` | yes | no | `derived_requirement` |
+| `review_finding` | `synthesised` | yes | no | `applied_recommendation` |
+| `validation_rule` | `process` | yes | no | `boundary_rule` |
 | `synthesised_judgement` | `synthesised` | yes | no | `derived_requirement` |
 | `private_reasoning` | `excluded` | no | no | `none` |
 
@@ -67,6 +67,14 @@ and tone without being announced to the reader.
 
 `audit_record` means the material can be retained for traceability but should
 not shape or appear in final prose.
+
+`applied_recommendation` means a review finding may be applied as a revision
+instruction by a revision planner; the recommendation itself does not appear
+in final prose.
+
+`boundary_rule` means a validation rule informs the prose-boundary gate (for
+example, by extending the banned-residue list) but the rule text never
+appears in final prose.
 
 `none` means the material is excluded from generation.
 
