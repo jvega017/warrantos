@@ -96,6 +96,32 @@ class TestAppendOnlyTriggers(unittest.TestCase):
         finally:
             con.close()
 
+    def test_trigger_blocks_delete_on_human_override(self):
+        # Write an override row (also creates the table), then install triggers.
+        record_override(
+            self.db_path,
+            run_id="run_delete_test",
+            reviewer="human:director.so",
+            gate_id="G1",
+            failure_class="boundary",
+            risk_accepted="Test risk.",
+            compensating_control="Test control.",
+        )
+        count = enable_append_only_triggers(self.db_path)
+        self.assertGreaterEqual(count, 1)
+
+        # A DELETE must be rejected: append-only means rows cannot be removed,
+        # which is as damaging to a tamper-evident ledger as an UPDATE.
+        con = sqlite3.connect(str(self.db_path))
+        try:
+            with self.assertRaises(sqlite3.IntegrityError) as ctx:
+                con.execute("DELETE FROM human_override WHERE id = 1")
+                con.commit()
+            self.assertIn("INV-004", str(ctx.exception))
+            self.assertIn("human_override", str(ctx.exception))
+        finally:
+            con.close()
+
     def test_trigger_does_not_block_insert(self):
         record_override(
             self.db_path,

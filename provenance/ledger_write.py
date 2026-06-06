@@ -161,15 +161,18 @@ def list_context_transforms(
 
 
 def enable_append_only_triggers(db_path: Union[str, Path]) -> int:
-    """Install SQLite BEFORE UPDATE triggers on every audit-bearing table.
+    """Install SQLite BEFORE UPDATE and BEFORE DELETE triggers on every audit-bearing table.
 
     INV-004 ENFORCED at the storage layer. After this function runs
-    against a database, an attempted UPDATE on any of the tables in
-    _APPEND_ONLY_TABLES raises sqlite3.IntegrityError with the
-    spec-named abort reason.
+    against a database, an attempted UPDATE or DELETE on any of the
+    tables in _APPEND_ONLY_TABLES raises sqlite3.IntegrityError with the
+    spec-named abort reason. Append-only means rows can be inserted but
+    never modified or removed; a DELETE is as damaging to a tamper-evident
+    ledger as an UPDATE, so both are blocked.
 
     Idempotent: triggers use IF NOT EXISTS so repeated invocations are
-    safe. Returns the number of triggers ensured.
+    safe. Returns the number of triggers ensured (two per present table:
+    one UPDATE guard and one DELETE guard).
 
     Tables that do not exist in the target db are skipped silently;
     triggers are only created for present tables.
@@ -191,10 +194,17 @@ def enable_append_only_triggers(db_path: Union[str, Path]) -> int:
 
         count = 0
         for table in sorted(present):
-            trigger_name = "prevent_update_" + table
             con.execute(
-                "CREATE TRIGGER IF NOT EXISTS " + trigger_name + " "
+                "CREATE TRIGGER IF NOT EXISTS prevent_update_" + table + " "
                 "BEFORE UPDATE ON " + table + " "
+                "BEGIN "
+                "SELECT RAISE(ABORT, 'INV-004: " + table + " is append-only per SPEC-L2-S002'); "
+                "END;"
+            )
+            count += 1
+            con.execute(
+                "CREATE TRIGGER IF NOT EXISTS prevent_delete_" + table + " "
+                "BEFORE DELETE ON " + table + " "
                 "BEGIN "
                 "SELECT RAISE(ABORT, 'INV-004: " + table + " is append-only per SPEC-L2-S002'); "
                 "END;"
