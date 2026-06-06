@@ -6,6 +6,8 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.9.0b1] - 2026-06-06
+
 ### Added — v0.9 beta-trial finalisation
 
 - **`prompt-template` profile** for G1 (`_PROFILE_RULES`). Empirical calibration: on 2026-05-27 all 10 morning brief-prompt templates triggered BLOCK with 29-59 violations under `brief-light`. The new profile drops the lexical-residue rules because the input IS the rule-list discussion, not a final artefact. Re-tested: BLOCK → HOLD with 0 violations (HOLDs are genuine unsupported-claim signal). Shadow observer default updated to use `prompt-template`.
