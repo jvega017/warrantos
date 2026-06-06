@@ -34,7 +34,7 @@ from provenance.grade import Verdict, get_grader
 
 _FETCH_TIMEOUT = 8          # seconds
 _FETCH_MAX_BYTES = 1_500_000  # 1.5 MB
-_USER_AGENT = "claude-provenance/0.2 (+https://github.com/jvega017/claude-provenance)"
+_USER_AGENT = "claude-provenance/0.9.0b1 (+https://github.com/jvega017/claude-provenance)"
 
 
 class _HTMLStripper(html.parser.HTMLParser):
