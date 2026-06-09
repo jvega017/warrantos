@@ -1,0 +1,49 @@
+{
+  "cbom": {
+    "actor_identity": {
+      "reviewer": "human:reviewer",
+      "writer": "human:juan"
+    },
+    "admitted_material": [],
+    "artefact_id": "draft.md",
+    "blocked_material": [],
+    "claims": [
+      {
+        "claim_id": "claim_7d35b5ea",
+        "status": "unsupported",
+        "support_ids": [],
+        "text": "The agency must comply with section 23 of the Privacy Act 1988."
+      }
+    ],
+    "classification_overrides": [],
+    "context_inputs": [],
+    "override_ledger_refs": [],
+    "review_findings": [],
+    "schema": "warrantos-cbom/v1",
+    "summary": {
+      "admitted_material": 0,
+      "blocked_material": 0,
+      "claims": 1,
+      "classification_overrides": 0,
+      "context_inputs": 0,
+      "override_ledger_refs": 0,
+      "review_findings": 0,
+      "transformations": 0
+    },
+    "transformations": []
+  },
+  "checkpoint": {
+    "algorithm": "sha256-merkle-rfc6962-domainsep",
+    "entry_count": 0,
+    "public_key": "ycYd5eOAXYIPAB5QVcwM9k-YnoilXM2UdEoFuv8dv6E",
+    "root_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "run_id": "run",
+    "signature": "TkWvX4QncENKZJ01sBhd5AXbr-U4HXhbXyNKUdeNPd3IgxLilsyRAbHP62gdPAT6WaMuKo5QWY5KiVcBX9mrAQ",
+    "timestamp": "2026-06-09T05:30:15+00:00",
+    "version": "warrantos-checkpoint-v1"
+  },
+  "ledger_entries": [],
+  "prose_sha256": "sha256:6d44c372d15dff741da787b7ac58be667a14ffdd513746f5832d6eaedddfb35b",
+  "signed": true,
+  "version": "warrant-bundle-v1"
+}

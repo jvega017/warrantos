@@ -1,0 +1,390 @@
+{
+  "actor_identity": {},
+  "admitted_material": [],
+  "artefact_id": "manuscript-v1.3.md",
+  "blocked_material": [],
+  "claims": [
+    {
+      "claim_id": "claim_614a0d91",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "**Date:** 2026-05-27"
+    },
+    {
+      "claim_id": "claim_82a316c4",
+      "status": "supported",
+      "support_ids": [],
+      "text": "Citation indexing was itself conceived as a response to that constraint, a means of navigating a literature no individual could traverse exhaustively (Garfield, 1955)."
+    },
+    {
+      "claim_id": "claim_be7c3a15",
+      "status": "supported",
+      "support_ids": [],
+      "text": "The norm that grew around it treated the reference as a unit of intellectual debt and recognition rather than as a verifiable evidentiary link (Merton, 1968)."
+    },
+    {
+      "claim_id": "claim_489dbb60",
+      "status": "supported",
+      "support_ids": [],
+      "text": "Systematic review of quotation accuracy finds that a substantial fraction of citations do not support the claim they are attached to, and that these errors persist through peer review rather than being caught by it (Jergas & Baethge, 2015)."
+    },
+    {
+      "claim_id": "claim_6102ce70",
+      "status": "supported",
+      "support_ids": [],
+      "text": "When a claim is cited from a secondary source rather than the original, distortions introduced at each hop are amplified rather than damped, and a network of citations can manufacture unfounded authority for a claim the primary evidence does not support (Greenberg, 2009)."
+    },
+    {
+      "claim_id": "claim_96697584",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "The factual precision of long-form model output is demonstrably imperfect, and hallucinated content is frequently indistinguishable in surface form from supported content (Min et al., 2023; Manakul et al., 2023)."
+    },
+    {
+      "claim_id": "claim_4f161250",
+      "status": "supported",
+      "support_ids": [],
+      "text": "The citation index was conceived as an associative navigation aid for a literature too large to traverse by hand (Garfield, 1955), and the norm that formed around it treated the reference as the currency of the recognition system rather than as a checkable link between a claim and its support (Merton, 1968)."
+    },
+    {
+      "claim_id": "claim_fe903767",
+      "status": "supported",
+      "support_ids": [],
+      "text": "The empirical literature on citing behaviour confirms this directly: scientists cite for many reasons, including persuasion, signalling, and convention, and only partly to mark a verifiable evidentiary debt; the act is multi-motivated and the resulting citation-claim correspondence is not reliably accurate (Bornmann & Daniel, 2008)."
+    },
+    {
+      "claim_id": "claim_00818663",
+      "status": "supported",
+      "support_ids": [],
+      "text": "Quotation-accuracy studies make the consequence concrete, finding substantial error rates that persist through peer review, though that evidence is concentrated in biomedical journals and its transfer to computational and policy literatures is an open question rather than an assumption (Jergas & Baethge, 2015)."
+    },
+    {
+      "claim_id": "claim_6ae4d7d5",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2023)."
+    },
+    {
+      "claim_id": "claim_d457021d",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "Reference-based methods decompose a generation into atomic facts and score each against a knowledge source (Min et al., 2023)."
+    },
+    {
+      "claim_id": "claim_ab8c7d1c",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "Zero-resource methods exploit sampling consistency, treating divergence across stochastic generations as a hallucination signal without an external database (Manakul et al., 2023)."
+    },
+    {
+      "claim_id": "claim_ae7d88dd",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "A separate NLP line classifies the rhetorical intent or function of a citation, for example whether a reference is background, method use, or comparison (Cohan et al., 2019)."
+    },
+    {
+      "claim_id": "claim_7217432b",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "The field frames provenance as the derivation history of a data product, with a taxonomy spanning why provenance is recorded, what it describes, and how it is represented (Simmhan, Plale, & Gannon, 2005)."
+    },
+    {
+      "claim_id": "claim_41a59f33",
+      "status": "supported",
+      "support_ids": [],
+      "text": "It has a standardised model in W3C PROV, which represents entities, activities, and agents and the derivation and attribution relations among them (Moreau & Missier, 2013)."
+    },
+    {
+      "claim_id": "claim_d58f351c",
+      "status": "supported",
+      "support_ids": [],
+      "text": "Retrospective reconstruction is the expensive failure mode the framework exists to avoid, because it is exactly the audit that peer review cannot afford to run (Jergas & Baethge, 2015)."
+    },
+    {
+      "claim_id": "claim_c503a7f8",
+      "status": "supported",
+      "support_ids": [],
+      "text": "Citing a summary rather than the original is precisely the case where c' would otherwise acquire an authority c never had (Greenberg, 2009)."
+    },
+    {
+      "claim_id": "claim_bf06c2fa",
+      "status": "supported",
+      "support_ids": [],
+      "text": "The test statistic is the absolute revision standardised by the dispersion of F; the detector is a sequential change-point test on the running statistic, either a cumulative-sum scheme with stopping rule h (Page, 1954) or Bayesian online change-point detection with a stated hazard rate (Adams & MacKay, 2007)."
+    },
+    {
+      "claim_id": "claim_d6346556",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "| Primary estimand (E1) | Proportion of presented-as-supported claims that are not Verified, among retrievable claim-source pairs (95% Wilson CI)."
+    },
+    {
+      "claim_id": "claim_2b13a300",
+      "status": "supported",
+      "support_ids": [],
+      "text": "Assumed base rate p = 0.20 for not-Verified claims, taken as a working prior from the quotation-accuracy literature in biomedicine (Jergas & Baethge, 2015) and acknowledged as a prior rather than a measurement for AI governance corpora."
+    },
+    {
+      "claim_id": "claim_ab20c129",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "Target 95% Wilson half-width is \u00b14.5 percentage points; N = 300 claim-source pairs achieves this at the assumed base rate, and the realised half-width is reported against the realised base rate."
+    },
+    {
+      "claim_id": "claim_02894839",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "The unit of analysis is the atomic claim c as defined in \u00a73.1, extracted by decomposing each citation-bearing sentence into its atomic asserted propositions, following the atomic-fact decomposition logic used in factuality evaluation (Min et al., 2023) but applied to human-authored text and its human-supplied citations."
+    },
+    {
+      "claim_id": "claim_8e20d362",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "The full ledger of (c, s, q, \u03ba, v, \u03c4) entries produced by the audit is retained as the study's own provenance record (\u00a73.5)."
+    },
+    {
+      "claim_id": "claim_339db7d7",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "The primary estimand is, among claims presented as directly supported whose cited source was retrievable to the span level, the proportion that are not Verified (that is, Inferred, Speculative, or Contradicted), with a 95% Wilson confidence interval."
+    },
+    {
+      "claim_id": "claim_bb26b856",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "| **Not Verified among retrievable (primary estimand)** | **[PENDING DATA]** | **[X]% (95% CI [PENDING DATA])** |"
+    },
+    {
+      "claim_id": "claim_3145b95e",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "This converts the drift assumption of \u00a73.6 into a measured quantity: an empirical decay rate by claim type, estimated as the per-class transition hazard out of Verified over \u03b4."
+    },
+    {
+      "claim_id": "claim_3f9edd62",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "Two open-access AI governance papers were taken in a fixed selection order (Janssen et al., 2020; Winfield & Jirotka, 2018)."
+    },
+    {
+      "claim_id": "claim_5950429d",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "One eligible retrievable pair remained, giving a near-vacuous primary estimand on n = 1 (point estimate 0.00; 95% Wilson interval [0, 0.79])."
+    },
+    {
+      "claim_id": "claim_4e0e3f66",
+      "status": "supported",
+      "support_ids": [],
+      "text": "An unverified claim-source link is not merely a local error: it becomes an input to downstream claims that inherit an authority the primary evidence never conferred, and a citation network can manufacture unfounded belief from a single weak link (Greenberg, 2009)."
+    },
+    {
+      "claim_id": "claim_ae3fdc28",
+      "status": "supported",
+      "support_ids": [],
+      "text": "Review evaluates argument and contribution and cannot, at current volumes, re-check every claim-source correspondence, and the residual error rate is measurable and persistent (Jergas & Baethge, 2015)."
+    },
+    {
+      "claim_id": "claim_4cc3cede",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "The incentive structure compounds the failure, because the reward system pays for citation rather than for verification (Merton, 1968; Bornmann & Daniel, 2008)."
+    },
+    {
+      "claim_id": "claim_8ef5d757",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "We specify the spot-check regime to avoid the closure being unspecified: at minimum quarterly, with the spot-sample N drawn to maintain a 95% Wilson half-width of \u00b110 percentage points at the institution's last measured base rate, against a \u03ba floor equal to the \u03ba achieved at \u00a74.2 validation less a 0.05 tolerance."
+    },
+    {
+      "claim_id": "claim_7b6bfa28",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "Language models lower the cost of producing citation-bearing text far faster than they lower the cost of verifying it, and the surveyed detection methods operate on generated text rather than on the human citation act (Ji et al., 2023; Min et al., 2023; Manakul et al., 2023)."
+    },
+    {
+      "claim_id": "claim_d4bfd252",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "The full ledger of (c, s, q, \u03ba, v, \u03c4) entries produced by the audit is retained as the study's own provenance record."
+    },
+    {
+      "claim_id": "claim_4987d652",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2007)."
+    },
+    {
+      "claim_id": "claim_3bd500a4",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2008)."
+    },
+    {
+      "claim_id": "claim_422d18ce",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2019)."
+    },
+    {
+      "claim_id": "claim_5c2be356",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "In *Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies* (ACL Anthology N19-1361)."
+    },
+    {
+      "claim_id": "claim_f8709a2b",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(1955)."
+    },
+    {
+      "claim_id": "claim_6bd56575",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2009)."
+    },
+    {
+      "claim_id": "claim_092ca5ca",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2020)."
+    },
+    {
+      "claim_id": "claim_f88b2af4",
+      "status": "supported",
+      "support_ids": [],
+      "text": "https://doi.org/10.1016/j.giq.2020.101493"
+    },
+    {
+      "claim_id": "claim_07cdfd55",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2015)."
+    },
+    {
+      "claim_id": "claim_3966f9f2",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2023)."
+    },
+    {
+      "claim_id": "claim_4e40ff8e",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "Survey of hallucination in natural language generation."
+    },
+    {
+      "claim_id": "claim_8f6873b2",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2023)."
+    },
+    {
+      "claim_id": "claim_9e1b35a0",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "In *Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing* (pp."
+    },
+    {
+      "claim_id": "claim_abd65032",
+      "status": "supported",
+      "support_ids": [],
+      "text": "https://doi.org/10.18653/v1/2023.emnlp-main.557"
+    },
+    {
+      "claim_id": "claim_a4adaff7",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(1968)."
+    },
+    {
+      "claim_id": "claim_5197a05f",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2023)."
+    },
+    {
+      "claim_id": "claim_b3c8a1c1",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "In *Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing* (pp."
+    },
+    {
+      "claim_id": "claim_235015f6",
+      "status": "supported",
+      "support_ids": [],
+      "text": "https://doi.org/10.18653/v1/2023.emnlp-main.741"
+    },
+    {
+      "claim_id": "claim_aed1947f",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2013)."
+    },
+    {
+      "claim_id": "claim_b53e2829",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "*PROV-DM: The PROV data model* (W3C Recommendation, 30 April 2013)."
+    },
+    {
+      "claim_id": "claim_7e0c10e7",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(1954)."
+    },
+    {
+      "claim_id": "claim_3e57ae5e",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2005)."
+    },
+    {
+      "claim_id": "claim_f3c9e7be",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "A survey of data provenance in e-science."
+    },
+    {
+      "claim_id": "claim_6a2c26c3",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "(2018)."
+    },
+    {
+      "claim_id": "claim_7ef64f27",
+      "status": "supported",
+      "support_ids": [],
+      "text": "https://doi.org/10.1098/rsta.2018.0085"
+    },
+    {
+      "claim_id": "claim_7df79277",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "Two entries carry [VERIFY] tags introduced in v1.2 and preserved verbatim in v1.3: Simmhan, Plale, and Gannon (2005) is the reference added in response to the 2026-05-23 Technical-auditor finding that \u00a72.3 cited the work without a References entry; the citation is restored with [VERIFY] on pagination and DOI because the entry was not independently confirmed in-session via OpenAlex or the ACM Digital Library, and the resolution of that tag is a pre-submission step."
+    },
+    {
+      "claim_id": "claim_de104ff3",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "Merton (1968) retains a [VERIFY] tag for DOI consistency at camera-ready stage, deferred from v1.0."
+    }
+  ],
+  "classification_overrides": [],
+  "context_inputs": [],
+  "override_ledger_refs": [],
+  "review_findings": [],
+  "schema": "warrantos-cbom/v1",
+  "summary": {
+    "admitted_material": 0,
+    "blocked_material": 0,
+    "claims": 61,
+    "classification_overrides": 0,
+    "context_inputs": 0,
+    "override_ledger_refs": 0,
+    "review_findings": 0,
+    "transformations": 0
+  },
+  "transformations": []
+}

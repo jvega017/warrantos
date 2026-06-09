@@ -1,0 +1,551 @@
+[
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "**Date:** 2026-05-27",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Garfield, 1955)",
+    "load_bearing": false,
+    "salience": 0.0,
+    "sentence": "Citation indexing was itself conceived as a response to that constraint, a means of navigating a literature no individual could traverse exhaustively (Garfield, 1955).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Merton, 1968)",
+    "load_bearing": false,
+    "salience": 0.0,
+    "sentence": "The norm that grew around it treated the reference as a unit of intellectual debt and recognition rather than as a verifiable evidentiary link (Merton, 1968).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Jergas & Baethge, 2015)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Systematic review of quotation accuracy finds that a substantial fraction of citations do not support the claim they are attached to, and that these errors persist through peer review rather than being caught by it (Jergas & Baethge, 2015).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Greenberg, 2009)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "When a claim is cited from a secondary source rather than the original, distortions introduced at each hop are amplified rather than damped, and a network of citations can manufacture unfounded authority for a claim the primary evidence does not support (Greenberg, 2009).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "The factual precision of long-form model output is demonstrably imperfect, and hallucinated content is frequently indistinguishable in surface form from supported content (Min et al., 2023; Manakul et al., 2023).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Garfield, 1955)",
+    "load_bearing": false,
+    "salience": 0.0,
+    "sentence": "The citation index was conceived as an associative navigation aid for a literature too large to traverse by hand (Garfield, 1955), and the norm that formed around it treated the reference as the currency of the recognition system rather than as a checkable link between a claim and its support (Merton, 1968).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Bornmann & Daniel, 2008)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "The empirical literature on citing behaviour confirms this directly: scientists cite for many reasons, including persuasion, signalling, and convention, and only partly to mark a verifiable evidentiary debt; the act is multi-motivated and the resulting citation-claim correspondence is not reliably accurate (Bornmann & Daniel, 2008).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Jergas & Baethge, 2015)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Quotation-accuracy studies make the consequence concrete, finding substantial error rates that persist through peer review, though that evidence is concentrated in biomedical journals and its transfer to computational and policy literatures is an open question rather than an assumption (Jergas & Baethge, 2015).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2023).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Reference-based methods decompose a generation into atomic facts and score each against a knowledge source (Min et al., 2023).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Zero-resource methods exploit sampling consistency, treating divergence across stochastic generations as a hallucination signal without an external database (Manakul et al., 2023).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "A separate NLP line classifies the rhetorical intent or function of a citation, for example whether a reference is background, method use, or comparison (Cohan et al., 2019).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "The field frames provenance as the derivation history of a data product, with a taxonomy spanning why provenance is recorded, what it describes, and how it is represented (Simmhan, Plale, & Gannon, 2005).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Moreau & Missier, 2013)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "It has a standardised model in W3C PROV, which represents entities, activities, and agents and the derivation and attribution relations among them (Moreau & Missier, 2013).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Jergas & Baethge, 2015)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Retrospective reconstruction is the expensive failure mode the framework exists to avoid, because it is exactly the audit that peer review cannot afford to run (Jergas & Baethge, 2015).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Greenberg, 2009)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Citing a summary rather than the original is precisely the case where c' would otherwise acquire an authority c never had (Greenberg, 2009).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Page, 1954)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "The test statistic is the absolute revision standardised by the dispersion of F; the detector is a sequential change-point test on the running statistic, either a cumulative-sum scheme with stopping rule h (Page, 1954) or Bayesian online change-point detection with a stated hazard rate (Adams & MacKay, 2007).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.15,
+    "sentence": "| Primary estimand (E1) | Proportion of presented-as-supported claims that are not Verified, among retrievable claim-source pairs (95% Wilson CI).",
+    "triggers": [
+      "percentage"
+    ]
+  },
+  {
+    "citation": "(Jergas & Baethge, 2015)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Assumed base rate p = 0.20 for not-Verified claims, taken as a working prior from the quotation-accuracy literature in biomedicine (Jergas & Baethge, 2015) and acknowledged as a prior rather than a measurement for AI governance corpora.",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.15,
+    "sentence": "Target 95% Wilson half-width is \u00b14.5 percentage points; N = 300 claim-source pairs achieves this at the assumed base rate, and the realised half-width is reported against the realised base rate.",
+    "triggers": [
+      "percentage"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "The unit of analysis is the atomic claim c as defined in \u00a73.1, extracted by decomposing each citation-bearing sentence into its atomic asserted propositions, following the atomic-fact decomposition logic used in factuality evaluation (Min et al., 2023) but applied to human-authored text and its human-supplied citations.",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.0,
+    "sentence": "The full ledger of (c, s, q, \u03ba, v, \u03c4) entries produced by the audit is retained as the study's own provenance record (\u00a73.5).",
+    "triggers": [
+      "attribution"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.15,
+    "sentence": "The primary estimand is, among claims presented as directly supported whose cited source was retrievable to the span level, the proportion that are not Verified (that is, Inferred, Speculative, or Contradicted), with a 95% Wilson confidence interval.",
+    "triggers": [
+      "percentage"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.15,
+    "sentence": "| **Not Verified among retrievable (primary estimand)** | **[PENDING DATA]** | **[X]% (95% CI [PENDING DATA])** |",
+    "triggers": [
+      "percentage"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.0,
+    "sentence": "This converts the drift assumption of \u00a73.6 into a measured quantity: an empirical decay rate by claim type, estimated as the per-class transition hazard out of Verified over \u03b4.",
+    "triggers": [
+      "attribution"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Two open-access AI governance papers were taken in a fixed selection order (Janssen et al., 2020; Winfield & Jirotka, 2018).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.15,
+    "sentence": "One eligible retrievable pair remained, giving a near-vacuous primary estimand on n = 1 (point estimate 0.00; 95% Wilson interval [0, 0.79]).",
+    "triggers": [
+      "percentage"
+    ]
+  },
+  {
+    "citation": "(Greenberg, 2009)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "An unverified claim-source link is not merely a local error: it becomes an input to downstream claims that inherit an authority the primary evidence never conferred, and a citation network can manufacture unfounded belief from a single weak link (Greenberg, 2009).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "(Jergas & Baethge, 2015)",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Review evaluates argument and contribution and cannot, at current volumes, re-check every claim-source correspondence, and the residual error rate is measurable and persistent (Jergas & Baethge, 2015).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "The incentive structure compounds the failure, because the reward system pays for citation rather than for verification (Merton, 1968; Bornmann & Daniel, 2008).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.15,
+    "sentence": "We specify the spot-check regime to avoid the closure being unspecified: at minimum quarterly, with the spot-sample N drawn to maintain a 95% Wilson half-width of \u00b110 percentage points at the institution's last measured base rate, against a \u03ba floor equal to the \u03ba achieved at \u00a74.2 validation less a 0.05 tolerance.",
+    "triggers": [
+      "percentage"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Language models lower the cost of producing citation-bearing text far faster than they lower the cost of verifying it, and the surveyed detection methods operate on generated text rather than on the human citation act (Ji et al., 2023; Min et al., 2023; Manakul et al., 2023).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.0,
+    "sentence": "The full ledger of (c, s, q, \u03ba, v, \u03c4) entries produced by the audit is retained as the study's own provenance record.",
+    "triggers": [
+      "attribution"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2007).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2008).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2019).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "In *Proceedings of the 2019 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies* (ACL Anthology N19-1361).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(1955).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2009).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2020).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "https://doi.org/10.1016/j.giq.2020.101493",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "https://doi.org/10.1016/j.giq.2020.101493",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2015).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2023).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.0,
+    "sentence": "Survey of hallucination in natural language generation.",
+    "triggers": [
+      "attribution"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2023).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "In *Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing* (pp.",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "https://doi.org/10.18653/v1/2023.emnlp-main.557",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "https://doi.org/10.18653/v1/2023.emnlp-main.557",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(1968).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2023).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "In *Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing* (pp.",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "https://doi.org/10.18653/v1/2023.emnlp-main.741",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "https://doi.org/10.18653/v1/2023.emnlp-main.741",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2013).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "*PROV-DM: The PROV data model* (W3C Recommendation, 30 April 2013).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(1954).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2005).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.0,
+    "sentence": "A survey of data provenance in e-science.",
+    "triggers": [
+      "attribution"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "(2018).",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": "https://doi.org/10.1098/rsta.2018.0085",
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "https://doi.org/10.1098/rsta.2018.0085",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Two entries carry [VERIFY] tags introduced in v1.2 and preserved verbatim in v1.3: Simmhan, Plale, and Gannon (2005) is the reference added in response to the 2026-05-23 Technical-auditor finding that \u00a72.3 cited the work without a References entry; the citation is restored with [VERIFY] on pagination and DOI because the entry was not independently confirmed in-session via OpenAlex or the ACM Digital Library, and the resolution of that tag is a pre-submission step.",
+    "triggers": [
+      "year"
+    ]
+  },
+  {
+    "citation": null,
+    "load_bearing": false,
+    "salience": 0.1,
+    "sentence": "Merton (1968) retains a [VERIFY] tag for DOI consistency at camera-ready stage, deferred from v1.0.",
+    "triggers": [
+      "year"
+    ]
+  }
+]

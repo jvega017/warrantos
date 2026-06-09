@@ -1,0 +1,33 @@
+{
+  "actor_identity": {
+    "reviewer": "human:reviewer",
+    "writer": "human:juan"
+  },
+  "admitted_material": [],
+  "artefact_id": "draft.md",
+  "blocked_material": [],
+  "claims": [
+    {
+      "claim_id": "claim_7d35b5ea",
+      "status": "unsupported",
+      "support_ids": [],
+      "text": "The agency must comply with section 23 of the Privacy Act 1988."
+    }
+  ],
+  "classification_overrides": [],
+  "context_inputs": [],
+  "override_ledger_refs": [],
+  "review_findings": [],
+  "schema": "warrantos-cbom/v1",
+  "summary": {
+    "admitted_material": 0,
+    "blocked_material": 0,
+    "claims": 1,
+    "classification_overrides": 0,
+    "context_inputs": 0,
+    "override_ledger_refs": 0,
+    "review_findings": 0,
+    "transformations": 0
+  },
+  "transformations": []
+}

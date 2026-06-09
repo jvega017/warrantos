@@ -1,0 +1,38 @@
+{
+  "cbom": {
+    "schema": "cbom-v0.2"
+  },
+  "checkpoint": {
+    "algorithm": "sha256-merkle-rfc6962-domainsep",
+    "entry_count": 3,
+    "public_key": "i8juRdwIXk6CHP6h9_nHWi72nVVdBpBq_LdXiM6uwgs",
+    "root_hash": "sha256:385a1f4a720657ecbb4f2be65d38a3d34f0eebc20e6028840a846f9864039d60",
+    "run_id": "rweb",
+    "signature": "AiBOArRD27D4NDuwjVfnJe5Tr_w0h3BfaM2nFZepuJTvMU8zAn9XeHKGlrX1qRRbc2awEGJr5fFRyt131iX1Dg",
+    "timestamp": "2026-06-09T00:00:00Z",
+    "version": "warrantos-checkpoint-v1"
+  },
+  "ledger_entries": [
+    {
+      "id": 1,
+      "kind": "claim",
+      "source": "https://example.org/a",
+      "text": "Claim with unicode: \u00e9\u00fc"
+    },
+    {
+      "id": 2,
+      "kind": "claim",
+      "source": null,
+      "text": "Second claim"
+    },
+    {
+      "id": 3,
+      "kind": "override",
+      "reviewer": "human:director.so",
+      "single_actor": false
+    }
+  ],
+  "prose_sha256": "sha256:a0370aa3815ecd5fc0c49224a31406584bcb57c4a771175444b5abe00dc440d8",
+  "signed": true,
+  "version": "warrant-bundle-v1"
+}
