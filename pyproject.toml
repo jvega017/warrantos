@@ -51,6 +51,12 @@ dependencies = []
 # (provenance.mcp_server.call_tool_in_process) works without this.
 mcp = ["mcp>=1.0.0"]
 
+# Attestation: Ed25519 signing/verification of ledger checkpoints. The
+# integrity core (provenance.merkle) and .warrant integrity verification are
+# stdlib-only; only the asymmetric signature trust-anchor needs this, since the
+# standard library ships no public-key signing.
+attestation = ["cryptography>=41.0"]
+
 # Development extras: the test suite is stdlib unittest so no testing
 # dep is required.
 dev = []
