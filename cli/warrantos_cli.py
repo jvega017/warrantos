@@ -500,6 +500,16 @@ def to_claim_record(claim_row: Dict[str, Any], context_ids_admitted: List[str]) 
 # Consolidated verdict (Codex C1 fix: NOT_ASSESSABLE state)
 # ---------------------------------------------------------------------------
 
+# Profiles whose artefact is a final deliverable, where an independent human
+# review is part of what certifies a PASS. A same-actor (single-actor) review on
+# these compromises the separation-of-duties leg (SPEC-L8-S003).
+_SOD_FINAL_ARTEFACT_PROFILES = frozenset({
+    "final-prose", "audit", "paper-full", "methodology", "consultation_report",
+})
+# The strictest profiles: a same-actor review BLOCKs rather than HOLDs.
+_SOD_BLOCK_PROFILES = frozenset({"audit"})
+
+
 def consolidate_verdict(
     boundary_report: BoundaryResult,
     claim_rows: List[Dict[str, Any]],
@@ -507,6 +517,7 @@ def consolidate_verdict(
     actor_identity: Dict[str, str],
     classification_overrides: List[ClassificationOverrideRecord],
     artefact_role: str,
+    single_actor_override: bool = False,
 ) -> Tuple[str, List[str]]:
     """Return (verdict, reasons).
 
@@ -514,15 +525,22 @@ def consolidate_verdict(
 
     Decision order:
 
-    1. BLOCK if any verifier verdict is `contradicted`, or any boundary
-       violation occurred in a blocking profile.
-    2. HOLD if any unsupported load-bearing claim exists, or any
-       verifier verdict is `unverifiable` for a load-bearing claim.
+    1. BLOCK if any verifier verdict is `contradicted`, any boundary
+       violation occurred in a blocking profile, or a same-actor review
+       (single_actor_override) was recorded on a strict profile (SoD).
+    2. HOLD if any unsupported load-bearing claim exists, any verifier
+       verdict is `unverifiable` for a load-bearing claim, or a same-actor
+       review was recorded on a final-artefact profile (separation of
+       duties, SPEC-L8-S003: an independent reviewer is required to PASS).
     3. NOT_ASSESSABLE if the artefact role is `final-prose` and the
        run has no `actor_identity` map. This is the Codex C1 fix:
        a final-prose artefact requires the minimum override/identity
        coupling evidence to be certifiable as PASS.
     4. PASS otherwise.
+
+    `single_actor_override` is True when any human override on this run had
+    the writer and reviewer as the same actor. P0.1 makes separation of
+    duties a verdict-layer property, not just a footer marker.
     """
     reasons: List[str] = []
     role_lower = artefact_role.strip().lower()
@@ -540,6 +558,15 @@ def consolidate_verdict(
                 % (v.rule_id, v.severity, v.line_number, v.matched_text[:60])
             )
 
+    # Separation of duties (SPEC-L8-S003): on strict profiles a same-actor
+    # review BLOCKs, because the independent-review leg cannot be vouched for.
+    if single_actor_override and role_lower in _SOD_BLOCK_PROFILES:
+        reasons.append(
+            "BLOCK: separation of duties (SPEC-L8-S003): the writer and reviewer "
+            "are the same actor on a '%s' artefact; an independent review is "
+            "mandatory for this profile." % role_lower
+        )
+
     if reasons:
         return (VERDICT_BLOCK, reasons)
 
@@ -556,6 +583,15 @@ def consolidate_verdict(
             reasons.append(
                 "HOLD: unverifiable load-bearing claim: " + (v.get("claim_text") or "")[:80]
             )
+
+    # Separation of duties (SPEC-L8-S003): on a final-artefact profile a same-actor
+    # review downgrades to HOLD. An independent reviewer is required to certify PASS.
+    if single_actor_override and role_lower in _SOD_FINAL_ARTEFACT_PROFILES:
+        reasons.append(
+            "HOLD: separation of duties (SPEC-L8-S003): the writer and reviewer are "
+            "the same actor; an independent review is required to certify a final "
+            "artefact as PASS."
+        )
 
     if reasons:
         return (VERDICT_HOLD, reasons)
@@ -810,6 +846,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
 
     # --- Consolidated verdict ---
+    # Separation of duties: did any human override on this run have the writer and
+    # reviewer as the same actor? If so the verdict path enforces it (P0.1).
+    single_actor_override = any(
+        getattr(o, "single_actor", False) for o in overrides_on_record
+    )
     verdict, reasons = consolidate_verdict(
         boundary,
         claim_rows,
@@ -817,6 +858,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         actor_identity,
         cbom.classification_overrides,
         args.profile,
+        single_actor_override=single_actor_override,
     )
 
     # G3 informational annotation in the reasons list. SPEC-L7-N003 SHALL
