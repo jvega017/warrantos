@@ -1,0 +1,56 @@
+name: release
+
+# Tag-triggered release. Push a tag like v0.9.0b1 to build, create a GitHub
+# Release with the artefacts, and publish to PyPI via OIDC Trusted Publishing.
+#
+# One-time setup before the first tag (maintainer):
+#   1. Register the project name on PyPI (pypi.org/manage/account/publishing/)
+#      as a Trusted Publisher: owner jvega017, repo claude-provenance,
+#      workflow release.yml, environment pypi.
+#   2. Create a GitHub Environment named "pypi".
+# No API token is stored anywhere; the OIDC exchange handles authentication.
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write   # create the GitHub Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build and validate
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Create the GitHub Release with artefacts
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write   # OIDC for Trusted Publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+      - name: Publish to PyPI (Trusted Publishing, no stored token)
+        uses: pypa/gh-action-pypi-publish@release/v1

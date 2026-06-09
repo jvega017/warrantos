@@ -26,3 +26,46 @@ jobs:
         run: python eval/run_eval.py
       - name: Smoke-test the four-verdict gallery (thesis demo, must exit 0)
         run: python tools/run_gallery.py
+
+  # The signing tests SKIP without the optional extra. Run them at least once
+  # with [attestation] installed so the Ed25519 path is actually exercised.
+  attestation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install the attestation extra and run the suite
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[attestation]"
+          python -m unittest discover -s tests -v
+
+  # Packaging gate: build the wheel and sdist, validate metadata, and prove a
+  # clean install works with all console entry points. Catches packaging
+  # regressions before a release rather than at publish time.
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+      - name: Validate package metadata
+        run: python -m twine check dist/*
+      - name: Clean-venv install and entry-point smoke test
+        run: |
+          python -m venv /tmp/venv
+          /tmp/venv/bin/python -m pip install dist/*.whl
+          /tmp/venv/bin/warrantos status >/dev/null
+          /tmp/venv/bin/python -c "import provenance, cli, hooks; print('packages import')"
+      - name: Upload built artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/*
