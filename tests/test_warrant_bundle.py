@@ -1,5 +1,6 @@
 """Tests for the .warrant verifiable artefact (provenance.warrant_bundle)."""
 
+import os
 import unittest
 
 from provenance import attestation, warrant_bundle
@@ -28,18 +29,53 @@ def _bundle(priv=None):
     )
 
 
-class TestWarrantBundle(unittest.TestCase):
-    def test_unsigned_bundle_integrity_verifies(self):
-        # Force the unsigned path: no key passed and no env key.
-        b = warrant_bundle.create_warrant(
+def _unsigned_bundle():
+    # Build an unsigned bundle regardless of any ambient WARRANTOS_SIGNING_KEY.
+    old = os.environ.pop("WARRANTOS_SIGNING_KEY", None)
+    try:
+        return warrant_bundle.create_warrant(
             prose=_PROSE, cbom=_CBOM, ledger_entries=_LEDGER,
             run_id="run_b", timestamp="2026-06-09T00:00:00Z",
         )
+    finally:
+        if old is not None:
+            os.environ["WARRANTOS_SIGNING_KEY"] = old
+
+
+class TestWarrantBundle(unittest.TestCase):
+    def test_unsigned_bundle_is_overall_invalid_by_default(self):
+        # Fail-closed: integrity holds, but an UNSIGNED bundle is not overall VALID
+        # unless the verifier explicitly opts in. An attestation without a verified
+        # signer must not silently read as VALID.
+        b = _unsigned_bundle()
         r = warrant_bundle.verify_warrant(b, prose=_PROSE)
         self.assertEqual(r["integrity"], "VALID")
-        self.assertEqual(r["prose"], "VALID")
-        self.assertIn(r["signature"], ("UNSIGNED", "VALID"))  # env key may exist
+        self.assertEqual(r["signature"], "UNSIGNED")
+        self.assertEqual(r["overall"], "INVALID")
+
+    def test_unsigned_bundle_valid_only_with_allow_unsigned(self):
+        b = _unsigned_bundle()
+        r = warrant_bundle.verify_warrant(b, prose=_PROSE, allow_unsigned=True)
         self.assertEqual(r["overall"], "VALID")
+
+    def test_missing_checkpoint_root_is_invalid(self):
+        b = _unsigned_bundle()
+        b["checkpoint"].pop("root_hash", None)
+        self.assertEqual(warrant_bundle.verify_warrant(b, allow_unsigned=True)["integrity"], "INVALID")
+
+    def test_missing_ledger_entries_is_invalid(self):
+        b = _unsigned_bundle()
+        b.pop("ledger_entries", None)
+        # entries default to [] -> empty root, which will not match a non-empty checkpoint
+        self.assertEqual(warrant_bundle.verify_warrant(b, allow_unsigned=True)["integrity"], "INVALID")
+
+    def test_nan_in_entry_is_rejected_at_create(self):
+        with self.assertRaises(ValueError):
+            warrant_bundle.create_warrant(
+                prose=_PROSE, cbom=_CBOM,
+                ledger_entries=[{"id": 1, "x": float("nan")}],
+                run_id="r", timestamp="2026-06-09T00:00:00Z",
+            )
 
     def test_tampered_ledger_entry_breaks_integrity(self):
         b = _bundle()

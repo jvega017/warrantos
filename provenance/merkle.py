@@ -55,6 +55,7 @@ class ProofStep(NamedTuple):
 
 class InclusionProof(NamedTuple):
     index: int
+    size: int
     leaf: bytes
     steps: List[ProofStep]
 
@@ -120,18 +121,39 @@ class MerkleTree:
             else:
                 steps.append(ProofStep(level[idx - 1], on_left=True))
             idx //= 2
-        return InclusionProof(index=index, leaf=self._leaves[index], steps=steps)
+        return InclusionProof(
+            index=index, size=len(self._leaves), leaf=self._leaves[index], steps=steps
+        )
 
     @staticmethod
     def verify(proof: InclusionProof, root: bytes) -> bool:
-        """Recompute the root from a leaf and its proof; compare to ``root``."""
+        """Recompute the root from a leaf and its proof; compare to ``root``.
+
+        The combine order at each level is derived from ``(index, size)``, not
+        trusted from the proof, so a proof for one position cannot be replayed
+        at another. All steps must be consumed exactly, so extra forged steps
+        are rejected. ``size`` binds the proof to the tree it was issued for.
+        """
+        if proof.size <= 0 or not (0 <= proof.index < proof.size):
+            return False
         running = proof.leaf
-        for step in proof.steps:
-            if step.on_left:
-                running = node_hash(step.sibling, running)
-            else:
-                running = node_hash(running, step.sibling)
-        return running == root
+        idx, sz, si = proof.index, proof.size, 0
+        steps = proof.steps
+        while sz > 1:
+            if idx % 2 == 1:  # right child: sibling is on the left
+                if si >= len(steps):
+                    return False
+                running = node_hash(steps[si].sibling, running)
+                si += 1
+            elif idx + 1 < sz:  # left child with a right sibling
+                if si >= len(steps):
+                    return False
+                running = node_hash(running, steps[si].sibling)
+                si += 1
+            # else: left child promoted (odd node at this level), no step consumed
+            idx //= 2
+            sz = (sz + 1) // 2
+        return si == len(steps) and running == root
 
 
 def ledger_root(entries: Sequence[bytes]) -> str:

@@ -91,13 +91,39 @@ class TestInclusionProofs(unittest.TestCase):
         t = MerkleTree(_entries(8))
         root = t.root()
         p = t.proof(2)
-        forged = InclusionProof(index=p.index, leaf=leaf_hash(b"forged"), steps=p.steps)
+        forged = InclusionProof(index=p.index, size=p.size, leaf=leaf_hash(b"forged"), steps=p.steps)
         self.assertFalse(MerkleTree.verify(forged, root))
 
     def test_out_of_range_index_raises(self):
         t = MerkleTree(_entries(4))
         with self.assertRaises(IndexError):
             t.proof(4)
+
+    def test_proof_replayed_at_wrong_index_fails(self):
+        # A valid proof for index i must not verify when its index is changed,
+        # because the combine order is derived from (index, size), not trusted.
+        t = MerkleTree(_entries(8)); root = t.root()
+        p = t.proof(2)
+        forged = InclusionProof(index=5, size=p.size, leaf=p.leaf, steps=p.steps)
+        self.assertFalse(MerkleTree.verify(forged, root))
+
+    def test_proof_with_wrong_size_fails(self):
+        t = MerkleTree(_entries(8)); root = t.root()
+        p = t.proof(3)
+        self.assertFalse(MerkleTree.verify(InclusionProof(p.index, 9, p.leaf, p.steps), root))
+
+    def test_proof_with_extra_forged_step_fails(self):
+        t = MerkleTree(_entries(8)); root = t.root()
+        p = t.proof(0)
+        from provenance.merkle import ProofStep
+        tampered = InclusionProof(p.index, p.size, p.leaf, list(p.steps) + [ProofStep(b"\x00" * 32, False)])
+        self.assertFalse(MerkleTree.verify(tampered, root))
+
+    def test_proof_from_different_tree_fails(self):
+        t1 = MerkleTree(_entries(8))
+        t2 = MerkleTree([("other-%d" % i).encode() for i in range(8)])
+        p = t2.proof(3)  # proof from a different tree of the same size
+        self.assertFalse(MerkleTree.verify(p, t1.root()))
 
 
 class TestCheckpoint(unittest.TestCase):

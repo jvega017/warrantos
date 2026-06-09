@@ -32,8 +32,12 @@ def _prose_digest(prose: str) -> str:
 
 
 def _entry_bytes(entry: dict) -> bytes:
-    # Canonical, deterministic serialisation so the root is reproducible anywhere.
-    return json.dumps(entry, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    # Canonical, deterministic serialisation so the root is reproducible anywhere,
+    # including in the JavaScript web verifier. allow_nan=False rejects NaN/Infinity,
+    # which are not valid JSON and have no JS equivalent (a silent divergence vector).
+    return json.dumps(
+        entry, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
 
 
 def create_warrant(
@@ -80,25 +84,33 @@ def verify_warrant(
     *,
     prose: Optional[str] = None,
     expected_public_key_b64: Optional[str] = None,
+    allow_unsigned: bool = False,
 ) -> dict:
-    """Verify a ``.warrant`` bundle offline.
+    """Verify a ``.warrant`` bundle offline. Fail-closed by default.
 
     Returns a result dict with:
     - ``integrity``: ``VALID`` if the Merkle root recomputed from the entries
-      matches the checkpoint, else ``INVALID``.
+      matches the checkpoint root, else ``INVALID``. A missing checkpoint or
+      missing root is ``INVALID`` (you cannot trust what is not committed to).
     - ``prose``: ``VALID`` / ``INVALID`` / ``NOT_CHECKED`` (only if ``prose`` given).
     - ``signature``: ``VALID`` / ``INVALID`` / ``UNKNOWN_KEY`` / ``UNSIGNED`` /
-      ``UNAVAILABLE`` (extra not installed).
+      ``UNAVAILABLE`` (the [attestation] extra is not installed).
     - ``overall``: ``VALID`` only if integrity is VALID, prose is not INVALID, and
-      signature is VALID or UNSIGNED. Otherwise ``INVALID``.
+      the signature is VALID. An UNSIGNED or UNAVAILABLE signature is overall
+      ``INVALID`` UNLESS ``allow_unsigned=True`` is passed explicitly, so an
+      attestation is not silently accepted without a verified signer.
     """
     result = {"integrity": "INVALID", "prose": "NOT_CHECKED", "signature": "UNSIGNED"}
     cp = bundle.get("checkpoint") or {}
-    entries = bundle.get("ledger_entries") or []
+    entries = bundle.get("ledger_entries")
+    if entries is None:
+        entries = []
 
-    # 1. Integrity: recompute the Merkle root from the entries.
+    # 1. Integrity: recompute the Merkle root from the entries. A bundle with no
+    # checkpoint root cannot be integrity-valid (nothing was committed to).
     recomputed = merkle.ledger_root([_entry_bytes(e) for e in entries])
-    result["integrity"] = "VALID" if recomputed == cp.get("root_hash") else "INVALID"
+    root = cp.get("root_hash")
+    result["integrity"] = "VALID" if (root and recomputed == root) else "INVALID"
 
     # 2. Prose digest (optional).
     if prose is not None:
@@ -114,10 +126,13 @@ def verify_warrant(
     else:
         result["signature"] = "UNSIGNED"
 
+    sig_ok = result["signature"] == "VALID" or (
+        allow_unsigned and result["signature"] in ("UNSIGNED", "UNAVAILABLE")
+    )
     ok = (
         result["integrity"] == "VALID"
         and result["prose"] != "INVALID"
-        and result["signature"] in ("VALID", "UNSIGNED", "UNAVAILABLE")
+        and sig_ok
     )
     result["overall"] = "VALID" if ok else "INVALID"
     return result

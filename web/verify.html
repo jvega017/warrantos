@@ -27,6 +27,7 @@ a{color:var(--accent)}
 <div class="opt">
   <label>Expected signer public key (optional, pins attribution)<input type="text" id="key" placeholder="base64url Ed25519 public key"></label>
   <label>Original prose (optional, checks the digest)<textarea id="prose" rows="2" placeholder="paste the attested document text"></textarea></label>
+  <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="allowUnsigned"> accept unsigned (integrity only)</label>
 </div>
 <div class="card" id="result"></div>
 <footer>Integrity (Merkle root) and prose digest verify with no dependencies. Signature uses the browser Web Crypto Ed25519. Open source: WarrantOS.</footer>
@@ -88,12 +89,12 @@ async function merkleRoot(entries){
   return level[0];
 }
 
-async function verifyWarrant(bundle, prose, expectedKey){
+async function verifyWarrant(bundle, prose, expectedKey, allowUnsigned){
   const res = {integrity:"INVALID", prose:"NOT_CHECKED", signature:"UNSIGNED"};
   const cp = bundle.checkpoint || {};
   const entries = bundle.ledger_entries || [];
   const root = "sha256:" + hex(await merkleRoot(entries));
-  res.integrity = (root === cp.root_hash) ? "VALID" : "INVALID";
+  res.integrity = (cp.root_hash && root === cp.root_hash) ? "VALID" : "INVALID";
 
   if (prose != null && prose !== ""){
     const pd = "sha256:" + hex(await sha256(enc.encode(prose)));
@@ -113,12 +114,15 @@ async function verifyWarrant(bundle, prose, expectedKey){
       } catch(e){ res.signature = "UNAVAILABLE"; }
     }
   }
-  const ok = res.integrity==="VALID" && res.prose!=="INVALID" && ["VALID","UNSIGNED","UNAVAILABLE"].includes(res.signature);
+  // Fail-closed: an unsigned or unverifiable signature is overall INVALID unless
+  // the verifier explicitly opts in to accept integrity-only bundles.
+  const sigOk = res.signature==="VALID" || (allowUnsigned && ["UNSIGNED","UNAVAILABLE"].includes(res.signature));
+  const ok = res.integrity==="VALID" && res.prose!=="INVALID" && sigOk;
   res.overall = ok ? "VALID" : "INVALID";
   return res;
 }
 // Test hook for headless validation.
-window.__verify = async (text, prose, key) => verifyWarrant(JSON.parse(text), prose||null, key||null);
+window.__verify = async (text, prose, key, allowUnsigned) => verifyWarrant(JSON.parse(text), prose||null, key||null, !!allowUnsigned);
 
 function render(res, bundle){
   const card = document.getElementById("result"); card.style.display="block";
@@ -133,7 +137,7 @@ function render(res, bundle){
 }
 async function handle(text){
   let bundle; try{ bundle=JSON.parse(text);}catch(e){ alert("Not valid JSON"); return; }
-  const res = await verifyWarrant(bundle, document.getElementById("prose").value, document.getElementById("key").value.trim()||null);
+  const res = await verifyWarrant(bundle, document.getElementById("prose").value, document.getElementById("key").value.trim()||null, document.getElementById("allowUnsigned").checked);
   render(res, bundle);
 }
 const drop=document.getElementById("drop"), file=document.getElementById("file");
