@@ -63,5 +63,45 @@ class TestAttestation(unittest.TestCase):
         self.assertNotIn(b"signature", a)
 
 
+class TestCanonicalBytes(unittest.TestCase):
+    """canonical_bytes is the byte-exact contract the JS web verifier must match.
+    These are known-answer vectors: if any of these change, the web verifier and
+    every previously-signed checkpoint break, so they are pinned deliberately."""
+
+    def kat(self, obj, expected):
+        self.assertEqual(attestation.canonical_bytes(obj), expected)
+
+    def test_key_ordering_is_sorted(self):
+        self.kat({"b": 1, "a": 2}, b'{"a":2,"b":1}')
+
+    def test_no_whitespace(self):
+        self.kat({"x": [1, 2, 3]}, b'{"x":[1,2,3]}')
+
+    def test_nested(self):
+        self.kat({"o": {"z": 1, "a": 2}, "l": [{"k": "v"}]}, b'{"l":[{"k":"v"}],"o":{"a":2,"z":1}}')
+
+    def test_empty_string_and_null_and_bools(self):
+        self.kat({"e": "", "n": None, "t": True, "f": False}, b'{"e":"","f":false,"n":null,"t":true}')
+
+    def test_non_ascii_is_escaped(self):
+        # ensure_ascii: e-acute escapes to é (matching Python json.dumps default).
+        self.kat({"s": "é"}, b'{"s":"\\u00e9"}')
+
+    def test_astral_uses_surrogate_pair(self):
+        # U+1F600 escapes to a surrogate pair, which the JS verifier must reproduce.
+        self.kat({"s": "\U0001f600"}, b'{"s":"\\ud83d\\ude00"}')
+
+    def test_integer_formatting(self):
+        self.kat({"n": 1000000}, b'{"n":1000000}')
+
+    def test_nan_and_infinity_rejected(self):
+        for bad in (float("nan"), float("inf"), float("-inf")):
+            with self.assertRaises(ValueError):
+                attestation.canonical_bytes({"x": bad})
+
+    def test_signature_and_public_key_excluded(self):
+        self.kat({"a": 1, "signature": "x", "public_key": "y"}, b'{"a":1}')
+
+
 if __name__ == "__main__":
     unittest.main()

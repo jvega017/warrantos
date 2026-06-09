@@ -65,7 +65,11 @@ def canonical_bytes(body: dict) -> bytes:
     content regardless of how the signed object is later reassembled.
     """
     payload = {k: v for k, v in body.items() if k not in ("signature", "public_key")}
-    return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    # allow_nan=False: NaN/Infinity are not valid JSON and cannot round-trip to the
+    # JavaScript verifier, so a checkpoint containing them must not be signable.
+    return json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
 
 
 def generate_keypair() -> Tuple[str, str]:

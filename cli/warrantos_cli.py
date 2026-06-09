@@ -301,6 +301,11 @@ def build_parser() -> argparse.ArgumentParser:
     verify.add_argument("warrant", help="Path to the .warrant file.")
     verify.add_argument("--prose", default=None, help="Optional prose to check the digest against.")
     verify.add_argument("--key", default=None, help="Expected signer public key (base64url) to pin attribution.")
+    verify.add_argument(
+        "--allow-unsigned", action="store_true",
+        help="Accept an integrity-valid but UNSIGNED bundle as overall VALID. "
+             "By default an unsigned or unverifiable signature is overall INVALID.",
+    )
     verify.add_argument("--json", action="store_true", help="Emit the verdict as JSON.")
 
     return parser
@@ -816,7 +821,10 @@ def _cmd_attest(args) -> int:
     )
     out = Path(args.out or (args.prose + ".warrant"))
     out.write_text(json.dumps(bundle, indent=2, sort_keys=True), encoding="utf-8")
-    signed = "signed" if bundle.get("signed") else "unsigned (no signing key)"
+    if bundle.get("signed"):
+        signed = "signed"
+    else:
+        signed = "UNSIGNED (set WARRANTOS_SIGNING_KEY to attribute; verify needs --allow-unsigned)"
     sys.stdout.write(
         "Wrote %s\n  root: %s\n  entries: %d  %s\n"
         % (out, bundle["checkpoint"]["root_hash"], len(entries), signed)
@@ -834,7 +842,8 @@ def _cmd_verify_external(args) -> int:
         return 2
     prose = Path(args.prose).read_text(encoding="utf-8") if args.prose else None
     result = warrant_bundle.verify_warrant(
-        bundle, prose=prose, expected_public_key_b64=args.key
+        bundle, prose=prose, expected_public_key_b64=args.key,
+        allow_unsigned=args.allow_unsigned,
     )
     if args.json:
         sys.stdout.write(json.dumps(result, indent=2, sort_keys=True) + "\n")

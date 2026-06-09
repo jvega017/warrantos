@@ -272,6 +272,10 @@ def tool_warrant_check(args: Dict[str, Any]) -> Dict[str, Any]:
         override_ledger_refs=[str(o.id) for o in overrides_on_record],
     )
 
+    # Separation of duties must apply on the MCP path too, not just the CLI.
+    single_actor_override = any(
+        getattr(o, "single_actor", False) for o in overrides_on_record
+    )
     verdict, reasons = pipeline.consolidate_verdict(
         boundary,
         claim_rows,
@@ -279,6 +283,7 @@ def tool_warrant_check(args: Dict[str, Any]) -> Dict[str, Any]:
         dict(actor_identity),
         cbom.classification_overrides,
         profile,
+        single_actor_override=single_actor_override,
     )
 
     footer_markdown = pipeline.render_override_footer(overrides_on_record)

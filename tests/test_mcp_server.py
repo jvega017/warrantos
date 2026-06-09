@@ -179,6 +179,27 @@ class TestWarrantCheckTool(unittest.TestCase):
         self.assertEqual(result["cbom_schema"], "warrantos-cbom/v1")
         self.assertEqual(result["boundary_verdict"], "pass")
 
+    def test_single_actor_override_downgrades_verdict_on_mcp_path(self):
+        # Regression: the MCP check tool must apply separation of duties just like
+        # the CLI. A same-actor override on a clean final-prose note (which would
+        # otherwise PASS) must downgrade the verdict.
+        db = str(self.tmp / "sod.db")
+        run_id = "run_sod_mcp"
+        tool_warrant_record_override({
+            "db_path": db, "run_id": run_id, "reviewer": "human:director.so",
+            "gate_id": "G1", "failure_class": "boundary",
+            "risk_accepted": "Same-actor review recorded.",
+            "compensating_control": "None; exercises SoD on the MCP path.",
+            "single_actor": True,
+        })
+        result = tool_warrant_check({
+            "draft_path": str(self.draft), "actor_identity": _FINAL_ACTOR,
+            "profile": "final-prose", "out_dir": str(self.tmp / "out_sod"),
+            "db_path": db, "run_id": run_id,
+        })
+        self.assertIn(result["verdict"], ("HOLD", "BLOCK"))
+        self.assertTrue(any("separation of duties" in r.lower() for r in result["reasons"]))
+
     def test_not_assessable_without_actor_identity(self):
         result = tool_warrant_check(
             {

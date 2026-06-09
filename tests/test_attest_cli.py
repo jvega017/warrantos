@@ -15,6 +15,16 @@ _DRAFT = "# Brief\n\nThe agency must comply with section 23 of the Privacy Act 1
 
 class TestAttestVerifyCli(unittest.TestCase):
     def setUp(self):
+        # Sign attested bundles so the round-trip verifies under the fail-closed
+        # default (an unsigned bundle is overall INVALID without --allow-unsigned).
+        from provenance import attestation
+        self._old_key = os.environ.pop("WARRANTOS_SIGNING_KEY", None)
+        try:
+            priv, _pub = attestation.generate_keypair()
+            os.environ["WARRANTOS_SIGNING_KEY"] = priv
+            self._signed = True
+        except attestation.AttestationUnavailable:
+            self._signed = False
         self._tmp = tempfile.TemporaryDirectory()
         self.dir = Path(self._tmp.name)
         self.draft = self.dir / "draft.md"
@@ -35,6 +45,9 @@ class TestAttestVerifyCli(unittest.TestCase):
 
     def tearDown(self):
         self._tmp.cleanup()
+        os.environ.pop("WARRANTOS_SIGNING_KEY", None)
+        if self._old_key is not None:
+            os.environ["WARRANTOS_SIGNING_KEY"] = self._old_key
 
     def test_attest_then_verify_is_valid(self):
         warrant = self.dir / "draft.warrant"
@@ -46,10 +59,20 @@ class TestAttestVerifyCli(unittest.TestCase):
         bundle = json.loads(warrant.read_text(encoding="utf-8"))
         self.assertEqual(bundle["version"], "warrant-bundle-v1")
 
-        rc = warrantos_cli.main([
-            "verify-external", str(warrant), "--prose", str(self.draft),
-        ])
-        self.assertEqual(rc, 0)  # VALID exits 0
+        argv = ["verify-external", str(warrant), "--prose", str(self.draft)]
+        if not self._signed:
+            argv.append("--allow-unsigned")  # no attestation extra: integrity only
+        self.assertEqual(warrantos_cli.main(argv), 0)  # VALID exits 0
+
+    def test_unsigned_bundle_fails_closed_without_flag(self):
+        # Strip the signing key so attest produces an unsigned bundle.
+        os.environ.pop("WARRANTOS_SIGNING_KEY", None)
+        warrant = self.dir / "unsigned.warrant"
+        warrantos_cli.main(["attest", str(self.draft), "--run-dir", str(self.run_dir), "--out", str(warrant)])
+        # Default: unsigned is overall INVALID -> exit 1.
+        self.assertEqual(warrantos_cli.main(["verify-external", str(warrant), "--prose", str(self.draft)]), 1)
+        # With the explicit opt-in: integrity-only acceptance -> exit 0.
+        self.assertEqual(warrantos_cli.main(["verify-external", str(warrant), "--prose", str(self.draft), "--allow-unsigned"]), 0)
 
     def test_verify_detects_tampered_prose(self):
         warrant = self.dir / "draft.warrant"
