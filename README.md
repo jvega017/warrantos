@@ -6,9 +6,17 @@
 ![python: 3.8--3.13](https://img.shields.io/badge/python-3.8--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
 
-**WarrantOS reference implementation: an auditable governance harness for AI-assisted writing.** Every claim, source, context use, and human override is recorded as evidence, not promise. Stdlib-first core. MIT.
+## No claim ships without a warrant.
 
-`claude-provenance` wraps AI-assisted writing in an eight-layer pipeline so that the final artefact ships clean prose, while a separate audit ledger carries the sources, the feedback, the review history, the transformations, and the structured overrides that produced it. A four-state verdict (`PASS` / `HOLD` / `BLOCK` / `NOT_ASSESSABLE`) tells you what to do next; the per-layer status dashboard tells you exactly what is built and what is not.
+WarrantOS does not detect truth, and it does not try to. It enforces that every claim in an AI-assisted document carries a warrant: a source, an explicit `[CITE NEEDED]`, or a `BLOCK` on the record. A four-state verdict (`PASS` / `HOLD` / `BLOCK` / `NOT_ASSESSABLE`) gates the output before it ships, and every miss is written to a tamper-evident, append-only ledger you can hand an auditor.
+
+It governs the artefact, not the model. It runs at the writer's desk, on one document, before it ships, with zero infrastructure: stdlib-only, MIT, no API, no account. Governance platforms watch the system after the fact; WarrantOS gates the output before the fact.
+
+Built by a serving public-sector policy officer for the people who publish AI-assisted writing under their own name and carry the reputational liability for a fabricated citation: research-integrity, policy, and academic-governance practitioners. It is the reference implementation of the forthcoming paper *From Citation to Epistemic Governance*.
+
+**The honest demo.** I ran WarrantOS over my own daily policy brief. It returned `BLOCK`: 14 claims, 0 supported, 7 boundary violations. I ship that brief to readers. That is the point: a governance tool worth trusting is one that holds its own author to the standard.
+
+Under the hood, `claude-provenance` wraps AI-assisted writing in an eight-layer pipeline so the final artefact ships clean prose, while a separate audit ledger carries the sources, the feedback, the review history, the transformations, and the structured overrides that produced it. The per-layer status dashboard tells you exactly what is built and what is not.
 
 > **v0.9.0b1 beta.** Build state: **12 BUILT / 3 PARTIAL / 2 STARTER / 2 NOT_BUILT**. See [`docs/STATUS.md`](docs/STATUS.md) before evaluating scope. The two `NOT_BUILT` rows (Data Classification, Retention/Tombstones) are explicit v1.0 deferrals that require domain input from the adopter and cannot be fabricated.
 
