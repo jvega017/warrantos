@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WarrantOS .warrant verifier</title>
+<style>
+:root{--bg:#0b0d12;--ink:#e8e6df;--muted:#a7a9b4;--ok:#4ade80;--bad:#f87171;--accent:#7aa2f7}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:system-ui,Segoe UI,sans-serif;line-height:1.6;padding:48px 20px;max-width:720px;margin:0 auto}
+h1{font-size:30px;letter-spacing:-.02em}
+.sub{color:var(--muted);margin:6px 0 26px}
+.drop{border:2px dashed #2a2f3a;border-radius:12px;padding:40px;text-align:center;color:var(--muted);cursor:pointer;transition:border-color .2s}
+.drop.over{border-color:var(--accent)}
+.opt{margin:18px 0;display:flex;gap:18px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.opt label{display:flex;flex-direction:column;gap:6px}
+input[type=text],textarea{background:#11141b;border:1px solid #2a2f3a;color:var(--ink);border-radius:6px;padding:8px;font-family:ui-monospace,monospace;font-size:12px;min-width:280px}
+.card{margin-top:26px;border:1px solid #21242c;border-radius:12px;padding:22px;display:none}
+.badge{font-size:22px;font-weight:600;margin-bottom:14px}
+.row{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid #1b1e26;font-family:ui-monospace,monospace;font-size:13px}
+.v-ok{color:var(--ok)} .v-bad{color:var(--bad)} .v-na{color:var(--muted)}
+.meta{margin-top:14px;font-size:12px;color:var(--muted);word-break:break-all}
+footer{margin-top:40px;color:var(--muted);font-size:12px}
+a{color:var(--accent)}
+</style></head><body>
+<h1>WarrantOS verifier</h1>
+<div class="sub">Drop a <code>.warrant</code> file. Verification runs entirely in your browser. Nothing is uploaded.</div>
+<div class="drop" id="drop">Drop a .warrant here, or click to choose<input type="file" id="file" accept=".warrant,.json,application/json" hidden></div>
+<div class="opt">
+  <label>Expected signer public key (optional, pins attribution)<input type="text" id="key" placeholder="base64url Ed25519 public key"></label>
+  <label>Original prose (optional, checks the digest)<textarea id="prose" rows="2" placeholder="paste the attested document text"></textarea></label>
+</div>
+<div class="card" id="result"></div>
+<footer>Integrity (Merkle root) and prose digest verify with no dependencies. Signature uses the browser Web Crypto Ed25519. Open source: WarrantOS.</footer>
+<script>
+const enc = new TextEncoder();
+
+// Canonical JSON matching Python json.dumps(sort_keys=True, separators=(",",":")) with
+// ensure_ascii=True: sorted keys, no whitespace, non-ASCII escaped to \uXXXX.
+function canon(v){
+  if (v === null) return "null";
+  if (typeof v === "number") return Number.isInteger(v) ? String(v) : JSON.stringify(v);
+  if (typeof v === "boolean") return v ? "true" : "false";
+  if (typeof v === "string") return canonStr(v);
+  if (Array.isArray(v)) return "[" + v.map(canon).join(",") + "]";
+  const keys = Object.keys(v).sort();
+  return "{" + keys.map(k => canonStr(k) + ":" + canon(v[k])).join(",") + "}";
+}
+function canonStr(s){
+  let out = '"';
+  for (const ch of s){
+    const c = ch.codePointAt(0);
+    if (ch === '"') out += '\\"';
+    else if (ch === '\\') out += '\\\\';
+    else if (c === 0x08) out += '\\b';
+    else if (c === 0x09) out += '\\t';
+    else if (c === 0x0a) out += '\\n';
+    else if (c === 0x0c) out += '\\f';
+    else if (c === 0x0d) out += '\\r';
+    else if (c < 0x20) out += '\\u' + c.toString(16).padStart(4,'0');
+    else if (c < 0x7f) out += ch;
+    else { // escape >= 0x7f as \uXXXX (surrogate pairs for astral, matching Python)
+      for (const u of utf16units(c)) out += '\\u' + u.toString(16).padStart(4,'0');
+    }
+  }
+  return out + '"';
+}
+function utf16units(cp){
+  if (cp <= 0xffff) return [cp];
+  cp -= 0x10000;
+  return [0xd800 + (cp >> 10), 0xdc00 + (cp & 0x3ff)];
+}
+async function sha256(bytes){ return new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)); }
+function concat(a,b){ const o=new Uint8Array(a.length+b.length); o.set(a,0); o.set(b,a.length); return o; }
+function hex(bytes){ return Array.from(bytes).map(b=>b.toString(16).padStart(2,"0")).join(""); }
+function b64urlDecode(s){ s=s.replace(/-/g,"+").replace(/_/g,"/"); while(s.length%4)s+="="; const bin=atob(s); const o=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)o[i]=bin.charCodeAt(i); return o; }
+
+async function leafHash(entry){ return sha256(concat(new Uint8Array([0]), enc.encode(canon(entry)))); }
+async function merkleRoot(entries){
+  if (entries.length === 0) return await sha256(new Uint8Array(0));
+  let level = []; for (const e of entries) level.push(await leafHash(e));
+  while (level.length > 1){
+    const nxt=[];
+    for (let i=0;i<level.length;i+=2){
+      if (i+1<level.length) nxt.push(await sha256(concat(concat(new Uint8Array([1]), level[i]), level[i+1])));
+      else nxt.push(level[i]);
+    }
+    level=nxt;
+  }
+  return level[0];
+}
+
+async function verifyWarrant(bundle, prose, expectedKey){
+  const res = {integrity:"INVALID", prose:"NOT_CHECKED", signature:"UNSIGNED"};
+  const cp = bundle.checkpoint || {};
+  const entries = bundle.ledger_entries || [];
+  const root = "sha256:" + hex(await merkleRoot(entries));
+  res.integrity = (root === cp.root_hash) ? "VALID" : "INVALID";
+
+  if (prose != null && prose !== ""){
+    const pd = "sha256:" + hex(await sha256(enc.encode(prose)));
+    res.prose = (pd === bundle.prose_sha256) ? "VALID" : "INVALID";
+  }
+
+  if (cp.signature){
+    const pub = cp.public_key;
+    if (expectedKey && expectedKey !== pub){ res.signature = "UNKNOWN_KEY"; }
+    else {
+      try{
+        const body = {}; for (const k of Object.keys(cp)) if (k!=="signature" && k!=="public_key") body[k]=cp[k];
+        const msg = enc.encode(canon(body));
+        const key = await crypto.subtle.importKey("raw", b64urlDecode(pub), {name:"Ed25519"}, false, ["verify"]);
+        const ok = await crypto.subtle.verify({name:"Ed25519"}, key, b64urlDecode(cp.signature), msg);
+        res.signature = ok ? "VALID" : "INVALID";
+      } catch(e){ res.signature = "UNAVAILABLE"; }
+    }
+  }
+  const ok = res.integrity==="VALID" && res.prose!=="INVALID" && ["VALID","UNSIGNED","UNAVAILABLE"].includes(res.signature);
+  res.overall = ok ? "VALID" : "INVALID";
+  return res;
+}
+// Test hook for headless validation.
+window.__verify = async (text, prose, key) => verifyWarrant(JSON.parse(text), prose||null, key||null);
+
+function render(res, bundle){
+  const card = document.getElementById("result"); card.style.display="block";
+  const cls = v => v==="VALID"?"v-ok":(v==="INVALID"||v==="UNKNOWN_KEY"?"v-bad":"v-na");
+  const ver = bundle.checkpoint && bundle.checkpoint.version || "?";
+  card.innerHTML =
+    '<div class="badge '+cls(res.overall)+'">'+(res.overall==="VALID"?"VALID":"NOT VALID")+'</div>'+
+    '<div class="row"><span>integrity (Merkle root)</span><span class="'+cls(res.integrity)+'">'+res.integrity+'</span></div>'+
+    '<div class="row"><span>prose digest</span><span class="'+cls(res.prose)+'">'+res.prose+'</span></div>'+
+    '<div class="row"><span>signature</span><span class="'+cls(res.signature)+'">'+res.signature+'</span></div>'+
+    '<div class="meta">checkpoint '+ver+' &middot; '+(bundle.ledger_entries||[]).length+' ledger entries &middot; root '+(bundle.checkpoint&&bundle.checkpoint.root_hash||"?")+'</div>';
+}
+async function handle(text){
+  let bundle; try{ bundle=JSON.parse(text);}catch(e){ alert("Not valid JSON"); return; }
+  const res = await verifyWarrant(bundle, document.getElementById("prose").value, document.getElementById("key").value.trim()||null);
+  render(res, bundle);
+}
+const drop=document.getElementById("drop"), file=document.getElementById("file");
+drop.onclick=()=>file.click();
+file.onchange=e=>{ const f=e.target.files[0]; if(f){ const r=new FileReader(); r.onload=()=>handle(r.result); r.readAsText(f);} };
+drop.ondragover=e=>{e.preventDefault();drop.classList.add("over");};
+drop.ondragleave=()=>drop.classList.remove("over");
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove("over"); const f=e.dataTransfer.files[0]; if(f){const r=new FileReader();r.onload=()=>handle(r.result);r.readAsText(f);}};
+</script>
+</body></html>
