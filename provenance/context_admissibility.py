@@ -460,11 +460,44 @@ _BRIEF_LIGHT_RULES = [
     ("build_label", re.compile(r"\bbuild\b[: ]+[A-Za-z0-9_.-]{6,}", re.I), "medium"),
 ]
 
+# The core value proposition: AI assistant scaffold and conversational residue
+# that bleeds from the chat into the final artefact. These are the unambiguous
+# "AI tells" that should never survive into a shipped document. SPEC-L7-G1.
+_AI_RESIDUE_RULES = [
+    ("ai_self_reference", re.compile(
+        r"\bas an? (ai|artificial intelligence|language model|large language model|ai (language )?(model|assistant))\b"
+        r"|\bI(?:'m| am) an? (ai|language model|assistant)\b", re.I), "high"),
+    ("ai_capability_disclaimer", re.compile(
+        r"\bI (?:cannot|can(?:'|no)t|am unable to|'m unable to) (?:verify|access|browse|provide|confirm|guarantee)\b"
+        r"|\bI (?:do not|don'?t) have (?:access|the ability|real[- ]time)\b", re.I), "high"),
+    ("assistant_opener", re.compile(
+        r"(?im)^\s*(certainly|sure|of course|absolutely|great question|no problem|happy to help|understood)[!,.:]",
+    ), "high"),
+    ("assistant_closer", re.compile(
+        r"\bI hope (?:this|that) helps\b|\blet me know if\b|\bfeel free to (?:ask|reach out|let me)\b"
+        r"|\bis there anything else\b|\bwould you like me to\b|\bplease let me know if\b"
+        r"|\bhappy to (?:revise|expand|adjust|help|assist|clarify)\b|\bI'?d be happy to\b", re.I), "high"),
+    ("delivery_framing", re.compile(
+        r"\bhere(?:'s| is) (?:the|a|an|your) (?:revised|updated|final|new|requested|reworked|polished)\b"
+        r"|\bbelow is (?:the|a|your) (?:revised|updated|final|requested)\b", re.I), "medium"),
+    ("request_acknowledgement", re.compile(
+        r"\bas (?:requested|per your (?:request|instructions?))\b|\bper your request\b", re.I), "medium"),
+    ("hedge_provenance", re.compile(
+        r"\bbased on the (?:information|context|data|details) (?:provided|available|you (?:provided|gave))\b"
+        r"|\bbased on the available (?:information|data|context)\b", re.I), "medium"),
+    ("future_promise", re.compile(
+        r"\bI(?:'ll| will)(?: now| then)? (?:revise|update|adjust|expand|add|change|incorporate|rework)\b", re.I), "medium"),
+    ("apology", re.compile(r"\bI apologi[sz]e\b|\bmy apologies\b|\bsorry for the\b", re.I), "medium"),
+    ("scaffold_placeholder", re.compile(
+        r"\[(?:TODO|INSERT|PLACEHOLDER|ADD|FIXME|XXX|YOUR [A-Z ]+|\.\.\.)\b[^\]]*\]"
+        r"|\bTKTK\b|\blorem ipsum\b|\[\.\.\.\]", re.I), "high"),
+]
+
 _PROFILE_RULES = {
-    "final-prose": _BASE_LEAKAGE_RULES + _BRIEF_LIGHT_RULES,
-    "final": _BASE_LEAKAGE_RULES + _BRIEF_LIGHT_RULES,
-    "brief-light": _BASE_LEAKAGE_RULES + _BRIEF_LIGHT_RULES,
-    "paper-full": _BASE_LEAKAGE_RULES,
+    "final-prose": _BASE_LEAKAGE_RULES + _BRIEF_LIGHT_RULES + _AI_RESIDUE_RULES,
+    "final": _BASE_LEAKAGE_RULES + _BRIEF_LIGHT_RULES + _AI_RESIDUE_RULES,
+    "brief-light": _BASE_LEAKAGE_RULES + _BRIEF_LIGHT_RULES + _AI_RESIDUE_RULES,
+    "paper-full": _BASE_LEAKAGE_RULES + _AI_RESIDUE_RULES,
     # SPEC-v0.2 calibration profile added in v0.9 after empirical testing on
     # 10/10 brief-template files BLOCKED at G1 (2026-05-27). Brief-prompt
     # templates legitimately contain meta-content language that describes
