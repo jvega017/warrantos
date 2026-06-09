@@ -269,6 +269,40 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # --- attest: bundle a checked run into a portable .warrant artefact ---
+    attest = sub.add_parser(
+        "attest",
+        help="Bundle a checked run into a verifiable .warrant artefact.",
+        description=(
+            "Assemble a .warrant bundle (prose digest + CBOM + ledger entries + "
+            "Merkle checkpoint, Ed25519-signed if a key is available) from a "
+            "completed `warrantos check` run directory. The bundle verifies "
+            "offline with `warrantos verify-external`."
+        ),
+    )
+    attest.add_argument("prose", help="Path to the final prose (the checked draft).")
+    attest.add_argument(
+        "--run-dir", required=True,
+        help="The run output directory from `warrantos check` (.warrant/runs/<id>).",
+    )
+    attest.add_argument("--db", default=None, help="Override-ledger SQLite DB path.")
+    attest.add_argument("--out", default=None, help="Output .warrant path (default: <prose>.warrant).")
+
+    # --- verify-external: verify a .warrant offline ---
+    verify = sub.add_parser(
+        "verify-external",
+        help="Verify a .warrant artefact offline.",
+        description=(
+            "Verify a .warrant bundle with no access to the original ledger. The "
+            "integrity check (recompute the Merkle root and match the checkpoint) "
+            "is pure stdlib; the signature check needs the [attestation] extra."
+        ),
+    )
+    verify.add_argument("warrant", help="Path to the .warrant file.")
+    verify.add_argument("--prose", default=None, help="Optional prose to check the digest against.")
+    verify.add_argument("--key", default=None, help="Expected signer public key (base64url) to pin attribution.")
+    verify.add_argument("--json", action="store_true", help="Emit the verdict as JSON.")
+
     return parser
 
 
@@ -741,6 +775,77 @@ def format_text_report(report: Dict[str, Any]) -> str:
 # Entry point
 # ---------------------------------------------------------------------------
 
+def _override_to_entry(o: Any) -> Dict[str, Any]:
+    """Canonical ledger-entry dict for a HumanOverride (stable field set)."""
+    return {
+        "id": getattr(o, "id", None),
+        "kind": "override",
+        "run_id": getattr(o, "run_id", None),
+        "reviewer": getattr(o, "reviewer", None),
+        "gate_id": getattr(o, "gate_id", None),
+        "failure_class": getattr(o, "failure_class", None),
+        "single_actor": bool(getattr(o, "single_actor", False)),
+        "ts": getattr(o, "ts", None),
+    }
+
+
+def _cmd_attest(args) -> int:
+    from provenance import warrant_bundle
+    from provenance.overrides import list_overrides_for_run
+
+    run_dir = Path(args.run_dir)
+    cbom_path = run_dir / "cbom.json"
+    if not cbom_path.is_file():
+        sys.stderr.write("warrantos attest: no cbom.json in run dir: %s\n" % run_dir)
+        return 2
+    try:
+        prose = Path(args.prose).read_text(encoding="utf-8")
+    except FileNotFoundError:
+        sys.stderr.write("warrantos attest: prose file not found: %s\n" % args.prose)
+        return 2
+
+    cbom = json.loads(cbom_path.read_text(encoding="utf-8"))
+    run_id = run_dir.name
+    db = args.db or str(Path(".warrant") / "overrides.db")
+    entries = [_override_to_entry(o) for o in list_overrides_for_run(db, run_id)]
+
+    timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    bundle = warrant_bundle.create_warrant(
+        prose=prose, cbom=cbom, ledger_entries=entries,
+        run_id=run_id, timestamp=timestamp,
+    )
+    out = Path(args.out or (args.prose + ".warrant"))
+    out.write_text(json.dumps(bundle, indent=2, sort_keys=True), encoding="utf-8")
+    signed = "signed" if bundle.get("signed") else "unsigned (no signing key)"
+    sys.stdout.write(
+        "Wrote %s\n  root: %s\n  entries: %d  %s\n"
+        % (out, bundle["checkpoint"]["root_hash"], len(entries), signed)
+    )
+    return 0
+
+
+def _cmd_verify_external(args) -> int:
+    from provenance import warrant_bundle
+
+    try:
+        bundle = json.loads(Path(args.warrant).read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        sys.stderr.write("warrantos verify-external: file not found: %s\n" % args.warrant)
+        return 2
+    prose = Path(args.prose).read_text(encoding="utf-8") if args.prose else None
+    result = warrant_bundle.verify_warrant(
+        bundle, prose=prose, expected_public_key_b64=args.key
+    )
+    if args.json:
+        sys.stdout.write(json.dumps(result, indent=2, sort_keys=True) + "\n")
+    else:
+        sys.stdout.write(
+            "integrity: %s\nprose:     %s\nsignature: %s\nOVERALL:   %s\n"
+            % (result["integrity"], result["prose"], result["signature"], result["overall"])
+        )
+    return 0 if result["overall"] == "VALID" else 1
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -759,6 +864,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             sys.stdout.write(render_text(rows) + "\n")
         return 0
+
+    if args.command == "attest":
+        return _cmd_attest(args)
+
+    if args.command == "verify-external":
+        return _cmd_verify_external(args)
 
     if args.command != "check":
         parser.print_help()
