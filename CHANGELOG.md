@@ -6,6 +6,10 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **Merkle-ised ledger core** (`provenance.merkle`, pure stdlib). A deterministic, RFC 6962 style Merkle tree (leaf/node domain separation, odd-node promotion) over the audit ledger. Provides the ledger integrity hash (one root digest that fixes the entire ordered ledger state; any insert, edit, delete, or reorder changes it) and the attestation root that signed checkpoints will commit to and external verifiers will check inclusion proofs against. Includes `MerkleTree`, `ledger_root()`, `build_checkpoint()`, and inclusion-proof verification. Foundation for the cryptographic-integrity wave (.warrant attestation + offline verifier).
+
 ## [0.9.0b1] - 2026-06-06
 
 ### Added — v0.9 beta-trial finalisation
