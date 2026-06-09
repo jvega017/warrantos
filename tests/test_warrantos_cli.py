@@ -310,6 +310,36 @@ class TestOverrideFooterEmission(unittest.TestCase):
         self.assertIn("## Overrides applied", body)
         self.assertIn("Demo rationale", body)
 
+    def test_single_actor_override_downgrades_final_prose_verdict(self):
+        # P0.1: a same-actor (single-actor) review on a final-prose artefact is a
+        # separation-of-duties failure and must downgrade the verdict via the
+        # verdict path, not merely surface as a footer marker. The clean draft
+        # would otherwise PASS; the single-actor override forces HOLD.
+        run_id = "run_singleactor"
+        record_override(
+            self.h.db,
+            run_id=run_id,
+            reviewer="human:director.so",
+            gate_id="G1",
+            failure_class="boundary",
+            risk_accepted="Same-actor review, recorded to exercise SoD.",
+            compensating_control="None; this case demonstrates SoD enforcement.",
+            single_actor=True,
+        )
+        proc = self.h.run(
+            str(self.draft),
+            "--profile", "final-prose",
+            "--actor-identity", str(self.actor),
+            "--run-id", run_id,
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertIn(data["verdict"], ("HOLD", "BLOCK"))
+        self.assertTrue(
+            any("separation of duties" in r.lower() for r in data["reasons"]),
+            msg="verdict reasons should cite separation of duties: %r" % data["reasons"],
+        )
+
 
 class TestCbomArtefactWritten(unittest.TestCase):
     """The CBOM v0.2 artefact lands on disk with the canonical schema name
