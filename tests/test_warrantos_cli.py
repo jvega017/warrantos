@@ -19,10 +19,12 @@ BLOCK-on-boundary-violation branch is exercised here.
 """
 
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 
 from provenance.overrides import record_override
@@ -43,13 +45,23 @@ _FINAL_ACTOR = {
 
 
 class _Harness:
-    """Shared scaffolding for the CLI integration tests."""
+    """Shared scaffolding for the CLI integration tests.
+
+    Input files (drafts, contexts, actor-identity) live in a temp dir.
+    Output files (--db, --out-dir) live under .warrant/ within _REPO_ROOT
+    so they are inside the working directory when the subprocess runs with
+    cwd=_REPO_ROOT (path containment requirement, B5 defence in depth).
+    """
 
     def __init__(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmp.name)
-        self.db = self.tmp / "overrides.db"
-        self.out_dir = self.tmp / "runs"
+        # Unique per-harness subdirectory to avoid cross-test collisions.
+        uid = uuid.uuid4().hex[:8]
+        self._warrant_sub = _REPO_ROOT / ".warrant" / ("cli_test_" + uid)
+        self._warrant_sub.mkdir(parents=True, exist_ok=True)
+        self.db = self._warrant_sub / "overrides.db"
+        self.out_dir = self._warrant_sub / "runs"
 
     def write(self, name: str, content: str) -> Path:
         p = self.tmp / name
@@ -61,6 +73,7 @@ class _Harness:
 
     def cleanup(self) -> None:
         self._tmp.cleanup()
+        shutil.rmtree(str(self._warrant_sub), ignore_errors=True)
 
     def run(self, *args: str) -> subprocess.CompletedProcess:
         cmd = [

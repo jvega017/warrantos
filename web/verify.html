@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:;">
 <title>WarrantOS .warrant verifier</title>
 <style>
 :root{--bg:#0b0d12;--ink:#e8e6df;--muted:#a7a9b4;--ok:#4ade80;--bad:#f87171;--accent:#7aa2f7}
@@ -27,11 +28,18 @@ a{color:var(--accent)}
 <div class="opt">
   <label>Expected signer public key (optional, pins attribution)<input type="text" id="key" placeholder="base64url Ed25519 public key"></label>
   <label>Original prose (optional, checks the digest)<textarea id="prose" rows="2" placeholder="paste the attested document text"></textarea></label>
-  <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="allowUnsigned"> accept unsigned (integrity only)</label>
+  <label style="flex-direction:row;align-items:center;gap:8px"><input type="checkbox" id="allowUnsigned"> Accept unsigned bundles (absent signature only)</label>
 </div>
 <div class="card" id="result"></div>
 <footer>Integrity (Merkle root) and prose digest verify with no dependencies. Signature uses the browser Web Crypto Ed25519. Open source: WarrantOS.</footer>
 <script>
+// setText is the only safe way to insert bundle-derived data into the DOM.
+// Never use innerHTML with data that originates from a .warrant file.
+function setText(el, value){ el.textContent = String(value); }
+
+// Tri-state signature constants. INVALID can never be downgraded by any user setting.
+const SIG = { VALID: 'SIGNED_VALID', UNSIGNED: 'UNSIGNED', INVALID: 'SIGNATURE_INVALID' };
+
 const enc = new TextEncoder();
 
 // Canonical JSON matching Python json.dumps(sort_keys=True, separators=(",",":")) with
@@ -90,7 +98,7 @@ async function merkleRoot(entries){
 }
 
 async function verifyWarrant(bundle, prose, expectedKey, allowUnsigned){
-  const res = {integrity:"INVALID", prose:"NOT_CHECKED", signature:"UNSIGNED"};
+  const res = {integrity:"INVALID", prose:"NOT_CHECKED", signature: SIG.UNSIGNED};
   const cp = bundle.checkpoint || {};
   const entries = bundle.ledger_entries || [];
   const root = "sha256:" + hex(await merkleRoot(entries));
@@ -101,22 +109,35 @@ async function verifyWarrant(bundle, prose, expectedKey, allowUnsigned){
     res.prose = (pd === bundle.prose_sha256) ? "VALID" : "INVALID";
   }
 
-  if (cp.signature){
+  // Tri-state signature logic:
+  // - Absent or empty signature field -> UNSIGNED.
+  // - Present but any parse error, key error, length error, or verification
+  //   failure (including any caught exception) -> SIGNATURE_INVALID.
+  // - Present and verified -> SIGNED_VALID.
+  // SIGNATURE_INVALID can never be downgraded by any user setting.
+  if (cp.signature && String(cp.signature).length > 0){
     const pub = cp.public_key;
-    if (expectedKey && expectedKey !== pub){ res.signature = "UNKNOWN_KEY"; }
-    else {
+    if (expectedKey && expectedKey !== pub){
+      // Key mismatch is still a signature failure (the claimed key is wrong).
+      res.signature = SIG.INVALID;
+    } else {
       try{
+        if (!pub || typeof pub !== "string" || pub.length === 0) throw new Error("no public key");
         const body = {}; for (const k of Object.keys(cp)) if (k!=="signature" && k!=="public_key") body[k]=cp[k];
         const msg = enc.encode(canon(body));
         const key = await crypto.subtle.importKey("raw", b64urlDecode(pub), {name:"Ed25519"}, false, ["verify"]);
         const ok = await crypto.subtle.verify({name:"Ed25519"}, key, b64urlDecode(cp.signature), msg);
-        res.signature = ok ? "VALID" : "INVALID";
-      } catch(e){ res.signature = "UNAVAILABLE"; }
+        // Any non-true result is INVALID, not UNSIGNED.
+        res.signature = ok ? SIG.VALID : SIG.INVALID;
+      } catch(e){
+        // Any exception during signature processing is INVALID, not UNSIGNED.
+        res.signature = SIG.INVALID;
+      }
     }
   }
-  // Fail-closed: an unsigned or unverifiable signature is overall INVALID unless
-  // the verifier explicitly opts in to accept integrity-only bundles.
-  const sigOk = res.signature==="VALID" || (allowUnsigned && ["UNSIGNED","UNAVAILABLE"].includes(res.signature));
+  // Fail-closed verdict: SIGNATURE_INVALID forces overall INVALID regardless of
+  // the allow-unsigned checkbox. The checkbox affects only the UNSIGNED state.
+  const sigOk = res.signature === SIG.VALID || (allowUnsigned && res.signature === SIG.UNSIGNED);
   const ok = res.integrity==="VALID" && res.prose!=="INVALID" && sigOk;
   res.overall = ok ? "VALID" : "INVALID";
   return res;
@@ -124,16 +145,61 @@ async function verifyWarrant(bundle, prose, expectedKey, allowUnsigned){
 // Test hook for headless validation.
 window.__verify = async (text, prose, key, allowUnsigned) => verifyWarrant(JSON.parse(text), prose||null, key||null, !!allowUnsigned);
 
+function makeEl(tag, cls){
+  const el = document.createElement(tag);
+  if (cls) el.className = cls;
+  return el;
+}
+
 function render(res, bundle){
-  const card = document.getElementById("result"); card.style.display="block";
-  const cls = v => v==="VALID"?"v-ok":(v==="INVALID"||v==="UNKNOWN_KEY"?"v-bad":"v-na");
-  const ver = bundle.checkpoint && bundle.checkpoint.version || "?";
-  card.innerHTML =
-    '<div class="badge '+cls(res.overall)+'">'+(res.overall==="VALID"?"VALID":"NOT VALID")+'</div>'+
-    '<div class="row"><span>integrity (Merkle root)</span><span class="'+cls(res.integrity)+'">'+res.integrity+'</span></div>'+
-    '<div class="row"><span>prose digest</span><span class="'+cls(res.prose)+'">'+res.prose+'</span></div>'+
-    '<div class="row"><span>signature</span><span class="'+cls(res.signature)+'">'+res.signature+'</span></div>'+
-    '<div class="meta">checkpoint '+ver+' &middot; '+(bundle.ledger_entries||[]).length+' ledger entries &middot; root '+(bundle.checkpoint&&bundle.checkpoint.root_hash||"?")+'</div>';
+  const card = document.getElementById("result");
+  card.style.display = "block";
+  // Clear previous result safely.
+  while (card.firstChild) card.removeChild(card.firstChild);
+
+  // Value class helper: only uses known outcome strings, no user data.
+  const cls = v => v==="VALID"||v===SIG.VALID ? "v-ok" : (v==="INVALID"||v===SIG.INVALID ? "v-bad" : "v-na");
+
+  // Badge row: uses only known outcome strings, not bundle data.
+  const badge = makeEl("div", "badge " + cls(res.overall));
+  setText(badge, res.overall === "VALID" ? "VALID" : "NOT VALID");
+  card.appendChild(badge);
+
+  // Helper to build a result row safely.
+  function addRow(label, value){
+    const row = makeEl("div", "row");
+    const labelEl = makeEl("span");
+    setText(labelEl, label);
+    const valueEl = makeEl("span", cls(value));
+    setText(valueEl, value);
+    row.appendChild(labelEl);
+    row.appendChild(valueEl);
+    card.appendChild(row);
+  }
+
+  addRow("integrity (Merkle root)", res.integrity);
+  addRow("prose digest", res.prose);
+  addRow("signature", res.signature);
+
+  // Meta line: all bundle-derived values are set via textContent.
+  const meta = makeEl("div", "meta");
+  const cp = bundle.checkpoint || {};
+  const ver = (cp.version != null) ? String(cp.version) : "?";
+  const entryCount = String((bundle.ledger_entries || []).length);
+  const rootHash = cp.root_hash ? String(cp.root_hash) : "?";
+  // Build meta text as plain text nodes separated by static middot spans.
+  const mid = () => { const s = makeEl("span"); s.innerHTML = " · "; return s; };
+  const p1 = document.createTextNode("checkpoint ");
+  const verNode = document.createTextNode(ver);
+  const p2 = document.createTextNode(entryCount + " ledger entries");
+  const p3 = document.createTextNode("root ");
+  const rootNode = document.createTextNode(rootHash);
+  meta.appendChild(p1); meta.appendChild(verNode);
+  meta.appendChild(mid());
+  meta.appendChild(p2);
+  meta.appendChild(mid());
+  meta.appendChild(p3); meta.appendChild(rootNode);
+  card.appendChild(meta);
 }
 async function handle(text){
   let bundle; try{ bundle=JSON.parse(text);}catch(e){ alert("Not valid JSON"); return; }

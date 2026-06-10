@@ -8,17 +8,26 @@ Run from the repo root:
     python -m unittest tests.test_verify -v
 """
 
+import socket
 import unittest
 import unittest.mock
 from unittest.mock import MagicMock, patch
 
 from provenance.grade import HeuristicGrader
+import provenance.verify as _verify_module
 from provenance.verify import (
     extract_citation,
     fetch_text,
     verify_claim,
     verify_text,
 )
+
+# A public IP used by tests that need _is_safe_url to pass without real DNS.
+_PUBLIC_IP = "93.184.216.34"  # example.com
+
+
+def _make_getaddrinfo_public(host, port, *args, **kwargs):
+    return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", (_PUBLIC_IP, port or 80))]
 
 
 class TestFetchText(unittest.TestCase):
@@ -51,8 +60,9 @@ class TestFetchText(unittest.TestCase):
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = fetch_text("https://example.org/plain")
+        with patch("socket.getaddrinfo", _make_getaddrinfo_public):
+            with patch.object(_verify_module._safe_opener, "open", return_value=mock_resp):
+                result = fetch_text("https://example.org/plain")
         self.assertIsNotNone(result)
         self.assertIn("Hello world", result)
 
@@ -68,8 +78,9 @@ class TestFetchText(unittest.TestCase):
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = fetch_text("https://example.org/page")
+        with patch("socket.getaddrinfo", _make_getaddrinfo_public):
+            with patch.object(_verify_module._safe_opener, "open", return_value=mock_resp):
+                result = fetch_text("https://example.org/page")
         self.assertIsNotNone(result)
         self.assertIn("Visible content", result)
         self.assertNotIn("alert", result)
@@ -82,8 +93,9 @@ class TestFetchText(unittest.TestCase):
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = fetch_text("https://example.org/spaced")
+        with patch("socket.getaddrinfo", _make_getaddrinfo_public):
+            with patch.object(_verify_module._safe_opener, "open", return_value=mock_resp):
+                result = fetch_text("https://example.org/spaced")
         self.assertIsNotNone(result)
         self.assertNotIn("  ", result)  # no double spaces
         self.assertNotIn("\n", result)

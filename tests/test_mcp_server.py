@@ -10,6 +10,7 @@ installed at test time.
 import json
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 
 from provenance.mcp_server import (
@@ -112,11 +113,14 @@ class TestWarrantRecordOverrideTool(unittest.TestCase):
     """Tool-level wrapper around SPEC-L8-S004 override recording."""
 
     def setUp(self):
-        self._tmp = tempfile.TemporaryDirectory()
-        self.db_path = Path(self._tmp.name) / "overrides.db"
+        # db_path must be under .warrant for path containment to pass.
+        uid = uuid.uuid4().hex[:8]
+        Path(".warrant").mkdir(exist_ok=True)
+        self.db_path = Path(".warrant") / ("test_override_" + uid + ".db")
 
     def tearDown(self):
-        self._tmp.cleanup()
+        if self.db_path.exists():
+            self.db_path.unlink()
 
     def test_valid_override_round_trip(self):
         result = tool_warrant_record_override(
@@ -161,9 +165,25 @@ class TestWarrantCheckTool(unittest.TestCase):
             "# Clean note\n\nA neutral paragraph with no claims.\n",
             encoding="utf-8",
         )
+        # B5 path containment: out_dir must be under .warrant/runs and
+        # db_path under .warrant (both resolved relative to CWD).
+        # Use unique per-test subdirectories to avoid cross-test collisions.
+        uid = uuid.uuid4().hex[:8]
+        self._warrant_runs = Path(".warrant") / "runs" / ("test_mcp_" + uid)
+        self._warrant_runs.mkdir(parents=True, exist_ok=True)
+        self._warrant_base = Path(".warrant")
+        self._db_path = str(self._warrant_base / ("overrides_" + uid + ".db"))
 
     def tearDown(self):
+        import shutil
         self._tmp.cleanup()
+        # Clean up the .warrant/runs subdirectory created for this test.
+        if self._warrant_runs.exists():
+            shutil.rmtree(str(self._warrant_runs), ignore_errors=True)
+        # Remove the per-test db file if it was created.
+        db = Path(self._db_path)
+        if db.exists():
+            db.unlink()
 
     def test_pass_path_with_actor_identity(self):
         result = tool_warrant_check(
@@ -171,8 +191,8 @@ class TestWarrantCheckTool(unittest.TestCase):
                 "draft_path": str(self.draft),
                 "actor_identity": _FINAL_ACTOR,
                 "profile": "final-prose",
-                "out_dir": str(self.tmp / "out"),
-                "db_path": str(self.tmp / "overrides.db"),
+                "out_dir": str(self._warrant_runs / "out"),
+                "db_path": self._db_path,
             }
         )
         self.assertEqual(result["verdict"], "PASS")
@@ -183,7 +203,8 @@ class TestWarrantCheckTool(unittest.TestCase):
         # Regression: the MCP check tool must apply separation of duties just like
         # the CLI. A same-actor override on a clean final-prose note (which would
         # otherwise PASS) must downgrade the verdict.
-        db = str(self.tmp / "sod.db")
+        uid = uuid.uuid4().hex[:8]
+        db = str(Path(".warrant") / ("sod_" + uid + ".db"))
         run_id = "run_sod_mcp"
         tool_warrant_record_override({
             "db_path": db, "run_id": run_id, "reviewer": "human:director.so",
@@ -192,11 +213,17 @@ class TestWarrantCheckTool(unittest.TestCase):
             "compensating_control": "None; exercises SoD on the MCP path.",
             "single_actor": True,
         })
+        out = str(self._warrant_runs / "out_sod")
         result = tool_warrant_check({
             "draft_path": str(self.draft), "actor_identity": _FINAL_ACTOR,
-            "profile": "final-prose", "out_dir": str(self.tmp / "out_sod"),
+            "profile": "final-prose", "out_dir": out,
             "db_path": db, "run_id": run_id,
         })
+        # Clean up the per-test db.
+        try:
+            Path(db).unlink()
+        except OSError:
+            pass
         self.assertIn(result["verdict"], ("HOLD", "BLOCK"))
         self.assertTrue(any("separation of duties" in r.lower() for r in result["reasons"]))
 
@@ -205,8 +232,8 @@ class TestWarrantCheckTool(unittest.TestCase):
             {
                 "draft_path": str(self.draft),
                 "profile": "final-prose",
-                "out_dir": str(self.tmp / "out2"),
-                "db_path": str(self.tmp / "overrides.db"),
+                "out_dir": str(self._warrant_runs / "out2"),
+                "db_path": self._db_path,
             }
         )
         self.assertEqual(result["verdict"], "NOT_ASSESSABLE")
@@ -222,8 +249,8 @@ class TestWarrantCheckTool(unittest.TestCase):
                 "draft_path": str(leaky),
                 "actor_identity": _FINAL_ACTOR,
                 "profile": "final-prose",
-                "out_dir": str(self.tmp / "out3"),
-                "db_path": str(self.tmp / "overrides.db"),
+                "out_dir": str(self._warrant_runs / "out3"),
+                "db_path": self._db_path,
             }
         )
         self.assertEqual(result["verdict"], "BLOCK")
@@ -240,9 +267,20 @@ class TestWarrantGetRunTool(unittest.TestCase):
         self.draft.write_text(
             "# Read-back demo\n\nNeutral.\n", encoding="utf-8"
         )
+        # B5 path containment: use paths inside .warrant tree.
+        uid = uuid.uuid4().hex[:8]
+        self._warrant_runs = Path(".warrant") / "runs" / ("test_get_" + uid)
+        self._warrant_runs.mkdir(parents=True, exist_ok=True)
+        self._db_path = str(Path(".warrant") / ("get_run_" + uid + ".db"))
 
     def tearDown(self):
+        import shutil
         self._tmp.cleanup()
+        if self._warrant_runs.exists():
+            shutil.rmtree(str(self._warrant_runs), ignore_errors=True)
+        db = Path(self._db_path)
+        if db.exists():
+            db.unlink()
 
     def test_round_trip(self):
         check_result = tool_warrant_check(
@@ -250,8 +288,8 @@ class TestWarrantGetRunTool(unittest.TestCase):
                 "draft_path": str(self.draft),
                 "actor_identity": _FINAL_ACTOR,
                 "profile": "final-prose",
-                "out_dir": str(self.tmp / "round"),
-                "db_path": str(self.tmp / "overrides.db"),
+                "out_dir": str(self._warrant_runs / "round"),
+                "db_path": self._db_path,
             }
         )
         out_dir = check_result["out_dir"]
@@ -265,8 +303,11 @@ class TestWarrantGetRunTool(unittest.TestCase):
         )
 
     def test_missing_dir_returns_nulls(self):
+        # out_dir must be under .warrant; use a nonexistent subpath within it.
+        uid = str(uuid.uuid4().hex[:8])
+        missing = Path(".warrant") / "runs" / ("test_missing_" + uid)
         result = tool_warrant_get_run(
-            {"out_dir": str(self.tmp / "nonexistent")}
+            {"out_dir": str(missing)}
         )
         self.assertIsNone(result["verdict"])
         self.assertIsNone(result["cbom"])

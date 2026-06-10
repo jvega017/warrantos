@@ -52,6 +52,8 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from provenance.pathguard import RUN_ID_RE, resolve_under  # noqa: E402
+
 
 # ---------------------------------------------------------------------------
 # Tool definitions (declarative — usable without the MCP SDK installed)
@@ -227,10 +229,41 @@ def tool_warrant_check(args: Dict[str, Any]) -> Dict[str, Any]:
     actor_identity = args.get("actor_identity") or {}
     profile = args.get("profile", "final-prose")
     run_id = args.get("run_id") or "run_" + uuid.uuid4().hex[:12]
+
+    # B5 path containment: run_id must match the safe-character pattern.
+    if not RUN_ID_RE.match(run_id):
+        return {
+            "error": "invalid_run_id",
+            "detail": (
+                "run_id %r does not match the required pattern "
+                "[A-Za-z0-9_-]{1,64}" % run_id
+            ),
+        }
+
     verify = bool(args.get("verify", False))
     no_fetch = bool(args.get("no_fetch", False))
-    out_dir = Path(args.get("out_dir") or (Path(".warrant") / "runs" / run_id))
-    db_path = args.get("db_path") or str(Path(".warrant") / "provenance.db")
+
+    # B5 path containment: out_dir must resolve within .warrant/runs.
+    _warrant_runs_base = Path(".warrant") / "runs"
+    _warrant_base = Path(".warrant")
+    raw_out_dir = args.get("out_dir") or (str(_warrant_runs_base / run_id))
+    try:
+        out_dir = resolve_under(_warrant_runs_base, raw_out_dir)
+    except ValueError as exc:
+        return {
+            "error": "invalid_out_dir",
+            "detail": str(exc),
+        }
+
+    # B5 path containment: db_path must resolve within .warrant.
+    raw_db = args.get("db_path") or str(_warrant_base / "provenance.db")
+    try:
+        db_path = str(resolve_under(_warrant_base, raw_db))
+    except ValueError as exc:
+        return {
+            "error": "invalid_db_path",
+            "detail": str(exc),
+        }
 
     draft_text = pipeline.load_draft(draft_path)
     context_items_raw = pipeline.load_context(context_path) if context_path else []
@@ -346,9 +379,30 @@ def tool_warrant_record_override(args: Dict[str, Any]) -> Dict[str, Any]:
     """In-process implementation of warrant_record_override."""
     from provenance.overrides import record_override
 
+    # Path containment: validate run_id and confine db_path to .warrant root.
+    run_id = args.get("run_id", "")
+    if not RUN_ID_RE.match(run_id):
+        return {
+            "error": "invalid_run_id",
+            "detail": (
+                "run_id %r does not match the required pattern "
+                "[A-Za-z0-9_-]{1,64}" % run_id
+            ),
+        }
+
+    _warrant_base = Path(".warrant")
+    raw_db = args.get("db_path", "")
+    try:
+        db_path_safe = str(resolve_under(_warrant_base, raw_db))
+    except ValueError as exc:
+        return {
+            "error": "invalid_db_path",
+            "detail": str(exc),
+        }
+
     override = record_override(
-        args["db_path"],
-        run_id=args["run_id"],
+        db_path_safe,
+        run_id=run_id,
         reviewer=args["reviewer"],
         gate_id=args["gate_id"],
         failure_class=args["failure_class"],
@@ -366,7 +420,18 @@ def tool_warrant_get_run(args: Dict[str, Any]) -> Dict[str, Any]:
     Reads back the per-run JSON artefacts and returns them as a single
     nested object. Missing files become null entries.
     """
-    out_dir = Path(args["out_dir"])
+    # Path containment: confine out_dir to .warrant root to prevent
+    # arbitrary file reads via the MCP response.
+    _warrant_base = Path(".warrant")
+    raw_out_dir = args.get("out_dir", "")
+    try:
+        out_dir = resolve_under(_warrant_base, raw_out_dir)
+    except ValueError as exc:
+        return {
+            "error": "invalid_out_dir",
+            "detail": str(exc),
+        }
+
     result: Dict[str, Any] = {"out_dir": str(out_dir)}
     for name in ("verdict", "cbom", "context_items", "boundary", "claims", "verifier"):
         p = out_dir / (name + ".json")

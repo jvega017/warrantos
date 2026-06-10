@@ -75,6 +75,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
+from provenance.pathguard import RUN_ID_RE, resolve_under  # noqa: E402
 from provenance.cbom import (  # noqa: E402
     CBOM,
     ClaimRecord,
@@ -809,9 +810,28 @@ def _cmd_attest(args) -> int:
         sys.stderr.write("warrantos attest: prose file not found: %s\n" % args.prose)
         return 2
 
+    # B5 path containment: confine --db and --out under cwd.
+    _cwd = Path(".").resolve()
+    raw_db = args.db or str(Path(".warrant") / "overrides.db")
+    try:
+        db = str(resolve_under(_cwd, raw_db))
+    except ValueError as exc:
+        sys.stderr.write(
+            "warrantos attest: --db path is outside the current working directory: %s\n" % exc
+        )
+        return 2
+
+    raw_out = args.out or (args.prose + ".warrant")
+    try:
+        out = resolve_under(_cwd, raw_out)
+    except ValueError as exc:
+        sys.stderr.write(
+            "warrantos attest: --out path is outside the current working directory: %s\n" % exc
+        )
+        return 2
+
     cbom = json.loads(cbom_path.read_text(encoding="utf-8"))
     run_id = run_dir.name
-    db = args.db or str(Path(".warrant") / "overrides.db")
     entries = [_override_to_entry(o) for o in list_overrides_for_run(db, run_id)]
 
     timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
@@ -819,7 +839,7 @@ def _cmd_attest(args) -> int:
         prose=prose, cbom=cbom, ledger_entries=entries,
         run_id=run_id, timestamp=timestamp,
     )
-    out = Path(args.out or (args.prose + ".warrant"))
+    out = Path(out)
     out.write_text(json.dumps(bundle, indent=2, sort_keys=True), encoding="utf-8")
     if bundle.get("signed"):
         signed = "signed"
@@ -885,7 +905,35 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     run_id = args.run_id or "run_" + uuid.uuid4().hex[:12]
-    out_dir = Path(args.out_dir or (Path(".warrant") / "runs" / run_id))
+
+    # B5 path containment: run_id must match the safe-character pattern.
+    if not RUN_ID_RE.match(run_id):
+        sys.stderr.write(
+            "warrantos: run_id %r is not allowed; "
+            "use only [A-Za-z0-9_-] (1-64 characters)\n" % run_id
+        )
+        return 2
+
+    # B5 path containment: confine out_dir and --db under cwd.
+    _cwd = Path(".").resolve()
+    raw_out_dir = args.out_dir or str(Path(".warrant") / "runs" / run_id)
+    try:
+        out_dir = resolve_under(_cwd, raw_out_dir)
+    except ValueError as exc:
+        sys.stderr.write(
+            "warrantos: out_dir is outside the current working directory: %s\n" % exc
+        )
+        return 2
+
+    try:
+        _db_path_safe = str(resolve_under(_cwd, args.db))
+    except ValueError as exc:
+        sys.stderr.write(
+            "warrantos: --db path is outside the current working directory: %s\n" % exc
+        )
+        return 2
+
+    sys.stderr.write("warrantos: output directory resolved to: %s\n" % out_dir)
 
     # --- Inputs ---
     try:
@@ -944,7 +992,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     overrides_on_record = []
     try:
-        overrides_on_record = list_overrides_for_run(args.db, run_id)
+        overrides_on_record = list_overrides_for_run(_db_path_safe, run_id)
     except Exception:
         overrides_on_record = []
 

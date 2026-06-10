@@ -30,7 +30,7 @@ class TestCollectStatus(unittest.TestCase):
             "L1", "L2", "L3", "L4", "L5", "L6",
             "L7-G1", "L7-G2", "L7-G3", "L7-G4", "L7-G5",
             "L8",
-            "F-policy", "F-classification", "F-audit",
+            "F-policy", "F-classification", "F-audit", "F-integrity",
             "F-retention", "F-compliance", "F-override", "F-metrics",
         ):
             self.assertIn(required, layer_ids, msg="missing layer: " + required)

@@ -15,8 +15,11 @@ Australian English throughout. No third-party dependencies. Python 3.8+.
 """
 
 import html.parser
+import ipaddress
 import re
+import socket
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import List, Optional
 
@@ -27,6 +30,102 @@ from provenance.extract import (
     sentences,
 )
 from provenance.grade import Verdict, get_grader
+
+# ---------------------------------------------------------------------------
+# SSRF and scheme guard
+# ---------------------------------------------------------------------------
+
+_ALLOWED_SCHEMES = {"http", "https"}
+_REDIRECT_HOP_CAP = 3
+
+
+def _is_safe_url(url: str) -> bool:
+    """Return True only if *url* is safe to fetch.
+
+    Safety criteria:
+    1. Scheme must be http or https; any other scheme (file://, ftp://, etc.)
+       is rejected immediately.
+    2. A hostname must be present.
+    3. The hostname must resolve to at least one address, and EVERY resolved
+       address must be a globally routable address (ipaddress.ip_address.is_global
+       must be True). This covers loopback, link-local, private RFC 1918,
+       CGNAT RFC 6598 (100.64.0.0/10), reserved, multicast, and any future
+       IANA-reserved ranges that Python marks as non-global.
+    4. Any resolution failure (NXDOMAIN, timeout, OS error) causes rejection.
+
+    Known limitation: DNS rebinding (TOCTOU). This function resolves the
+    hostname at validation time; the subsequent TCP connection is a separate
+    syscall that may resolve to a different address if the DNS TTL is very
+    short and a rebinding attack is in progress. This is an inherent
+    limitation of the stdlib approach for this opt-in, CLI-only tool. It is
+    NOT a safe replacement for a network-level egress filter.
+    """
+    try:
+        parts = urllib.parse.urlsplit(url)
+    except Exception:
+        return False
+
+    if parts.scheme not in _ALLOWED_SCHEMES:
+        return False
+
+    hostname = parts.hostname
+    if not hostname:
+        return False
+
+    try:
+        results = socket.getaddrinfo(hostname, None)
+    except Exception:
+        return False
+
+    if not results:
+        return False
+
+    for result in results:
+        # result is (family, type, proto, canonname, sockaddr)
+        # sockaddr is (address, port) for IPv4, (address, port, flow, scope) for IPv6
+        addr_str = result[4][0]
+        try:
+            addr = ipaddress.ip_address(addr_str)
+        except ValueError:
+            return False
+
+        if not addr.is_global:
+            return False
+
+    return True
+
+
+class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Redirect handler that validates each redirect target with _is_safe_url.
+
+    Caps the number of followed hops at _REDIRECT_HOP_CAP using the stdlib
+    per-request redirect_dict mechanism (set via max_redirections). Any
+    redirect whose target fails the safety check raises urllib.error.URLError
+    immediately, preventing SSRF via open redirects.
+
+    No instance-level counter is maintained; the stdlib tracks hop counts
+    per Request object, so each fetch_text call gets a clean count via its
+    own fresh Request instance.
+    """
+
+    def __init__(self):
+        # Override the default (10) with our tighter cap.
+        # The stdlib http_error_302 enforces this via req.redirect_dict,
+        # which is fresh for every new Request object.
+        self.max_redirections = _REDIRECT_HOP_CAP
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not _is_safe_url(newurl):
+            raise urllib.error.URLError(
+                "redirect target failed safety check: %s" % newurl
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+# Module-level opener that uses the safe redirect handler.
+# Built once at import time so tests can monkeypatch it.
+# The handler holds no per-request state, so sharing one instance is safe.
+_safe_opener = urllib.request.build_opener(_SafeRedirectHandler())
 
 # ---------------------------------------------------------------------------
 # fetch_text
@@ -70,9 +169,14 @@ class _HTMLStripper(html.parser.HTMLParser):
 def fetch_text(url: str) -> Optional[str]:
     """Retrieve text from *url* and return it as a cleaned plain-text string.
 
-    Follows up to 3 redirects (urllib's default handler behaviour). Reads at
-    most 1.5 MB. Strips HTML tags if the response looks like HTML. Collapses
-    whitespace. Returns None on ANY exception; never raises.
+    Validates *url* with _is_safe_url before making any network request.
+    Returns None immediately if the URL does not pass the safety check (wrong
+    scheme, private/loopback/reserved address, resolution failure).
+
+    Follows up to _REDIRECT_HOP_CAP redirects via _SafeRedirectHandler, which
+    re-validates each redirect target. Reads at most 1.5 MB. Strips HTML tags
+    if the response looks like HTML. Collapses whitespace. Returns None on ANY
+    exception; never raises.
 
     Parameters
     ----------
@@ -82,14 +186,18 @@ def fetch_text(url: str) -> Optional[str]:
     Returns
     -------
     str or None
-        Cleaned text, or None if the request failed for any reason.
+        Cleaned text, or None if the URL failed the safety check or the
+        request failed for any reason.
     """
+    if not _is_safe_url(url):
+        return None
+
     try:
         req = urllib.request.Request(
             url,
             headers={"User-Agent": _USER_AGENT},
         )
-        with urllib.request.urlopen(req, timeout=_FETCH_TIMEOUT) as resp:
+        with _safe_opener.open(req, timeout=_FETCH_TIMEOUT) as resp:
             raw_bytes = resp.read(_FETCH_MAX_BYTES)
             content_type = resp.headers.get("Content-Type", "")
 

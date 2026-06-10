@@ -118,12 +118,18 @@ can call it directly.
   permission-slip attack identified in Wave A QA are structurally
   closed at the schema and runtime layers.
 - The override ledger uses storage-level append-only enforcement via
-  SQLite BEFORE UPDATE triggers (INV-004), not application-level
-  discipline.
+  SQLite BEFORE UPDATE and BEFORE DELETE triggers (INV-004), installed
+  by default on every ledger table, not application-level discipline.
+- An offline-verifiable integrity layer: a stdlib RFC 6962 style
+  Merkle ledger, an Ed25519-signed checkpoint (optional
+  `[attestation]` extra), and a portable `.warrant` bundle that
+  `warrantos verify-external` and a client-side browser verifier
+  check offline, fail-closed. See [`VERIFICATION.md`](VERIFICATION.md).
 
 For the authoritative per-layer status, run `warrantos status` or
-read [`STATUS.md`](STATUS.md). At v0.9.0b1 the rollup is **12 BUILT /
-3 PARTIAL / 2 STARTER / 2 NOT_BUILT**.
+read [`STATUS.md`](STATUS.md). On current `main` (the v0.9.1
+increment) the rollup is **13 BUILT / 3 PARTIAL / 2 STARTER / 2
+NOT_BUILT**; the `0.9.0b1` tag was 12 BUILT.
 
 ## What is explicitly NOT built
 
@@ -186,13 +192,15 @@ correct. It guarantees five things instead:
    are empty, and recorded rows cannot be silently edited
    (storage-level append-only via SQLite `BEFORE UPDATE` triggers,
    not application-level discipline).
-5. Separation of duties is enforced where overrides are recorded:
-   the helper `enforce_single_actor_rule` at
-   `provenance/overrides.py` flags a same-actor reviewer/writer
-   pair when an override is recorded, and the reader-facing footer
-   surfaces the flag. v0.9.0b1 does not invoke this from
-   `consolidate_verdict()`; wiring the same check into the default
-   verdict path is the next-release item.
+5. Separation of duties is a verdict-layer property: when an override
+   records the writer and reviewer as the same actor,
+   `consolidate_verdict()` downgrades a final-artefact profile to
+   `HOLD` and the strict `audit` profile to `BLOCK`, on both the CLI
+   and MCP paths. An independent reviewer is required to certify
+   `PASS`. The helper `enforce_single_actor_rule` and the
+   reader-facing footer surface the same flag for a human reader
+   (SPEC-L8-S003). Current on `main` (the v0.9.1 increment); the
+   `0.9.0b1` tag surfaced the flag in the footer only.
 
 The remaining failure modes need writer-side discipline, human
 review, and the WarrantOS coupling thesis. The coupling thesis is

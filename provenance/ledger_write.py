@@ -52,18 +52,247 @@ CREATE INDEX IF NOT EXISTS idx_context_transform_run  ON context_transform(run_i
 CREATE INDEX IF NOT EXISTS idx_context_transform_kind ON context_transform(kind);
 """
 
+# Full ledger schema with INV-004 append-only triggers (shipped by default).
+_CREATE_FULL_LEDGER_SCHEMA = """
+CREATE TABLE IF NOT EXISTS provenance_run (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts           TEXT    NOT NULL,
+    session_id   TEXT,
+    source_event TEXT,
+    file_path    TEXT,
+    mode         TEXT    NOT NULL,
+    total        INTEGER NOT NULL,
+    supported    INTEGER NOT NULL,
+    tagged       INTEGER NOT NULL,
+    unsupported  INTEGER NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS provenance_claim (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id      INTEGER NOT NULL REFERENCES provenance_run(id),
+    ts          TEXT    NOT NULL,
+    session_id  TEXT,
+    status      TEXT    NOT NULL,
+    trigger     TEXT,
+    claim_text  TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_claim_status ON provenance_claim(status);
+CREATE INDEX IF NOT EXISTS idx_run_ts       ON provenance_run(ts);
+
+CREATE TABLE IF NOT EXISTS provenance_verification (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    claim_id    INTEGER NOT NULL REFERENCES provenance_claim(id),
+    ts          TEXT    NOT NULL,
+    citation    TEXT,
+    verdict     TEXT    NOT NULL,
+    confidence  REAL,
+    rationale   TEXT,
+    grader      TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_verif_claim   ON provenance_verification(claim_id);
+CREATE INDEX IF NOT EXISTS idx_verif_verdict ON provenance_verification(verdict);
+
+CREATE TABLE IF NOT EXISTS context_item (
+    id                         INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts                         TEXT    NOT NULL,
+    context_id                 TEXT    NOT NULL,
+    context_type               TEXT    NOT NULL,
+    ledger_bucket              TEXT    NOT NULL,
+    can_influence_output       INTEGER NOT NULL,
+    can_appear_in_final_prose  INTEGER NOT NULL,
+    allowed_transformation     TEXT    NOT NULL,
+    audit_status               TEXT    NOT NULL,
+    raw_text                   TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS cbom_run (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts             TEXT    NOT NULL,
+    cbom_id        TEXT    NOT NULL,
+    artefact       TEXT,
+    artefact_role  TEXT    NOT NULL,
+    summary_json   TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS review_finding (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts                  TEXT    NOT NULL,
+    review_pack_id      TEXT    NOT NULL,
+    reviewer            TEXT    NOT NULL,
+    angle               TEXT,
+    finding_id          TEXT    NOT NULL,
+    severity            TEXT    NOT NULL,
+    confidence          TEXT,
+    evidence            TEXT,
+    recommended_action  TEXT,
+    status              TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS context_transform (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    context_row_id INTEGER REFERENCES context_item(id),
+    ts             TEXT    NOT NULL,
+    run_id         TEXT,
+    kind           TEXT    NOT NULL,
+    transform_text TEXT    NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_context_transform_run  ON context_transform(run_id);
+CREATE INDEX IF NOT EXISTS idx_context_transform_kind ON context_transform(kind);
+
+CREATE TABLE IF NOT EXISTS prose_boundary_violation (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts           TEXT    NOT NULL,
+    artefact     TEXT,
+    rule_id      TEXT    NOT NULL,
+    severity     TEXT    NOT NULL,
+    matched_text TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_context_id       ON context_item(context_id);
+CREATE INDEX IF NOT EXISTS idx_context_type     ON context_item(context_type);
+CREATE INDEX IF NOT EXISTS idx_boundary_rule    ON prose_boundary_violation(rule_id);
+CREATE INDEX IF NOT EXISTS idx_cbom_id          ON cbom_run(cbom_id);
+CREATE INDEX IF NOT EXISTS idx_review_pack      ON review_finding(review_pack_id);
+
+CREATE TABLE IF NOT EXISTS human_override (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts                      TEXT    NOT NULL,
+    run_id                  TEXT    NOT NULL,
+    reviewer                TEXT    NOT NULL,
+    gate_id                 TEXT    NOT NULL,
+    failure_class           TEXT    NOT NULL,
+    risk_accepted           TEXT    NOT NULL,
+    compensating_control    TEXT    NOT NULL,
+    escalation_path_taken   TEXT    NOT NULL,
+    single_actor            INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_human_override_run_id  ON human_override(run_id);
+CREATE INDEX IF NOT EXISTS idx_human_override_gate_id ON human_override(gate_id);
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_run_no_update
+BEFORE UPDATE ON provenance_run
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_run_no_delete
+BEFORE DELETE ON provenance_run
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_claim_no_update
+BEFORE UPDATE ON provenance_claim
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_claim_no_delete
+BEFORE DELETE ON provenance_claim
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_verification_no_update
+BEFORE UPDATE ON provenance_verification
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_verification_no_delete
+BEFORE DELETE ON provenance_verification
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_context_item_no_update
+BEFORE UPDATE ON context_item
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_context_item_no_delete
+BEFORE DELETE ON context_item
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_cbom_run_no_update
+BEFORE UPDATE ON cbom_run
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_cbom_run_no_delete
+BEFORE DELETE ON cbom_run
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_review_finding_no_update
+BEFORE UPDATE ON review_finding
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_review_finding_no_delete
+BEFORE DELETE ON review_finding
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_context_transform_no_update
+BEFORE UPDATE ON context_transform
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_context_transform_no_delete
+BEFORE DELETE ON context_transform
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_prose_boundary_violation_no_update
+BEFORE UPDATE ON prose_boundary_violation
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_prose_boundary_violation_no_delete
+BEFORE DELETE ON prose_boundary_violation
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_update_human_override
+BEFORE UPDATE ON human_override
+BEGIN
+    SELECT RAISE(ABORT, 'INV-004: human_override is append-only per SPEC-L2-S002');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_delete_human_override
+BEFORE DELETE ON human_override
+BEGIN
+    SELECT RAISE(ABORT, 'INV-004: human_override is append-only per SPEC-L2-S002');
+END;
+"""
+
 
 def open_writable_db(db_path: Union[str, Path]) -> sqlite3.Connection:
     """Open a read-write SQLite connection at db_path.
 
     Creates the parent directory if absent. Creates the file if needed.
-    Applies the context_transform CREATE TABLE IF NOT EXISTS schema.
+    Applies the full ledger schema with INV-004 append-only triggers.
     Caller owns the connection and SHALL close it.
     """
     p = Path(db_path)
     p.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(str(p))
-    con.executescript(_CREATE_CONTEXT_TRANSFORM_SQL)
+    con.executescript(_CREATE_FULL_LEDGER_SCHEMA)
     con.commit()
     return con
 

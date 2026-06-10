@@ -14,6 +14,22 @@ and Semantic Versioning.
 - **Ed25519 signed checkpoints and the `.warrant` verifiable artefact** (`provenance.attestation`, `provenance.warrant_bundle`). A checkpoint's Merkle root can now be Ed25519-signed, and `create_warrant()` bundles the prose digest, CBOM, the relevant ledger entries, and the signed checkpoint into a portable `.warrant` object. `verify_warrant()` checks it offline: the integrity half (recompute the Merkle root from the entries, match the checkpoint) is pure stdlib; only the signature trust-anchor needs the new `[attestation]` extra (`pip install "claude-provenance[attestation]"`), since the standard library ships no public-key signing. Verdicts: integrity VALID/INVALID, signature VALID/INVALID/UNKNOWN_KEY/UNSIGNED. Production adopters set `WARRANTOS_SIGNING_KEY`; the project ships no real default key. This makes the HTTPS analogy literal: a document anyone can verify offline.
 - **Merkle-ised ledger core** (`provenance.merkle`, pure stdlib). A deterministic, RFC 6962 style Merkle tree (leaf/node domain separation, odd-node promotion) over the audit ledger. Provides the ledger integrity hash (one root digest that fixes the entire ordered ledger state; any insert, edit, delete, or reorder changes it) and the attestation root that signed checkpoints will commit to and external verifiers will check inclusion proofs against. Includes `MerkleTree`, `ledger_root()`, `build_checkpoint()`, and inclusion-proof verification. Foundation for the cryptographic-integrity wave (.warrant attestation + offline verifier).
 
+### Security (pre-launch hardening, multi-agent review: Codex + Gemini + Opus + Fable)
+
+- **SSRF and scheme guard in the URL verifier** (`provenance/verify.py`). `fetch_text` now refuses any non-`http(s)` scheme (closes `file://` and `ftp://` local-file disclosure) and resolves the host, rejecting any address that is not globally routable (`ipaddress.is_global`, which also closes RFC 6598 CGNAT `100.64.0.0/10`, loopback, link-local, private, reserved, IPv4-mapped IPv6). Redirects are re-validated per hop with a per-request cap. The check runs before any network call. DNS-rebinding TOCTOU and NAT64 are documented residuals for this opt-in path.
+- **Web verifier XSS and fail-closed signature** (`web/verify.html`). All untrusted `.warrant` fields render via `textContent`, never `innerHTML`; a strict CSP blocks external requests. The signature model is now tri-state (`SIGNED_VALID` / `UNSIGNED` / `SIGNATURE_INVALID`): a present-but-corrupt signature is `SIGNATURE_INVALID` and forces overall `INVALID`, which the allow-unsigned toggle can never override.
+- **Path containment across all CLI and MCP surfaces** (`provenance/pathguard.py`, `mcp_server.py`, `cli/warrantos_cli.py`). Caller-supplied `run_id` is regex-validated; every output and DB path is confined under its intended root by resolved-path containment (not string matching). Closes arbitrary file write to the ledger via `tool_warrant_record_override` and arbitrary file read via `tool_warrant_get_run`.
+- **Supply chain: release and CI workflows pinned** (`.github/workflows/`). Every action is pinned to a full commit SHA; permissions are job-scoped (`id-token: write` only on the PyPI publish job, behind a protected environment).
+
+### Changed
+
+- **Separation of duties is now a verdict-layer property** (`consolidate_verdict()`, CLI and MCP). A same-actor writer/reviewer override downgrades a final-artefact profile to `HOLD` and the strict `audit` profile to `BLOCK`; an independent reviewer is required to certify `PASS` (SPEC-L8-S003). The `0.9.0b1` tag surfaced this in the footer only.
+- **Append-only triggers installed by default** (`schema/provenance.sql`, hook and ledger-write schema paths). `BEFORE UPDATE` and `BEFORE DELETE` `RAISE(ABORT)` triggers ship on every ledger table on the default `warrantos check` and hook path, not only via an optional installer. INV-004 now matches the README claim; DELETE is covered as well as UPDATE.
+
+### Documentation
+
+- README, `docs/OVERVIEW.md`, `docs/STATUS.md` reconciled with `main`: separation of duties presented as wired (was "not wired"), the cryptographic-verifiability wave surfaced (new `docs/VERIFICATION.md`, README section, tooling-map entries), a new `F-integrity` status row (rollup now **13 BUILT**, was 12), and the append-only claim scoped to the SQLite ledger.
+
 ## [0.9.0b1] - 2026-06-06
 
 ### Added — v0.9 beta-trial finalisation

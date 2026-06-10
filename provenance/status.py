@@ -265,6 +265,25 @@ def collect_status() -> List[LayerStatus]:
     ))
 
     rows.append(LayerStatus(
+        layer_id="F-integrity",
+        name="Foundation: Ledger Integrity & Attestation",
+        status="BUILT" if _module_has(
+            "provenance.merkle", "ledger_root", "build_checkpoint"
+        ) and _module_has(
+            "provenance.warrant_bundle", "create_warrant", "verify_warrant"
+        ) else "PARTIAL",
+        module="provenance.merkle, provenance.attestation, provenance.warrant_bundle",
+        surfaces=[
+            "merkle.ledger_root() / build_checkpoint() [RFC 6962 style, stdlib]",
+            "attestation.sign_checkpoint() / verify_checkpoint() [Ed25519, [attestation] extra]",
+            "warrant_bundle.create_warrant() / verify_warrant() [fail-closed]",
+            "CLI: warrantos attest / verify-external",
+            "web/verify.html [client-side verifier, byte-for-byte parity]",
+        ],
+        notes="Stdlib Merkle integrity + fail-closed .warrant verification need no key; Ed25519 signing needs the optional [attestation] extra. Envelope is project-defined (DSSE/COSE migration under consideration).",
+    ))
+
+    rows.append(LayerStatus(
         layer_id="F-retention",
         name="Foundation: Retention & Deletion (tombstones)",
         status="NOT_BUILT",

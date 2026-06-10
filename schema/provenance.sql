@@ -136,3 +136,117 @@ CREATE TABLE IF NOT EXISTS human_override (
 
 CREATE INDEX IF NOT EXISTS idx_human_override_run_id  ON human_override(run_id);
 CREATE INDEX IF NOT EXISTS idx_human_override_gate_id ON human_override(gate_id);
+
+-- INV-004 storage-level enforcement: SPEC-L2-S002 append-only.
+-- Idempotent via IF NOT EXISTS. Triggers ship by default.
+-- Ledger tables (human_override, context_transform, provenance_run,
+-- provenance_claim, provenance_verification, context_item, cbom_run,
+-- review_finding, prose_boundary_violation) block UPDATE and DELETE.
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_run_no_update
+BEFORE UPDATE ON provenance_run
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_run_no_delete
+BEFORE DELETE ON provenance_run
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_claim_no_update
+BEFORE UPDATE ON provenance_claim
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_claim_no_delete
+BEFORE DELETE ON provenance_claim
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_verification_no_update
+BEFORE UPDATE ON provenance_verification
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_verification_no_delete
+BEFORE DELETE ON provenance_verification
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_context_item_no_update
+BEFORE UPDATE ON context_item
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_context_item_no_delete
+BEFORE DELETE ON context_item
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_cbom_run_no_update
+BEFORE UPDATE ON cbom_run
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_cbom_run_no_delete
+BEFORE DELETE ON cbom_run
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_review_finding_no_update
+BEFORE UPDATE ON review_finding
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_review_finding_no_delete
+BEFORE DELETE ON review_finding
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_context_transform_no_update
+BEFORE UPDATE ON context_transform
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_context_transform_no_delete
+BEFORE DELETE ON context_transform
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_prose_boundary_violation_no_update
+BEFORE UPDATE ON prose_boundary_violation
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_prose_boundary_violation_no_delete
+BEFORE DELETE ON prose_boundary_violation
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_update_human_override
+BEFORE UPDATE ON human_override
+BEGIN
+    SELECT RAISE(ABORT, 'INV-004: human_override is append-only per SPEC-L2-S002');
+END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_delete_human_override
+BEFORE DELETE ON human_override
+BEGIN
+    SELECT RAISE(ABORT, 'INV-004: human_override is append-only per SPEC-L2-S002');
+END;

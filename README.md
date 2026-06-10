@@ -1,7 +1,7 @@
 # claude-provenance
 
 [![ci](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml)
-[![layers: 12B / 3P / 2S / 2NB](https://img.shields.io/badge/layers-12B%20%2F%203P%20%2F%202S%20%2F%202NB-blue)](docs/STATUS.md)
+[![layers: 13B / 3P / 2S / 2NB](https://img.shields.io/badge/layers-13B%20%2F%203P%20%2F%202S%20%2F%202NB-blue)](docs/STATUS.md)
 ![version: 0.9.0b1](https://img.shields.io/badge/version-0.9.0b1-orange)
 ![python: 3.8--3.13](https://img.shields.io/badge/python-3.8--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
@@ -20,7 +20,7 @@ Built by a serving public-sector policy officer for the people who publish AI-as
 
 Under the hood, `claude-provenance` wraps AI-assisted writing in an eight-layer pipeline so the final artefact ships clean prose, while a separate audit ledger carries the sources, the feedback, the review history, the transformations, and the structured overrides that produced it. The per-layer status dashboard tells you exactly what is built and what is not.
 
-> **v0.9.0b1 beta.** Build state: **12 BUILT / 3 PARTIAL / 2 STARTER / 2 NOT_BUILT**. See [`docs/STATUS.md`](docs/STATUS.md) before evaluating scope. The two `NOT_BUILT` rows (Data Classification, Retention/Tombstones) are explicit v1.0 deferrals that require domain input from the adopter and cannot be fabricated.
+> **v0.9.0b1 beta** (tag); `main` carries the v0.9.1 increment. Build state on `main`: **13 BUILT / 3 PARTIAL / 2 STARTER / 2 NOT_BUILT** (the `0.9.0b1` tag was 12 BUILT, before the integrity/attestation layer). See [`docs/STATUS.md`](docs/STATUS.md) before evaluating scope. The two `NOT_BUILT` rows (Data Classification, Retention/Tombstones) are explicit v1.0 deferrals that require domain input from the adopter and cannot be fabricated.
 
 ## Quickstart
 
@@ -57,6 +57,9 @@ Expected verdict: `HOLD` with one unsupported load-bearing claim. The bundled co
 | `warrantos` | Full pipeline (classify > admissibility > gates > verdict > CBOM) | Default. This is the one. |
 | `warrantos-mcp` | Stdio MCP server exposing four tools to Claude Code / Claude Desktop | When you want Claude to call the pipeline as tools |
 | `warrantos-verify-hook` | Claude Code Stop-hook entry point for in-session verification | When you want the loop closed without a separate API key |
+| `warrantos attest` | Bundle a checked run into a portable, signed `.warrant` artefact | When an artefact needs to travel with a verifiable audit proof |
+| `warrantos verify-external` | Verify a `.warrant` offline; exits non-zero on failure | In CI, or for any third party with only the file |
+| `web/verify.html` | Zero-backend browser verifier for a `.warrant` | When a reader has no install and only the file |
 | `provenance` | Legacy v0.3 citation-only CLI | Kept for v0.3 users; new users should use `warrantos` |
 
 ## The four-verdict model
@@ -64,8 +67,8 @@ Expected verdict: `HOLD` with one unsupported load-bearing claim. The bundled co
 | Verdict | Trigger | Action |
 |---|---|---|
 | `PASS` | No boundary violation, no unsupported load-bearing claim, no contradicted verifier verdict, actor identity present for final-prose | Ship the artefact |
-| `HOLD` | Unsupported or unverifiable load-bearing claim | Add a citation or downgrade the claim |
-| `BLOCK` | Boundary violation in final-prose, or a contradicted verifier verdict | Rewrite the offending text |
+| `HOLD` | Unsupported or unverifiable load-bearing claim, or a same-actor writer/reviewer override on a final-artefact profile (separation of duties) | Add a citation, downgrade the claim, or obtain an independent review |
+| `BLOCK` | Boundary violation in final-prose, a contradicted verifier verdict, or a same-actor override on the strict `audit` profile | Rewrite the offending text, or obtain an independent reviewer |
 | `NOT_ASSESSABLE` | Final-prose without `--actor-identity` | Supply actor identity or use a non-final-prose profile |
 
 `NOT_ASSESSABLE` is deliberate. Most tools binary-ise into pass/fail. The fourth state names the case where the artefact is missing the metadata required to certify, instead of certifying on incomplete information.
@@ -79,7 +82,7 @@ The four verdicts are exercised end-to-end in the [`examples/`](examples/) galle
 1. **Unsourced claims are expensive, not invisible.** The detector logs every unsupported factual sentence; the ledger keeps the count over time.
 2. **Process material cannot leak into final prose silently.** The Layer 7 G1 boundary gate blocks "based on your feedback" and the rest of the lexical-residue pattern set under the `final-prose` profile.
 3. **Overrides cannot reach the public artefact without a structured rationale.** Empty `risk_accepted` or `compensating_control` blocks the write; SQLite `BEFORE UPDATE` triggers (INV-004) prevent silent post-hoc edits.
-4. **Separation of duties is enforced where overrides are recorded.** The helper `enforce_single_actor_rule` at `provenance/overrides.py` flags a same-actor reviewer/writer pair when an override is being recorded; the reader-facing footer surfaces the flag. At v0.9.0b1 the helper is callable but not wired into the default `warrantos check` verdict path; an in-flight item for v0.9.1 wires it into `consolidate_verdict()` as a verdict-layer property.
+4. **Separation of duties is a verdict-layer property.** When an override records the writer and reviewer as the same actor, `consolidate_verdict()` acts on it: a final-artefact profile (`final-prose`, `paper-full`, `methodology`, `consultation_report`, `audit`) is downgraded to `HOLD`, and the strict `audit` profile to `BLOCK`. An independent reviewer is required to certify `PASS`. Enforced on both the CLI and MCP paths; the helper `enforce_single_actor_rule` and the reader-facing footer surface the flag for a human reader (SPEC-L8-S003). Current on `main` (the v0.9.1 increment); the `0.9.0b1` tag surfaced the flag in the footer only.
 5. **The four-state verdict refuses to certify on incomplete information.** `NOT_ASSESSABLE` fires when the metadata required to certify is missing, instead of `PASS` masking the gap.
 
 What this does **not** guarantee: that the underlying model produced correct text, that a cited source is the strongest available source, or that adopters' domain-specific Data Classification and Retention/Tombstones rows (both `NOT_BUILT` at v0.9.0b1) are sound. Those remain adopter-supplied.
@@ -89,8 +92,8 @@ What this does **not** guarantee: that the underlying model produced correct tex
 User-outcome language; SPEC IDs in [`CHANGELOG.md`](CHANGELOG.md).
 
 - One CLI runs the full pipeline end-to-end (`warrantos check`).
-- Human overrides cannot be recorded without a written risk-acceptance rationale and a compensating-control note. The check is at the write path, so the row does not exist if the rationale is missing. A SQLite `BEFORE UPDATE` trigger means recorded rows cannot be silently edited later (storage-level append-only, not application-level discipline).
-- Separation-of-duties helper (`provenance/overrides.py::enforce_single_actor_rule`) detects a reviewer-equals-writer pair when an override is recorded and surfaces it in the reader-facing footer. v0.9.1 wires the same check into the default verdict path.
+- Human overrides cannot be recorded without a written risk-acceptance rationale and a compensating-control note. The check is at the write path, so the row does not exist if the rationale is missing. SQLite `BEFORE UPDATE` and `BEFORE DELETE` triggers on every ledger table mean recorded rows cannot be silently edited or deleted later (storage-level append-only, installed by default, not application-level discipline). This covers the SQLite ledger the hook writes misses to; the per-run JSON artefacts under `.warrant/runs/` are working output, not the append-only ledger.
+- Separation-of-duties helper (`provenance/overrides.py::enforce_single_actor_rule`) detects a reviewer-equals-writer pair when an override is recorded and surfaces it in the reader-facing footer. (On current `main`, the v0.9.1 increment, the same check is wired into `consolidate_verdict()` on the CLI and MCP paths: a final-artefact profile is downgraded to `HOLD`, the strict `audit` profile to `BLOCK`.)
 - MCP server exposes four tools (`warrant_check`, `warrant_classify`, `warrant_record_override`, `warrant_get_run`) callable from any MCP host.
 - Shadow-mode observer runs over an already-published artefact in read-only mode. Never blocks. Never modifies production scripts.
 - `warrantos status` reports a per-layer build state, and `docs/STATUS.md` carries the rendered table.
@@ -99,6 +102,21 @@ User-outcome language; SPEC IDs in [`CHANGELOG.md`](CHANGELOG.md).
 ## How it works: the Provenance Loop
 
 The Provenance Loop is the original v0.3 mental model: **Extract** the claim, **Bind** a source to it, **Verify** the source supports the claim, **Adjudicate** the verdict, **Ledger** the result. In v0.9 the loop is one component of the eight-layer WarrantOS pipeline, specifically Layer 2 (Ledger) and Layer 7-G2 (Source and Warrant Check). For the full architecture see [`docs/OVERVIEW.md`](docs/OVERVIEW.md); for the loop itself see [`docs/PROVENANCE-LOOP.md`](docs/PROVENANCE-LOOP.md).
+
+## Offline-verifiable warrants
+
+A verdict you have to trust is weaker than one you can recompute. WarrantOS turns a checked run into a portable, tamper-evident `.warrant` bundle that a third party verifies offline, with no access to your ledger and no network call.
+
+- **Tamper-evident ledger.** A deterministic, RFC 6962 style Merkle tree (`provenance.merkle`, pure stdlib) over the audit entries. One root digest fixes the entire ledger state: any insert, edit, delete, or reorder changes it.
+- **Signed checkpoint and portable bundle.** `create_warrant()` packages the prose digest, the CBOM, the relevant ledger entries, and an Ed25519-signed checkpoint into one `.warrant` file. Signing uses the optional `[attestation]` extra; the integrity check needs nothing beyond the standard library.
+- **Fail-closed verification.** `warrantos verify-external` recomputes the Merkle root and matches the checkpoint. An unsigned or signature-unavailable bundle is overall `INVALID` unless `--allow-unsigned` is passed explicitly. A client-side browser verifier (`web/verify.html`) matches the Python verifier byte for byte and renders all untrusted fields as inert text under a strict CSP.
+
+```bash
+warrantos attest final.md --run-dir .warrant/runs/<id> --out final.warrant
+warrantos verify-external final.warrant --prose final.md      # exits non-zero on any failure
+```
+
+Full detail in [`docs/VERIFICATION.md`](docs/VERIFICATION.md). Current on `main` (the v0.9.1 increment); the envelope is project-defined, with a DSSE/COSE migration under consideration.
 
 ## Why this exists
 
@@ -204,7 +222,7 @@ The rule that an internal error must never break the session is enforced through
 
 ## Release status
 
-Current: **v0.9.0b1 beta**. See [`CHANGELOG.md`](CHANGELOG.md) for full release history and [`docs/STATUS.md`](docs/STATUS.md) for the current per-layer conformance dashboard. Next: publish to PyPI, close STARTER and NOT_BUILT rows that have adopter input, add release-evidence packaging for end-to-end traceability.
+Current tag: **v0.9.0b1 beta**. The `main` branch carries the v0.9.1 increment: verdict-layer separation of duties, the cryptographic-verifiability wave (Merkle ledger, Ed25519 attestation, portable `.warrant`, offline and browser verifiers), AI scaffold-residue detection, append-only triggers installed by default, and pre-launch security hardening (SSRF guard, web-verifier XSS and fail-closed signature fixes, MCP/CLI path containment, SHA-pinned release workflow). All under `[Unreleased]` in [`CHANGELOG.md`](CHANGELOG.md). See [`docs/STATUS.md`](docs/STATUS.md) for the current per-layer conformance dashboard. Next: tag and publish v0.9.1 to PyPI via Trusted Publishing, then close the STARTER and NOT_BUILT rows that have adopter input.
 
 ## Limits, stated plainly
 

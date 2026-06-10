@@ -175,6 +175,26 @@ CREATE TABLE IF NOT EXISTS provenance_claim (
     id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER NOT NULL,
     ts TEXT NOT NULL, session_id TEXT, status TEXT NOT NULL,
     trigger TEXT, claim_text TEXT NOT NULL);
+CREATE TRIGGER IF NOT EXISTS trg_provenance_run_no_update
+BEFORE UPDATE ON provenance_run
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_provenance_run_no_delete
+BEFORE DELETE ON provenance_run
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_provenance_claim_no_update
+BEFORE UPDATE ON provenance_claim
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+CREATE TRIGGER IF NOT EXISTS trg_provenance_claim_no_delete
+BEFORE DELETE ON provenance_claim
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
+END;
 """
 
 

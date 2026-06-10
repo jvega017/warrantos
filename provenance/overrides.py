@@ -46,6 +46,12 @@ BEFORE UPDATE ON human_override
 BEGIN
     SELECT RAISE(ABORT, 'INV-004: human_override is append-only per SPEC-L2-S002');
 END;
+
+CREATE TRIGGER IF NOT EXISTS prevent_delete_human_override
+BEFORE DELETE ON human_override
+BEGIN
+    SELECT RAISE(ABORT, 'INV-004: human_override is append-only per SPEC-L2-S002');
+END;
 """
 
 
