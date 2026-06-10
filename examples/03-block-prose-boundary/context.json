@@ -1,8 +1,8 @@
 [
   {
     "id": "ctx_src_001",
-    "text": "Source: Queensland Open Data portal homepage, retrieved March 2026.",
-    "source": "data.qld.gov.au/about"
+    "text": "Source: Arcadia Open Data portal homepage, retrieved March 2026.",
+    "source": "data.arcadia.gov.example/about"
   },
   {
     "id": "ctx_feedback_001",

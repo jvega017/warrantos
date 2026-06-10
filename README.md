@@ -14,7 +14,7 @@ It also catches the other way an AI document betrays itself: **internal scaffold
 
 It governs the artefact, not the model. It runs at the writer's desk, on one document, before it ships, with zero infrastructure: stdlib-only, MIT, no API, no account. Governance platforms watch the system after the fact; WarrantOS gates the output before the fact.
 
-Built by a serving public-sector policy officer for the people who publish AI-assisted writing under their own name and carry the reputational liability for a fabricated citation: research-integrity, policy, and academic-governance practitioners. It is informed by the working paper *From Citation to Epistemic Governance* (Prometheus Policy Lab, in preparation): it operationalises that paper's problem framing, the gap between citation as attribution and citation as evidence, rather than its formal model.
+Built in a personal capacity by an independent policy researcher for the people who publish AI-assisted writing under their own name and carry the reputational liability for a fabricated citation: research-integrity, policy, and academic-governance practitioners. It is a personal open-source project, not associated with, funded by, or endorsed by any employer or government. It is informed by the working paper *From Citation to Epistemic Governance* (Prometheus Policy Lab, in preparation): it operationalises that paper's problem framing, the gap between citation as attribution and citation as evidence, rather than its formal model.
 
 **The honest demo.** I ran WarrantOS over my own daily policy brief. It returned `BLOCK`: 14 claims, 0 supported, 7 boundary violations. I ship that brief to readers. That is the point: a governance tool worth trusting is one that holds its own author to the standard.
 
