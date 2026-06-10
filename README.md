@@ -14,7 +14,7 @@ It also catches the other way an AI document betrays itself: **internal scaffold
 
 It governs the artefact, not the model. It runs at the writer's desk, on one document, before it ships, with zero infrastructure: stdlib-only, MIT, no API, no account. Governance platforms watch the system after the fact; WarrantOS gates the output before the fact.
 
-Built by a serving public-sector policy officer for the people who publish AI-assisted writing under their own name and carry the reputational liability for a fabricated citation: research-integrity, policy, and academic-governance practitioners. It is the reference implementation of the forthcoming paper *From Citation to Epistemic Governance*.
+Built by a serving public-sector policy officer for the people who publish AI-assisted writing under their own name and carry the reputational liability for a fabricated citation: research-integrity, policy, and academic-governance practitioners. It is informed by the working paper *From Citation to Epistemic Governance* (Prometheus Policy Lab, in preparation): it operationalises that paper's problem framing, the gap between citation as attribution and citation as evidence, rather than its formal model.
 
 **The honest demo.** I ran WarrantOS over my own daily policy brief. It returned `BLOCK`: 14 claims, 0 supported, 7 boundary violations. I ship that brief to readers. That is the point: a governance tool worth trusting is one that holds its own author to the standard.
 
@@ -120,8 +120,11 @@ Full detail in [`docs/VERIFICATION.md`](docs/VERIFICATION.md). Current on `main`
 
 ## Why this exists
 
-This plugin is the operational form of a working paper, *From Citation to
-Epistemic Governance* (Prometheus Policy Lab, in preparation). The argument:
+This plugin is an operational companion to a working paper, *From Citation to
+Epistemic Governance* (Prometheus Policy Lab, in preparation). It takes the
+paper's problem framing and burden-of-proof stance, not its formal apparatus:
+the provenance tuple, the five-valued confidence scale, and the warrant-decay
+model are the paper's contribution, not this tool's. The argument:
 AI failures in high-stakes work are rarely model-capability failures. They are
 epistemic failures. The model states something with confidence and no
 traceable source, a human under time pressure ships it, and the error was
