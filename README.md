@@ -24,7 +24,13 @@ Under the hood, `claude-provenance` wraps AI-assisted writing in an eight-layer 
 
 ## Quickstart
 
-`claude-provenance` is not yet on PyPI. Install from source until the first published release:
+Install from PyPI:
+
+```bash
+pip install warrantos          # MCP server extra: pip install "warrantos[mcp]"
+```
+
+To run the bundled demo below, use a source checkout (it ships the examples):
 
 ```bash
 git clone https://github.com/jvega017/claude-provenance.git

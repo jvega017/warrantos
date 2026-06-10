@@ -6,11 +6,10 @@ does, in what order, and what is and is not built.
 
 ## The one-sentence pitch
 
-`claude-provenance` is the reference implementation of WarrantOS: a
-governance harness that wraps AI-assisted writing so that final
-artefacts ship clean prose, and a separate audit ledger carries the
-sources, the feedback, the review history, the transformations, and
-the overrides that produced them.
+WarrantOS (the `warrantos` package) is a governance harness that wraps
+AI-assisted writing so that final artefacts ship clean prose, and a
+separate audit ledger carries the sources, the feedback, the review
+history, the transformations, and the overrides that produced them.
 
 ## The problem it addresses
 

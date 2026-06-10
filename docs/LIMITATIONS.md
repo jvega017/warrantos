@@ -29,7 +29,7 @@ the limits are stated plainly here. Read this before relying on a verdict.
 
 ## Build state
 
-This is a **v0.9.0b1 beta**. Two layers are explicit `NOT_BUILT` v1.0 deferrals
+This is **v0.9.1**. Two layers are explicit `NOT_BUILT` v1.0 deferrals
 that require domain input from the adopter and cannot be fabricated:
 Data Classification (a sensitivity taxonomy) and Retention/Tombstones. Two more
 are `STARTER` (Safety/Contamination, Evaluation/Calibration) and need extension
