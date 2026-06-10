@@ -2,7 +2,7 @@
 
 [![ci](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml)
 [![layers: 13B / 3P / 2S / 2NB](https://img.shields.io/badge/layers-13B%20%2F%203P%20%2F%202S%20%2F%202NB-blue)](docs/STATUS.md)
-![version: 0.9.0b1](https://img.shields.io/badge/version-0.9.0b1-orange)
+![version: 0.9.1](https://img.shields.io/badge/version-0.9.1-orange)
 ![python: 3.8--3.13](https://img.shields.io/badge/python-3.8--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
 

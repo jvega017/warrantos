@@ -6,6 +6,8 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-06-10
+
 ### Added
 
 - **AI assistant scaffold-residue detection** (Layer 7 G1). The prose-boundary scanner now catches the conversational and scaffold residue that bleeds from the chat into a final artefact, which is a core value proposition: AI self-reference ("as an AI language model"), capability disclaimers ("I cannot verify"), assistant openers ("Certainly!") and closers ("I hope this helps, let me know if"), delivery framing ("here's the revised version"), request acknowledgements ("as requested"), hedged provenance ("based on the information provided"), future-promise narration, and scaffold placeholders (`[TODO: ...]`, `lorem ipsum`, `TKTK`). On a representative leak document, detection went from 1 violation to 11. Verified to not false-positive on real academic and policy prose. Applies to final-prose, brief-light, and paper-full profiles; process-discussing profiles (audit, methodology, prompt-template) are unaffected.
