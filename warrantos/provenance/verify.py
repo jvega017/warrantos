@@ -23,13 +23,13 @@ import urllib.parse
 import urllib.request
 from typing import List, Optional
 
-from provenance.extract import (
+from warrantos.provenance.extract import (
     CITATION_MARKERS,
     CLAIM_TRIGGERS,
     CITE_NEEDED,
     sentences,
 )
-from provenance.grade import Verdict, get_grader
+from warrantos.provenance.grade import Verdict, get_grader
 
 # ---------------------------------------------------------------------------
 # SSRF and scheme guard

@@ -11,7 +11,7 @@ from pathlib import Path
 
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_HOOK = _REPO_ROOT / "hooks" / "claude_code_verify_hook.py"
+_HOOK = _REPO_ROOT / "warrantos" / "hooks" / "claude_code_verify_hook.py"
 
 
 def _load_hook_module():

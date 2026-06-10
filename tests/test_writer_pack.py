@@ -7,8 +7,8 @@ the SPEC §6.2 required pack contents.
 
 import unittest
 
-from provenance.context_admissibility import classify_context
-from provenance.writer_pack import (
+from warrantos.provenance.context_admissibility import classify_context
+from warrantos.provenance.writer_pack import (
     WriterPack,
     _admissible_to_writer,
     compile_writer_pack,

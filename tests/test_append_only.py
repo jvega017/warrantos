@@ -11,8 +11,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from provenance.ledger_write import open_writable_db
-from provenance.overrides import open_override_db, record_override
+from warrantos.provenance.ledger_write import open_writable_db
+from warrantos.provenance.overrides import open_override_db, record_override
 
 
 class TestAppendOnlyViPublicAPI(unittest.TestCase):

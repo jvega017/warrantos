@@ -3,7 +3,7 @@
 
 import unittest
 
-from provenance.boundary import check_boundary
+from warrantos.provenance.boundary import check_boundary
 
 
 class TestBoundaryProfiles(unittest.TestCase):

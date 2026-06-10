@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from provenance.overrides import (
+from warrantos.provenance.overrides import (
     HumanOverride,
     enforce_single_actor_rule,
     get_override_by_id,
@@ -265,7 +265,7 @@ class TestEscalationTaxonomy(unittest.TestCase):
         self.assertEqual(row.escalation_path_taken, "none recorded")
 
     def test_taxonomy_listing_includes_documented_paths(self):
-        from provenance.overrides import list_canonical_escalation_paths
+        from warrantos.provenance.overrides import list_canonical_escalation_paths
         paths = list_canonical_escalation_paths()
         for p in (
             "none recorded",

@@ -7,7 +7,7 @@ optional-dependency design.
 
 import unittest
 
-from provenance import attestation
+from warrantos.provenance import attestation
 
 try:
     attestation.generate_keypair()

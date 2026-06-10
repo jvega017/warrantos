@@ -36,7 +36,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional
 
-from provenance.context_admissibility import ContextItem, derive_requirement
+from warrantos.provenance.context_admissibility import ContextItem, derive_requirement
 
 
 _DEFAULT_ACCEPTANCE_TESTS = (

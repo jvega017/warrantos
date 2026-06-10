@@ -6,7 +6,7 @@ has leaked into reader-facing prose instead of being transformed into an
 admissible requirement, claim, style rule, or audit record.
 """
 
-from provenance.context_admissibility import (
+from warrantos.provenance.context_admissibility import (
     BoundaryResult,
     BoundaryViolation,
     scan_prose_boundary,

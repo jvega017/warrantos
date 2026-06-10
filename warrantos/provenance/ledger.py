@@ -25,7 +25,7 @@ import sqlite3
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-from provenance.salience import is_load_bearing
+from warrantos.provenance.salience import is_load_bearing
 
 # ---------------------------------------------------------------------------
 # Schema probe helpers
@@ -391,7 +391,7 @@ def _collect_matrix_rows(con: sqlite3.Connection) -> List[dict]:
 
 def score_round(claim_text: str) -> str:
     """Return salience as a 2-decimal-place string (e.g., '0.75')."""
-    from provenance.salience import score_claim
+    from warrantos.provenance.salience import score_claim
     return "%.2f" % score_claim(claim_text)
 
 

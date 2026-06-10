@@ -23,7 +23,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-HOOK = REPO_ROOT / "hooks" / "provenance_check.py"
+HOOK = REPO_ROOT / "warrantos" / "hooks" / "provenance_check.py"
 
 
 def _load_module():

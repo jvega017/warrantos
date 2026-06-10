@@ -8,7 +8,7 @@ import unittest
 import uuid
 from pathlib import Path
 
-from cli import warrantos_cli
+from warrantos.cli import warrantos_cli
 
 
 _ACTOR = {"writer": "human:juan", "reviewer": "human:reviewer"}
@@ -23,7 +23,7 @@ class TestAttestVerifyCli(unittest.TestCase):
     def setUp(self):
         # Sign attested bundles so the round-trip verifies under the fail-closed
         # default (an unsigned bundle is overall INVALID without --allow-unsigned).
-        from provenance import attestation
+        from warrantos.provenance import attestation
         self._old_key = os.environ.pop("WARRANTOS_SIGNING_KEY", None)
         try:
             priv, _pub = attestation.generate_keypair()

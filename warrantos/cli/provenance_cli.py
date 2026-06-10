@@ -53,9 +53,10 @@ from typing import List, Optional, Tuple
 # 2026-05-27 baseline traced to this: --cbom mode hit
 # _import_context_admissibility(), the lazy import returned None, and the
 # CLI emitted "context admissibility module is not available." with no
-# JSON or text output. The four lines below make the repository root
+# JSON or text output. The lines below make the repository root
 # importable so the lazy imports actually find the package.
-_REPO_ROOT = Path(__file__).resolve().parent.parent
+# File is at <root>/warrantos/cli/provenance_cli.py, so the root is three up.
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
@@ -94,7 +95,7 @@ def _import_provenance():
     calling any CLI function without affecting module-load time.
     """
     try:
-        import provenance.verify as pv  # type: ignore
+        import warrantos.provenance.verify as pv  # type: ignore
         return pv
     except ImportError:
         return None
@@ -103,7 +104,7 @@ def _import_provenance():
 def _import_extract():
     """Lazily import provenance.extract for the offline heuristic pass."""
     try:
-        import provenance.extract as pe  # type: ignore
+        import warrantos.provenance.extract as pe  # type: ignore
         return pe
     except ImportError:
         return None
@@ -112,7 +113,7 @@ def _import_extract():
 def _import_context_admissibility():
     """Lazily import the context admissibility module."""
     try:
-        import provenance.context_admissibility as ca  # type: ignore
+        import warrantos.provenance.context_admissibility as ca  # type: ignore
         return ca
     except ImportError:
         return None

@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from provenance.cbom import ClassificationOverrideRecord
-from provenance.review_roles import is_review_role_output
+from warrantos.provenance.cbom import ClassificationOverrideRecord
+from warrantos.provenance.review_roles import is_review_role_output
 
 
 @dataclass(frozen=True)

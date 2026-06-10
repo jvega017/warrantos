@@ -24,7 +24,7 @@ import hashlib
 import json
 from typing import List, Optional
 
-from provenance import merkle
+from warrantos.provenance import merkle
 
 
 def _prose_digest(prose: str) -> str:
@@ -60,7 +60,7 @@ def create_warrant(
 
     signed = False
     try:
-        from provenance import attestation
+        from warrantos.provenance import attestation
         try:
             checkpoint = attestation.sign_checkpoint(checkpoint, private_seed_b64)
             signed = True
@@ -119,7 +119,7 @@ def verify_warrant(
     # 3. Signature (optional extra).
     if cp.get("signature"):
         try:
-            from provenance import attestation
+            from warrantos.provenance import attestation
             result["signature"] = attestation.verify_checkpoint(cp, expected_public_key_b64)
         except ImportError:
             result["signature"] = "UNAVAILABLE"

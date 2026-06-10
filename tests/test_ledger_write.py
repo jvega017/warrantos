@@ -6,15 +6,15 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from provenance.context_admissibility import classify_context, derive_requirement
-from provenance.ledger_write import (
+from warrantos.provenance.context_admissibility import classify_context, derive_requirement
+from warrantos.provenance.ledger_write import (
     enable_append_only_triggers,
     list_append_only_tables,
     list_context_transforms,
     open_writable_db,
     persist_context_transform,
 )
-from provenance.overrides import record_override
+from warrantos.provenance.overrides import record_override
 
 
 class TestPersistContextTransform(unittest.TestCase):

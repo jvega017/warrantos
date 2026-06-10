@@ -27,11 +27,11 @@ import unittest
 import uuid
 from pathlib import Path
 
-from provenance.overrides import record_override
+from warrantos.provenance.overrides import record_override
 
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_CLI_PATH = _REPO_ROOT / "cli" / "warrantos_cli.py"
+_CLI_PATH = _REPO_ROOT / "warrantos" / "cli" / "warrantos_cli.py"
 
 
 _FINAL_ACTOR = {

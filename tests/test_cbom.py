@@ -4,7 +4,7 @@
 import json
 import unittest
 
-from provenance.cbom import (
+from warrantos.provenance.cbom import (
     CBOM,
     ClaimRecord,
     ClassificationOverrideRecord,

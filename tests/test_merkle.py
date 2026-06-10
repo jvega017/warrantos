@@ -3,7 +3,7 @@
 import hashlib
 import unittest
 
-from provenance.merkle import (
+from warrantos.provenance.merkle import (
     InclusionProof,
     MerkleTree,
     build_checkpoint,
@@ -115,7 +115,7 @@ class TestInclusionProofs(unittest.TestCase):
     def test_proof_with_extra_forged_step_fails(self):
         t = MerkleTree(_entries(8)); root = t.root()
         p = t.proof(0)
-        from provenance.merkle import ProofStep
+        from warrantos.provenance.merkle import ProofStep
         tampered = InclusionProof(p.index, p.size, p.leaf, list(p.steps) + [ProofStep(b"\x00" * 32, False)])
         self.assertFalse(MerkleTree.verify(tampered, root))
 

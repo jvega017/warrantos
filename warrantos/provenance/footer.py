@@ -14,7 +14,7 @@ Stdlib only. Python 3.8 compatible.
 
 from typing import Iterable, List
 
-from provenance.overrides import HumanOverride
+from warrantos.provenance.overrides import HumanOverride
 
 
 def render_override_footer(

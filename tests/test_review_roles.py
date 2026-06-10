@@ -18,18 +18,18 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from provenance.cbom import (
+from warrantos.provenance.cbom import (
     CBOM,
     ClassificationOverrideRecord,
     ContextInput,
     build_cbom,
 )
-from provenance.context_admissibility import (
+from warrantos.provenance.context_admissibility import (
     classify_context,
     classify_with_override,
 )
-from provenance.overrides import record_override
-from provenance.review_roles import (
+from warrantos.provenance.overrides import record_override
+from warrantos.provenance.review_roles import (
     REVIEW_ROLE_REGISTRY,
     is_review_role_output,
 )

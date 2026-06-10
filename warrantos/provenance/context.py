@@ -4,7 +4,7 @@ This module provides stable names for the Context Integrity Layer while
 preserving the original ``context_admissibility`` import path.
 """
 
-from provenance.context_admissibility import (
+from warrantos.provenance.context_admissibility import (
     BoundaryResult,
     BoundaryViolation,
     ContextItem,

@@ -13,9 +13,9 @@ import unittest
 import unittest.mock
 from unittest.mock import MagicMock, patch
 
-from provenance.grade import HeuristicGrader
-import provenance.verify as _verify_module
-from provenance.verify import (
+from warrantos.provenance.grade import HeuristicGrader
+import warrantos.provenance.verify as _verify_module
+from warrantos.provenance.verify import (
     extract_citation,
     fetch_text,
     verify_claim,
@@ -149,7 +149,7 @@ class TestVerifyClaim(unittest.TestCase):
         claim = "The fund held 4 billion in 2023."
         url = "https://example.org/treasury-report"
 
-        with patch("provenance.verify.fetch_text", return_value=source) as mock_fetch:
+        with patch("warrantos.provenance.verify.fetch_text", return_value=source) as mock_fetch:
             grader = HeuristicGrader()
             v = verify_claim(claim, url, grader=grader)
             mock_fetch.assert_called_once_with(url)
@@ -162,7 +162,7 @@ class TestVerifyClaim(unittest.TestCase):
         claim = "Revenue rose 15 per cent in 2022."
         url = "https://example.org/governance"
 
-        with patch("provenance.verify.fetch_text", return_value=source):
+        with patch("warrantos.provenance.verify.fetch_text", return_value=source):
             grader = HeuristicGrader()
             v = verify_claim(claim, url, grader=grader)
 
@@ -171,7 +171,7 @@ class TestVerifyClaim(unittest.TestCase):
     def test_apa_citation_does_not_fetch(self):
         """An APA citation (non-URL) should not cause a network call."""
         claim = "Output fell 3 per cent (Jones, 2023)."
-        with patch("provenance.verify.fetch_text") as mock_fetch:
+        with patch("warrantos.provenance.verify.fetch_text") as mock_fetch:
             grader = HeuristicGrader()
             v = verify_claim(claim, "(Jones, 2023)", grader=grader)
             mock_fetch.assert_not_called()
@@ -188,7 +188,7 @@ class TestVerifyClaim(unittest.TestCase):
         import os
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("ANTHROPIC_API_KEY", None)
-            with patch("provenance.verify.fetch_text", return_value=None):
+            with patch("warrantos.provenance.verify.fetch_text", return_value=None):
                 v = verify_claim("Output rose 5 per cent.", None, grader=None)
         self.assertIsInstance(v.verdict, str)
 
@@ -207,7 +207,7 @@ class TestVerifyText(unittest.TestCase):
         def _fail_if_called(url):
             raise AssertionError("fetch_text called with fetch=False: url=%s" % url)
 
-        with patch("provenance.verify.fetch_text", side_effect=_fail_if_called):
+        with patch("warrantos.provenance.verify.fetch_text", side_effect=_fail_if_called):
             verdicts = verify_text(text, grader=grader, fetch=False)
 
         self.assertIsInstance(verdicts, list)
@@ -238,7 +238,7 @@ class TestVerifyText(unittest.TestCase):
         text = "Emissions fell 12 per cent (https://example.org/data)."
         grader = HeuristicGrader()
 
-        with patch("provenance.verify.fetch_text", return_value="emissions fell 12 per cent") as mock_fetch:
+        with patch("warrantos.provenance.verify.fetch_text", return_value="emissions fell 12 per cent") as mock_fetch:
             verdicts = verify_text(text, grader=grader, fetch=True)
             mock_fetch.assert_called()
 
@@ -246,7 +246,7 @@ class TestVerifyText(unittest.TestCase):
         self.assertEqual(verdicts[0].verdict, "verified")
 
     def test_returns_list_of_verdict_instances(self):
-        from provenance.grade import Verdict
+        from warrantos.provenance.grade import Verdict
         text = "The 2021 review found that output rose 5 per cent."
         grader = HeuristicGrader()
         verdicts = verify_text(text, grader=grader, fetch=False)

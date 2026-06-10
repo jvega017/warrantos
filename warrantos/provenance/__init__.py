@@ -7,26 +7,26 @@ does no network I/O.
 
 Public API:
 
-    from provenance.grade import Verdict, HeuristicGrader, LLMGrader, get_grader
-    from provenance.verify import fetch_text, extract_citation, verify_claim, verify_text
-    from provenance.extract import CLAIM_TRIGGERS, CITATION_MARKERS, CITE_NEEDED, sentences
-    from provenance.context_admissibility import classify_context, scan_prose_boundary, compile_cbom
-    from provenance.boundary import check_boundary
+    from warrantos.provenance.grade import Verdict, HeuristicGrader, LLMGrader, get_grader
+    from warrantos.provenance.verify import fetch_text, extract_citation, verify_claim, verify_text
+    from warrantos.provenance.extract import CLAIM_TRIGGERS, CITATION_MARKERS, CITE_NEEDED, sentences
+    from warrantos.provenance.context_admissibility import classify_context, scan_prose_boundary, compile_cbom
+    from warrantos.provenance.boundary import check_boundary
 """
 
-from provenance.grade import (
+from warrantos.provenance.grade import (
     HeuristicGrader,
     LLMGrader,
     Verdict,
     get_grader,
 )
-from provenance.verify import (
+from warrantos.provenance.verify import (
     extract_citation,
     fetch_text,
     verify_claim,
     verify_text,
 )
-from provenance.context_admissibility import (
+from warrantos.provenance.context_admissibility import (
     BoundaryResult,
     BoundaryViolation,
     ContextItem,
@@ -36,7 +36,7 @@ from provenance.context_admissibility import (
     derive_requirement,
     scan_prose_boundary,
 )
-from provenance.boundary import check_boundary
+from warrantos.provenance.boundary import check_boundary
 
 __all__ = [
     "Verdict",

@@ -71,30 +71,31 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 # Make the repository root importable when running this file directly.
-_REPO_ROOT = Path(__file__).resolve().parent.parent
+# File is at <root>/warrantos/cli/warrantos_cli.py, so the root is three up.
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from provenance.pathguard import RUN_ID_RE, resolve_under  # noqa: E402
-from provenance.cbom import (  # noqa: E402
+from warrantos.provenance.pathguard import RUN_ID_RE, resolve_under  # noqa: E402
+from warrantos.provenance.cbom import (  # noqa: E402
     CBOM,
     ClaimRecord,
     ClassificationOverrideRecord,
     ContextInput,
     build_cbom,
 )
-from provenance.context_admissibility import (  # noqa: E402
+from warrantos.provenance.context_admissibility import (  # noqa: E402
     BoundaryResult,
     ContextItem,
     classify_context,
     scan_prose_boundary,
 )
-from provenance.footer import render_override_footer  # noqa: E402
-from provenance.overrides import list_overrides_for_run  # noqa: E402
-from provenance.salience import LOAD_BEARING_THRESHOLD, is_load_bearing  # noqa: E402
-from provenance.verify import extract_citation, verify_claim, verify_text  # noqa: E402
-from provenance.extract import CLAIM_TRIGGERS, sentences  # noqa: E402
-from provenance.gates import check_self_grounding  # noqa: E402
+from warrantos.provenance.footer import render_override_footer  # noqa: E402
+from warrantos.provenance.overrides import list_overrides_for_run  # noqa: E402
+from warrantos.provenance.salience import LOAD_BEARING_THRESHOLD, is_load_bearing  # noqa: E402
+from warrantos.provenance.verify import extract_citation, verify_claim, verify_text  # noqa: E402
+from warrantos.provenance.extract import CLAIM_TRIGGERS, sentences  # noqa: E402
+from warrantos.provenance.gates import check_self_grounding  # noqa: E402
 
 
 VERDICT_PASS = "PASS"
@@ -373,7 +374,7 @@ def detect_claims(draft_text: str) -> List[Dict[str, Any]]:
     Each row carries the sentence, the trigger names that fired, the
     citation token if any, and the salience score.
     """
-    from provenance.salience import score_claim
+    from warrantos.provenance.salience import score_claim
 
     rows: List[Dict[str, Any]] = []
     for sent in sentences(draft_text):
@@ -796,8 +797,8 @@ def _override_to_entry(o: Any) -> Dict[str, Any]:
 
 
 def _cmd_attest(args) -> int:
-    from provenance import warrant_bundle
-    from provenance.overrides import list_overrides_for_run
+    from warrantos.provenance import warrant_bundle
+    from warrantos.provenance.overrides import list_overrides_for_run
 
     run_dir = Path(args.run_dir)
     cbom_path = run_dir / "cbom.json"
@@ -853,7 +854,7 @@ def _cmd_attest(args) -> int:
 
 
 def _cmd_verify_external(args) -> int:
-    from provenance import warrant_bundle
+    from warrantos.provenance import warrant_bundle
 
     try:
         bundle = json.loads(Path(args.warrant).read_text(encoding="utf-8"))
@@ -880,7 +881,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "status":
-        from provenance.status import (
+        from warrantos.provenance.status import (
             collect_status, render_markdown, render_text,
         )
         rows = collect_status()

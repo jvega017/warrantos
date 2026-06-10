@@ -3,12 +3,12 @@
 
 import unittest
 
-from provenance.clean_room import (
+from warrantos.provenance.clean_room import (
     InvocationPlan,
     list_permitted_kwargs,
     prepare_invocation,
 )
-from provenance.writer_pack import compile_writer_pack
+from warrantos.provenance.writer_pack import compile_writer_pack
 
 
 class TestPrepareInvocation(unittest.TestCase):
@@ -123,7 +123,7 @@ class TestRunCleanRoomSubprocess(unittest.TestCase):
         self.os = os
 
     def test_subprocess_receives_plan_via_stdin(self):
-        from provenance.clean_room import run_clean_room_subprocess
+        from warrantos.provenance.clean_room import run_clean_room_subprocess
 
         # The subprocess echoes its stdin to stdout. We assert the plan
         # JSON is delivered intact.
@@ -140,7 +140,7 @@ class TestRunCleanRoomSubprocess(unittest.TestCase):
 
     def test_subprocess_env_is_scrubbed(self):
         """An env var that is NOT in the allowlist is suppressed."""
-        from provenance.clean_room import run_clean_room_subprocess
+        from warrantos.provenance.clean_room import run_clean_room_subprocess
 
         # Set a sentinel env var in the parent. It must NOT reach the
         # subprocess.
@@ -164,7 +164,7 @@ class TestRunCleanRoomSubprocess(unittest.TestCase):
         self.assertGreater(result.scrubbed_env_keys, 0)
 
     def test_extra_env_allowlist_lets_a_named_key_through(self):
-        from provenance.clean_room import run_clean_room_subprocess
+        from warrantos.provenance.clean_room import run_clean_room_subprocess
 
         self.os.environ["WARRANTOS_TEST_ALLOWED"] = "deliberate"
         try:
@@ -184,7 +184,7 @@ class TestRunCleanRoomSubprocess(unittest.TestCase):
         self.assertEqual(result.stdout.strip(), "deliberate")
 
     def test_subprocess_timeout_sets_timed_out_flag(self):
-        from provenance.clean_room import run_clean_room_subprocess
+        from warrantos.provenance.clean_room import run_clean_room_subprocess
 
         result = run_clean_room_subprocess(
             self.plan,
@@ -195,7 +195,7 @@ class TestRunCleanRoomSubprocess(unittest.TestCase):
         self.assertEqual(result.exit_code, -1)
 
     def test_non_plan_type_raises(self):
-        from provenance.clean_room import run_clean_room_subprocess
+        from warrantos.provenance.clean_room import run_clean_room_subprocess
 
         with self.assertRaises(TypeError):
             run_clean_room_subprocess(
@@ -204,7 +204,7 @@ class TestRunCleanRoomSubprocess(unittest.TestCase):
             )
 
     def test_empty_command_raises(self):
-        from provenance.clean_room import run_clean_room_subprocess
+        from warrantos.provenance.clean_room import run_clean_room_subprocess
 
         with self.assertRaises(ValueError):
             run_clean_room_subprocess(self.plan, command=[])
@@ -213,7 +213,7 @@ class TestRunCleanRoomSubprocess(unittest.TestCase):
 class TestListDefaultEnvAllowlist(unittest.TestCase):
 
     def test_returns_documented_keys(self):
-        from provenance.clean_room import list_default_env_allowlist
+        from warrantos.provenance.clean_room import list_default_env_allowlist
 
         keys = list_default_env_allowlist()
         # PATH is essential on every platform; assert it is allowlisted.

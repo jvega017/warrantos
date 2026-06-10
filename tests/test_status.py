@@ -7,7 +7,7 @@ import sys
 import unittest
 from pathlib import Path
 
-from provenance.status import (
+from warrantos.provenance.status import (
     LayerStatus,
     collect_status,
     render_markdown,
@@ -16,7 +16,7 @@ from provenance.status import (
 
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_CLI = _REPO_ROOT / "cli" / "warrantos_cli.py"
+_CLI = _REPO_ROOT / "warrantos" / "cli" / "warrantos_cli.py"
 
 
 class TestCollectStatus(unittest.TestCase):

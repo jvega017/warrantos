@@ -31,7 +31,7 @@ import subprocess
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Sequence
 
-from provenance.writer_pack import WriterPack
+from warrantos.provenance.writer_pack import WriterPack
 
 
 # Kwargs explicitly permitted on the writer invocation. Anything else

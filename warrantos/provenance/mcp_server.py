@@ -23,14 +23,14 @@ launchable surface.
 
 Run from the repo root:
 
-    python -m provenance.mcp_server
+    python -m warrantos.provenance.mcp_server
 
 Stdio MCP transport. Configure in Claude Code's MCP settings as:
 
     {
         "warrantos": {
             "command": "python",
-            "args": ["-m", "provenance.mcp_server"],
+            "args": ["-m", "warrantos.provenance.mcp_server"],
             "cwd": "/path/to/claude-provenance"
         }
     }
@@ -47,12 +47,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 # Repo root on sys.path so the CLI module imports work when this file
-# is launched as a script via `python -m provenance.mcp_server`.
+# is launched as a script via `python -m warrantos.provenance.mcp_server`.
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from provenance.pathguard import RUN_ID_RE, resolve_under  # noqa: E402
+from warrantos.provenance.pathguard import RUN_ID_RE, resolve_under  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -216,7 +216,7 @@ def _import_pipeline():
     cli/warrantos_cli.py import cost when only the tool definitions are
     being inspected.
     """
-    from cli import warrantos_cli  # noqa: F401
+    from warrantos.cli import warrantos_cli  # noqa: F401
     return warrantos_cli
 
 
@@ -358,7 +358,7 @@ def tool_warrant_check(args: Dict[str, Any]) -> Dict[str, Any]:
 
 def tool_warrant_classify(args: Dict[str, Any]) -> Dict[str, Any]:
     """In-process implementation of warrant_classify."""
-    from provenance.context_admissibility import classify_context
+    from warrantos.provenance.context_admissibility import classify_context
 
     text = args.get("text") or ""
     source_agent = args.get("source_agent")
@@ -377,7 +377,7 @@ def tool_warrant_classify(args: Dict[str, Any]) -> Dict[str, Any]:
 
 def tool_warrant_record_override(args: Dict[str, Any]) -> Dict[str, Any]:
     """In-process implementation of warrant_record_override."""
-    from provenance.overrides import record_override
+    from warrantos.provenance.overrides import record_override
 
     # Path containment: validate run_id and confine db_path to .warrant root.
     run_id = args.get("run_id", "")

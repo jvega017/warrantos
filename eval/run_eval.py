@@ -41,7 +41,7 @@ from pathlib import Path
 # ---------------------------------------------------------------------------
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_HOOK_PATH = _REPO_ROOT / "hooks" / "provenance_check.py"
+_HOOK_PATH = _REPO_ROOT / "warrantos" / "hooks" / "provenance_check.py"
 
 
 def _load_hook():
@@ -640,8 +640,8 @@ def main(argv=None):
     if str(_REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(_REPO_ROOT))
 
-    from provenance.verify import verify_text
-    from provenance.grade import HeuristicGrader, LLMGrader, CodexGrader
+    from warrantos.provenance.verify import verify_text
+    from warrantos.provenance.grade import HeuristicGrader, LLMGrader, CodexGrader
 
     grader = HeuristicGrader()
 

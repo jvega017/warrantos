@@ -15,7 +15,7 @@ import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, Optional
 
-from provenance.grade import (
+from warrantos.provenance.grade import (
     HeuristicGrader,
     LocalLLMGrader,
     Verdict,
@@ -239,7 +239,7 @@ class TestGetGraderSelectionOrder(_LocalGraderTestBase):
         del os.environ["PROVENANCE_LOCAL_GRADER_URL"]
         os.environ["ANTHROPIC_API_KEY"] = "sk-anthropic-test"
         try:
-            from provenance.grade import LLMGrader
+            from warrantos.provenance.grade import LLMGrader
             grader = get_grader()
             self.assertIsInstance(grader, LLMGrader)
         finally:

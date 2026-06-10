@@ -21,7 +21,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, Union
 
-from provenance.context_admissibility import ContextItem, DerivedRequirement
+from warrantos.provenance.context_admissibility import ContextItem, DerivedRequirement
 
 
 # Tables that SHALL be append-only at the storage layer (INV-004

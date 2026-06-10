@@ -13,7 +13,7 @@ import unittest
 import uuid
 from pathlib import Path
 
-from provenance.mcp_server import (
+from warrantos.provenance.mcp_server import (
     TOOL_DEFINITIONS,
     call_tool_in_process,
     tool_warrant_check,
@@ -318,7 +318,7 @@ class TestMcpSdkOptional(unittest.TestCase):
     """The module imports without the SDK; run_stdio_server() raises if absent."""
 
     def test_module_imports_without_running_server(self):
-        from provenance import mcp_server
+        from warrantos.provenance import mcp_server
         # If the import succeeded, the test passes. The SDK may or may
         # not be installed; either way, importing the module SHALL not
         # raise.

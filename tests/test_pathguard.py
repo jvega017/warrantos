@@ -20,8 +20,8 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from provenance.pathguard import RUN_ID_RE, resolve_under
-from provenance.mcp_server import (
+from warrantos.provenance.pathguard import RUN_ID_RE, resolve_under
+from warrantos.provenance.mcp_server import (
     tool_warrant_check,
     tool_warrant_get_run,
     tool_warrant_record_override,
@@ -319,7 +319,7 @@ class TestCliCheckPathValidation(unittest.TestCase):
 
     def _run_check(self, extra_args):
         """Invoke warrantos_cli.main() with standard args plus extra_args."""
-        from cli.warrantos_cli import main
+        from warrantos.cli.warrantos_cli import main
         return main(["check", self._draft] + extra_args)
 
     def test_traversal_out_dir_exits_nonzero(self):
@@ -378,7 +378,7 @@ class TestCliAttestPathValidation(unittest.TestCase):
         cls._prose = str(prose)
 
     def _run_attest(self, extra_args):
-        from cli.warrantos_cli import main
+        from warrantos.cli.warrantos_cli import main
         return main(["attest", self._prose, "--run-dir", self._run_dir] + extra_args)
 
     def test_traversal_db_exits_nonzero(self):

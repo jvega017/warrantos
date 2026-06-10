@@ -9,7 +9,7 @@ the gap.
 
 import unittest
 
-from provenance.gates import (
+from warrantos.provenance.gates import (
     SelfGroundingResult,
     check_calibration,
     check_contamination,

@@ -15,8 +15,8 @@ from unittest.mock import MagicMock, patch
 import urllib.error
 import urllib.request
 
-import provenance.verify as _verify_module
-from provenance.verify import _is_safe_url, _SafeRedirectHandler, fetch_text
+import warrantos.provenance.verify as _verify_module
+from warrantos.provenance.verify import _is_safe_url, _SafeRedirectHandler, fetch_text
 
 
 # ---------------------------------------------------------------------------

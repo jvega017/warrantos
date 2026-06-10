@@ -13,7 +13,7 @@ import unittest
 import unittest.mock
 from unittest.mock import MagicMock, patch
 
-from provenance.grade import (
+from warrantos.provenance.grade import (
     CodexGrader,
     HeuristicGrader,
     LLMGrader,

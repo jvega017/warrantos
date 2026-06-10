@@ -29,7 +29,7 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
-from provenance.context_admissibility import classify_context  # noqa: E402
+from warrantos.provenance.context_admissibility import classify_context  # noqa: E402
 
 
 _DEFAULT_CORPUS = _REPO_ROOT / "eval" / "classifier-corpus" / "seeds.jsonl"
