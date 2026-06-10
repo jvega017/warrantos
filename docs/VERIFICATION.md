@@ -22,8 +22,10 @@ HTTPS analogy made literal: a document anyone can check.
   from the entries and matches it against the checkpoint. The integrity half is
   pure stdlib and needs no key; only signature attribution needs `[attestation]`.
 - **A browser verifier.** `web/verify.html` is a zero-backend, client-side
-  verifier whose canonical-JSON parser matches the Python verifier byte for byte,
-  including astral-plane unicode.
+  verifier whose canonical-JSON parser is validated against the Python verifier by
+  a differential test over the supported value domain (including astral-plane
+  unicode). Bounded integers and strings are in domain; arbitrary-precision
+  integers above 2^53 are out of domain and not part of the `.warrant` schema.
 
 ## Fail-closed by default
 

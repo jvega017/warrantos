@@ -26,10 +26,9 @@ AI-assisted writing fails in three predictable ways at the same time:
    which lets the override become a self-written permission slip with
    no traceable rationale.
 
-Each failure mode is the subject of a separate working paper. The
-WarrantOS coupling thesis is that they are not independent: fixing
-the citation layer without the context-laundering layer leaves the
-same attack surface, just relocated.
+The WarrantOS coupling thesis is that these failures are not
+independent: fixing the citation layer without the context-laundering
+layer leaves the same attack surface, just relocated.
 
 ## What is in the repository, in order
 
@@ -113,9 +112,10 @@ can call it directly.
   [`STATUS.md`](STATUS.md).
 - CBOM canonical schema name `warrantos-cbom/v1` is stable per
   INV-007.
-- The A1 classification-laundering attack and the A4 override
-  permission-slip attack identified in Wave A QA are structurally
-  closed at the schema and runtime layers.
+- Two structural attacks are closed at the schema and runtime layers:
+  classification laundering (process material relabelled as evidence)
+  and the override permission-slip (a self-approved override with no
+  recorded rationale).
 - The override ledger uses storage-level append-only enforcement via
   SQLite BEFORE UPDATE and BEFORE DELETE triggers (INV-004), installed
   by default on every ledger table, not application-level discipline.

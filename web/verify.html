@@ -38,7 +38,7 @@ a{color:var(--accent)}
 function setText(el, value){ el.textContent = String(value); }
 
 // Tri-state signature constants. INVALID can never be downgraded by any user setting.
-const SIG = { VALID: 'SIGNED_VALID', UNSIGNED: 'UNSIGNED', INVALID: 'SIGNATURE_INVALID' };
+const SIG = { VALID: 'SIGNED_VALID', UNPINNED: 'SIGNED_UNPINNED', UNSIGNED: 'UNSIGNED', INVALID: 'SIGNATURE_INVALID', UNAVAILABLE: 'CANNOT_VERIFY_IN_BROWSER' };
 
 const enc = new TextEncoder();
 
@@ -118,28 +118,53 @@ async function verifyWarrant(bundle, prose, expectedKey, allowUnsigned){
   if (cp.signature && String(cp.signature).length > 0){
     const pub = cp.public_key;
     if (expectedKey && expectedKey !== pub){
-      // Key mismatch is still a signature failure (the claimed key is wrong).
+      // The bundle's signer key is not the key the reader pinned.
+      res.signature = SIG.INVALID;
+    } else if (!pub || typeof pub !== "string" || pub.length === 0){
       res.signature = SIG.INVALID;
     } else {
-      try{
-        if (!pub || typeof pub !== "string" || pub.length === 0) throw new Error("no public key");
-        const body = {}; for (const k of Object.keys(cp)) if (k!=="signature" && k!=="public_key") body[k]=cp[k];
-        const msg = enc.encode(canon(body));
-        const key = await crypto.subtle.importKey("raw", b64urlDecode(pub), {name:"Ed25519"}, false, ["verify"]);
-        const ok = await crypto.subtle.verify({name:"Ed25519"}, key, b64urlDecode(cp.signature), msg);
-        // Any non-true result is INVALID, not UNSIGNED.
-        res.signature = ok ? SIG.VALID : SIG.INVALID;
-      } catch(e){
-        // Any exception during signature processing is INVALID, not UNSIGNED.
-        res.signature = SIG.INVALID;
+      const body = {}; for (const k of Object.keys(cp)) if (k!=="signature" && k!=="public_key") body[k]=cp[k];
+      const msg = enc.encode(canon(body));
+      let key = null, unavailable = false;
+      try {
+        key = await crypto.subtle.importKey("raw", b64urlDecode(pub), {name:"Ed25519"}, false, ["verify"]);
+      } catch(impErr){
+        // Ed25519 unsupported in THIS browser is an environment limit, not a
+        // tamper signal. Report CANNOT_VERIFY, never a false SIGNATURE_INVALID.
+        if (impErr && impErr.name === "NotSupportedError") unavailable = true;
+      }
+      if (unavailable){
+        res.signature = SIG.UNAVAILABLE;
+      } else if (!key){
+        res.signature = SIG.INVALID;   // malformed key bytes
+      } else {
+        try {
+          const ok = await crypto.subtle.verify({name:"Ed25519"}, key, b64urlDecode(cp.signature), msg);
+          // Verified: green VALID only if the reader pinned the signer key. A good
+          // signature under an unpinned key is SIGNED_UNPINNED: the bytes are intact
+          // but the signer is not one the reader vouched for.
+          res.signature = ok ? (expectedKey ? SIG.VALID : SIG.UNPINNED) : SIG.INVALID;
+        } catch(e){
+          res.signature = SIG.INVALID;
+        }
       }
     }
   }
-  // Fail-closed verdict: SIGNATURE_INVALID forces overall INVALID regardless of
-  // the allow-unsigned checkbox. The checkbox affects only the UNSIGNED state.
+  // Fail-closed verdict. Only SIGNED_VALID (verified under a pinned key) yields a
+  // green VALID; UNSIGNED yields VALID only with the allow-unsigned opt-in.
+  // SIGNATURE_INVALID, a tampered ledger, or tampered prose are INVALID.
+  // SIGNED_UNPINNED and CANNOT_VERIFY_IN_BROWSER are amber UNVERIFIED: integrity is
+  // intact but the signature is not something this reader can trust here, which is
+  // never a green pass and never a false tamper accusation.
   const sigOk = res.signature === SIG.VALID || (allowUnsigned && res.signature === SIG.UNSIGNED);
-  const ok = res.integrity==="VALID" && res.prose!=="INVALID" && sigOk;
-  res.overall = ok ? "VALID" : "INVALID";
+  const base = res.integrity === "VALID" && res.prose !== "INVALID";
+  if (base && sigOk){
+    res.overall = "VALID";
+  } else if (!base || res.signature === SIG.INVALID || (res.signature === SIG.UNSIGNED && !allowUnsigned)){
+    res.overall = "INVALID";
+  } else {
+    res.overall = "UNVERIFIED";
+  }
   return res;
 }
 // Test hook for headless validation.
@@ -162,7 +187,7 @@ function render(res, bundle){
 
   // Badge row: uses only known outcome strings, not bundle data.
   const badge = makeEl("div", "badge " + cls(res.overall));
-  setText(badge, res.overall === "VALID" ? "VALID" : "NOT VALID");
+  setText(badge, res.overall === "VALID" ? "VALID" : (res.overall === "UNVERIFIED" ? "UNVERIFIED" : "NOT VALID"));
   card.appendChild(badge);
 
   // Helper to build a result row safely.

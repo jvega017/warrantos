@@ -8,7 +8,7 @@
 
 ## No claim ships without a warrant.
 
-WarrantOS does not detect truth, and it does not try to. It enforces that every claim in an AI-assisted document carries a warrant: a source, an explicit `[CITE NEEDED]`, or a `BLOCK` on the record. A four-state verdict (`PASS` / `HOLD` / `BLOCK` / `NOT_ASSESSABLE`) gates the output before it ships, and every miss is written to a tamper-evident, append-only ledger you can hand an auditor.
+WarrantOS does not detect truth, and it does not try to. It enforces that every claim in an AI-assisted document carries a warrant: a source, an explicit `[CITE NEEDED]`, or a `BLOCK` on the record. A four-state verdict (`PASS` / `HOLD` / `BLOCK` / `NOT_ASSESSABLE`) gates the output before it ships in `enforce` mode (the default `report` mode logs every miss without blocking), and every miss is written to an append-only ledger, tamper-evident against a previously distributed checkpoint, that you can hand an auditor.
 
 It also catches the other way an AI document betrays itself: **internal scaffold and conversational residue that bleeds from the chat into the final artefact**. "Certainly! Here's the revised version", "As an AI language model, I cannot verify", "based on the information provided", "I hope this helps, let me know if you would like me to expand", a stray `[TODO: ...]` placeholder. A clean artefact carries its evidence and none of the machinery that produced it. WarrantOS blocks the machinery from shipping.
 
@@ -16,7 +16,7 @@ It governs the artefact, not the model. It runs at the writer's desk, on one doc
 
 Built in a personal capacity by an independent policy researcher for the people who publish AI-assisted writing under their own name and carry the reputational liability for a fabricated citation: research-integrity, policy, and academic-governance practitioners. It is a personal open-source project, not associated with, funded by, or endorsed by any employer or government. It is informed by the working paper *From Citation to Epistemic Governance* (Prometheus Policy Lab, in preparation): it operationalises that paper's problem framing, the gap between citation as attribution and citation as evidence, rather than its formal model.
 
-**The honest demo.** I ran WarrantOS over my own daily policy brief. It returned `BLOCK`: 14 claims, 0 supported, 7 boundary violations. I ship that brief to readers. That is the point: a governance tool worth trusting is one that holds its own author to the standard.
+**The honest demo.** I ran WarrantOS over the first draft of my own daily policy brief, before remediation. It returned `BLOCK`: 14 claims, 0 supported, 7 boundary violations. That is the gate working as designed on an unremediated draft: it names the epistemic debt so it can be paid down before the artefact ships, instead of going out silently. A governance tool worth trusting is one that holds its own author to that standard.
 
 Under the hood, `claude-provenance` wraps AI-assisted writing in an eight-layer pipeline so the final artefact ships clean prose, while a separate audit ledger carries the sources, the feedback, the review history, the transformations, and the structured overrides that produced it. The per-layer status dashboard tells you exactly what is built and what is not.
 
@@ -115,7 +115,7 @@ A verdict you have to trust is weaker than one you can recompute. WarrantOS turn
 
 - **Tamper-evident ledger.** A deterministic, RFC 6962 style Merkle tree (`provenance.merkle`, pure stdlib) over the audit entries. One root digest fixes the entire ledger state: any insert, edit, delete, or reorder changes it.
 - **Signed checkpoint and portable bundle.** `create_warrant()` packages the prose digest, the CBOM, the relevant ledger entries, and an Ed25519-signed checkpoint into one `.warrant` file. Signing uses the optional `[attestation]` extra; the integrity check needs nothing beyond the standard library.
-- **Fail-closed verification.** `warrantos verify-external` recomputes the Merkle root and matches the checkpoint. An unsigned or signature-unavailable bundle is overall `INVALID` unless `--allow-unsigned` is passed explicitly. A client-side browser verifier (`web/verify.html`) matches the Python verifier byte for byte and renders all untrusted fields as inert text under a strict CSP.
+- **Fail-closed verification.** `warrantos verify-external` recomputes the Merkle root and matches the checkpoint. An unsigned or signature-unavailable bundle is overall `INVALID` unless `--allow-unsigned` is passed explicitly. A client-side browser verifier (`web/verify.html`) is validated against the Python verifier by a differential test over the supported value domain, and renders all untrusted fields as inert text under a strict CSP.
 
 ```bash
 warrantos attest final.md --run-dir .warrant/runs/<id> --out final.warrant
@@ -130,9 +130,9 @@ This plugin is an operational companion to a working paper, *From Citation to
 Epistemic Governance* (Prometheus Policy Lab, in preparation). It takes the
 paper's problem framing and burden-of-proof stance, not its formal apparatus:
 the provenance tuple, the five-valued confidence scale, and the warrant-decay
-model are the paper's contribution, not this tool's. The argument:
-AI failures in high-stakes work are rarely model-capability failures. They are
-epistemic failures. The model states something with confidence and no
+model are the paper's contribution, not this tool's. The argument is that the
+AI failures that matter most in high-stakes work are often not model-capability
+failures but epistemic ones: the model states something with confidence and no
 traceable source, a human under time pressure ships it, and the error was
 never about model size. The fix is a loop that refuses to let an unsourced or
 unverified claim pass silently.
@@ -159,7 +159,10 @@ machine-checked, for example an `(Author, Year)` with no URL), **skipped**, or
 back to the heuristic. The verifier is never called from the blocking hook.
 
 The detector catches the cheap, common failure. The verifier targets the
-expensive one: a claim that is confidently cited and wrong.
+expensive one: a claim that is confidently cited and wrong. Detecting an
+outright `contradiction`, as opposed to mere non-support, needs a configured
+LLM grader; the offline default flags `unsupported` and `unverifiable` but
+never emits `contradicted`.
 
 ## Install as a Claude Code plugin (legacy v0.3 hook)
 
