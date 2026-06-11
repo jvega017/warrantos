@@ -40,6 +40,16 @@ class TestCollectStatus(unittest.TestCase):
         for r in collect_status():
             self.assertIn(r.status, valid, msg=r.layer_id + " has unknown status")
 
+    def test_f_policy_built_requires_registry_and_spec(self):
+        # F-policy is BUILT only when the role registry resolves and the
+        # normative SPEC document is committed. Guard the flip so removing
+        # either artefact would surface here.
+        rows = {r.layer_id: r for r in collect_status()}
+        self.assertEqual(rows["F-policy"].status, "BUILT")
+        from warrantos.provenance import roles
+        self.assertEqual(len(roles.REQUIRED_ACTOR_ROLE_IDS), 6)
+        self.assertTrue((_REPO_ROOT / "docs" / "SPEC.md").is_file())
+
     def test_layer_status_to_dict_is_serialisable(self):
         rows = collect_status()
         # Round-trip through JSON.

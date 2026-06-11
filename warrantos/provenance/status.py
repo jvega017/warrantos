@@ -80,6 +80,47 @@ def _module_has(module_path: str, *names: str) -> bool:
     return False
 
 
+def _role_registry_complete() -> bool:
+    """Return True if the role registry resolves all six SPEC-F-S002 roles.
+
+    Tolerant: any import/attribute failure returns False so a partial
+    install does not crash the status report.
+    """
+    try:
+        mod = None
+        for candidate in ("warrantos.provenance.roles", "provenance.roles"):
+            try:
+                mod = import_module(candidate)
+                break
+            except ImportError:
+                continue
+        if mod is None:
+            return False
+        required = getattr(mod, "REQUIRED_ACTOR_ROLE_IDS", None)
+        actor_roles = getattr(mod, "ACTOR_ROLES", None)
+        if required is None or actor_roles is None:
+            return False
+        # The six canonical roles SHALL be present (SPEC-F-S002).
+        return len(set(required)) == 6 and len(actor_roles) == 6
+    except Exception:
+        return False
+
+
+def _repo_file_exists(relative_path: str) -> bool:
+    """Return True if `relative_path` exists under the repository root.
+
+    The repo root is located relative to this module
+    (warrantos/provenance/status.py -> two parents up is the repo root).
+    Tolerant: returns False on any path error.
+    """
+    try:
+        from pathlib import Path
+        repo_root = Path(__file__).resolve().parents[2]
+        return (repo_root / relative_path).is_file()
+    except Exception:
+        return False
+
+
 def collect_status() -> List[LayerStatus]:
     """Return the full per-layer status list.
 
@@ -284,13 +325,46 @@ def collect_status() -> List[LayerStatus]:
     ))
 
     # ---------- Foundation row ----------
+    # F-policy is BUILT when BOTH gaps that held it at PARTIAL are closed:
+    #   1. a machine-readable role registry exists at runtime
+    #      (provenance.roles with the six SPEC-F-S002 actor roles plus a
+    #      validate_actor_identity() runtime check), AND
+    #   2. the normative SPEC document is committed to the repository
+    #      (docs/SPEC.md).
+    # Both are checked here rather than assumed: the registry is checked by
+    # importing it and confirming the six required role ids resolve; the
+    # SPEC file is checked for presence on disk relative to the repo root.
+    _roles_registry_built = _module_has(
+        "provenance.roles",
+        "ACTOR_ROLES", "REQUIRED_ACTOR_ROLE_IDS", "validate_actor_identity",
+        "registry_to_dict",
+    ) and _role_registry_complete()
+    _spec_committed = _repo_file_exists("docs/SPEC.md")
+    _f_policy_built = _roles_registry_built and _spec_committed
+
     rows.append(LayerStatus(
         layer_id="F-policy",
         name="Foundation: Policy & Role Definitions",
-        status="PARTIAL",
-        module="docs/STACK.md; SPEC IDs in code",
-        surfaces=["6-role taxonomy documented; actor_identity field enforced in CBOM"],
-        notes="Roles are documented and the CBOM actor_identity field carries them. A runtime registry is not built. The normative SPEC document is not yet committed to this repository; SPEC IDs in code and tests are the source of truth at v0.9.0b1.",
+        status="BUILT" if _f_policy_built else "PARTIAL",
+        module="provenance.roles; docs/SPEC.md; docs/STACK.md",
+        surfaces=[
+            "provenance.roles: 6 SPEC-F-S002 actor roles + validate_actor_identity()",
+            "registry_to_dict() schema warrantos-roles/v1",
+            "CBOM actor_identity field carries the six roles",
+            "docs/SPEC.md (normative spec, RFC 2119) committed",
+        ],
+        notes=(
+            "v0.9: machine-readable role registry (provenance.roles) "
+            "enumerates the six SPEC-F-S002 actor roles and validates a "
+            "CBOM actor_identity map at runtime; the normative SPEC "
+            "document is committed at docs/SPEC.md. Both gaps that held "
+            "this row at PARTIAL are closed."
+        ) if _f_policy_built else (
+            "Roles documented and carried by the CBOM actor_identity field, "
+            "but the runtime registry (provenance.roles) and/or the "
+            "committed normative SPEC (docs/SPEC.md) are not both present "
+            "in this install."
+        ),
     ))
 
     rows.append(LayerStatus(
