@@ -6,6 +6,28 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-06-11
+
+A patch release over 0.9.2. No change to the build state (still **20 BUILT / 0 PARTIAL**); these are correctness, documentation, and packaging fixes.
+
+### Fixed
+
+- **Windows unicode crash in the CLI.** `stdout`/`stderr` are now forced to UTF-8, so the CLI no longer crashes when report content contains non-Latin-1 characters (Greek, mathematical symbols, smart quotes) on a Windows `cp1252` console.
+- **`WARRANTOS_DB` is now actually read.** The `WARRANTOS_DB` environment variable now sets the `--db` default for the `check` and `retention` commands. It was documented but had been a no-op.
+
+### Added
+
+- **`.claude-plugin/marketplace.json`** so the documented `/plugin marketplace add` flow works. `plugin.json` version is aligned to the release.
+
+### Changed
+
+- **Stale Python classifiers dropped.** The `py3.8`-`3.10` classifiers are removed, matching the `requires-python = ">=3.11"` floor.
+
+### Documentation
+
+- **README clean-install accuracy.** References corrected to the installed `warrantos.*` namespace and the `provenance` console script, so a clean install matches the docs. A stale Release-status contradiction is fixed.
+- **Reproducible public honest demo.** The private-brief anecdote is replaced with a reproducible public demo (`examples/honest-demo`), asserted in the gallery and CI.
+
 ## [0.9.2] - 2026-06-11
 
 ### Added
