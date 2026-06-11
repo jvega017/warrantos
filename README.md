@@ -1,7 +1,7 @@
 # claude-provenance
 
 [![ci](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml)
-[![layers: 17B / 3P](https://img.shields.io/badge/layers-17B%20%2F%203P-blue)](docs/STATUS.md)
+[![layers: 20B / 0P](https://img.shields.io/badge/layers-20B%20%2F%200P-brightgreen)](docs/STATUS.md)
 ![version: 0.9.2](https://img.shields.io/badge/version-0.9.2-orange)
 ![python: 3.11--3.13](https://img.shields.io/badge/python-3.11--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
@@ -20,7 +20,7 @@ Built in a personal capacity by an independent policy researcher for the people 
 
 Under the hood, `claude-provenance` wraps AI-assisted writing in an eight-layer pipeline so the final artefact ships clean prose, while a separate audit ledger carries the sources, the feedback, the review history, the transformations, and the structured overrides that produced it. The per-layer status dashboard tells you exactly what is built and what is not.
 
-> **v0.9.2.** Build state: **17 BUILT / 3 PARTIAL** (was 13 BUILT / 3 PARTIAL / 2 STARTER / 2 NOT_BUILT at v0.9.1). The two former STARTER gates (G4 Safety & Contamination, G5 Evaluation & Calibration) and the two former NOT_BUILT foundation rows (Data Classification with sensitivity tiers, Retention & Deletion with tombstones) are now BUILT. The three remaining PARTIAL rows are F-policy, F-compliance, and F-metrics: code is present but some SHALLs are discipline-only, and the normative SPEC document is not yet committed to this repository. See [`docs/STATUS.md`](docs/STATUS.md) before evaluating scope.
+> **v0.9.2.** Build state: **20 BUILT / 0 PARTIAL** (was 13 BUILT / 3 PARTIAL / 2 STARTER / 2 NOT_BUILT at v0.9.1). All five output-integrity gates (G1-G5) and all eight foundation rows are BUILT. The final three rows closed in v0.9.2: **F-policy** (the normative spec `docs/SPEC.md` and a machine-readable six-role registry are now committed), **F-compliance** (a self-assessment control mapping to ISO/IEC 42001 and the NIST AI RMF in `docs/COMPLIANCE.md` — a documented mapping, explicitly **not** certified conformance), and **F-metrics** (shadow-log aggregation via the `warrantos metrics` command). Adopter-specific configuration (sensitivity tiers, retention windows) and an automated SPEC-ID conformance check remain future work, stated plainly in those docs. See [`docs/STATUS.md`](docs/STATUS.md) before evaluating scope.
 
 ## Quickstart
 
