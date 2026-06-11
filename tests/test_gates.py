@@ -246,5 +246,58 @@ class TestCheckCalibration(unittest.TestCase):
         self.assertIn("LLM grader", d["note"])
 
 
+class TestCheckCalibrationStored(unittest.TestCase):
+    """G5: check_calibration also accepts a stored calibration.json dict
+    (recognised by the coverage_estimate key) produced by
+    `warrantos calibrate`."""
+
+    def _stored(self, **overrides):
+        base = {
+            "grader": "HeuristicGrader",
+            "corpus": "eval/corpus/grader.jsonl",
+            "corpus_size": 60,
+            "typed": 23,
+            "per_class_recall": {"verified": 0.93, "contradicted": 0.0},
+            "macro_recall": 0.78,
+            "accuracy": 0.72,
+            "coverage_estimate": 0.3833,
+        }
+        base.update(overrides)
+        return base
+
+    def test_stored_dict_is_recognised_and_reconstructed(self):
+        result = check_calibration(self._stored())
+        self.assertEqual(result.total, 60)
+        self.assertAlmostEqual(result.coverage, 0.3833)
+        # with_confidence derived from coverage * total.
+        self.assertEqual(result.with_confidence, round(0.3833 * 60))
+
+    def test_stored_dict_with_brier_value(self):
+        result = check_calibration(self._stored(brier=0.12))
+        self.assertAlmostEqual(result.brier, 0.12)
+
+    def test_stored_dict_without_brier_is_none(self):
+        result = check_calibration(self._stored())
+        self.assertIsNone(result.brier)
+
+    def test_live_rows_path_unaffected_by_stored_branch(self):
+        """A list of verdict dicts still takes the live-rows path."""
+        verdicts = [
+            {"verdict": "verified", "confidence": 1.0},
+            {"verdict": "contradicted", "confidence": 0.0},
+        ]
+        result = check_calibration(verdicts)
+        self.assertEqual(result.total, 2)
+        self.assertEqual(result.brier, 0.0)
+
+    def test_plain_dict_without_coverage_estimate_not_treated_as_stored(self):
+        """A dict lacking coverage_estimate is not a stored calibration;
+        it falls through to the live-rows path (which yields zeros for a
+        non-iterable-of-rows input handled as empty)."""
+        result = check_calibration({"verdict": "verified"})
+        # Not recognised as stored; treated as a single dict -> list of one.
+        self.assertEqual(result.total, 1)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -341,11 +341,61 @@ class CalibrationResult:
         }
 
 
+def _calibration_from_stored(stored: Dict) -> CalibrationResult:
+    """Build a CalibrationResult from a stored calibration.json dict.
+
+    The stored artefact is produced by `warrantos calibrate` (see
+    cli.warrantos_cli) and carries the grader label, corpus size,
+    per-class recall, and a coverage estimate. The Brier-style fields
+    on CalibrationResult are populated from the stored summary where
+    available; otherwise they fall back to honest zeros/None.
+
+    A stored calibration is recognised by the presence of a
+    `coverage_estimate` key (the calibrate command always writes it).
+    """
+    total = int(stored.get("corpus_size", 0) or 0)
+    coverage = float(stored.get("coverage_estimate", 0.0) or 0.0)
+    with_confidence = int(round(coverage * total)) if total else 0
+    brier = stored.get("brier")
+    if brier is not None:
+        try:
+            brier = float(brier)
+        except (TypeError, ValueError):
+            brier = None
+    note = stored.get("note") or (
+        "Loaded from a stored calibration.json produced by "
+        "`warrantos calibrate`. Coverage is the honest signal: the offline "
+        "heuristic grader emits no confidence, so coverage is typically 0 "
+        "and per-class recall is the meaningful calibration measure."
+    )
+    return CalibrationResult(
+        total=total,
+        typed=int(stored.get("typed", with_confidence) or with_confidence),
+        with_confidence=with_confidence,
+        coverage=coverage,
+        brier=brier,
+        note=note,
+    )
+
+
 def check_calibration(verdicts) -> CalibrationResult:
     """SPEC-L7-R002 G5: compute a Brier score with explicit coverage.
 
-    Accepts an iterable of verdict dicts (each at minimum carrying a
-    `verdict` field and optionally a `confidence` field). Computes:
+    Accepts EITHER:
+
+    - an iterable of live verdict dicts (each at minimum carrying a
+      `verdict` field and optionally a `confidence` field), in which
+      case the Brier score is computed at runtime as below; OR
+    - a single stored ``calibration.json`` dict (recognised by a
+      `coverage_estimate` key) produced by `warrantos calibrate`, in
+      which case the result is reconstructed from the stored summary
+      (grader, corpus size, per-class recall, coverage estimate).
+
+    The dual input lets a caller either grade live verdict rows or
+    surface a previously-computed corpus calibration without re-running
+    the eval harness.
+
+    For the live-rows path it computes:
 
     - `total`: count of all verdicts.
     - `typed`: count of verdicts in {verified, contradicted}; only
@@ -362,6 +412,11 @@ def check_calibration(verdicts) -> CalibrationResult:
     only when coverage is non-zero. v0.6 returns both so the caller
     can report the gap rather than smooth it away.
     """
+    # Stored calibration.json path: a single dict carrying the
+    # calibrate summary (recognised by the coverage_estimate key).
+    if isinstance(verdicts, dict) and "coverage_estimate" in verdicts:
+        return _calibration_from_stored(verdicts)
+
     rows = list(verdicts) if verdicts else []
     total = len(rows)
 

@@ -254,6 +254,18 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     check.add_argument(
+        "--sensitivity-check",
+        action="store_true",
+        help=(
+            "Run the F-classification sensitivity gate over the draft "
+            "before the pipeline. Material classified at a blocking tier "
+            "(Sensitive/Protected or Credentials, per the default data "
+            "gate) causes the command to refuse to process and exit "
+            "non-zero. The keyword heuristics are a starter set; extend "
+            "them for production. Off by default."
+        ),
+    )
+    check.add_argument(
         "--writer-model",
         default=None,
         help=(
@@ -331,6 +343,39 @@ def build_parser() -> argparse.ArgumentParser:
              "By default an unsigned or unverifiable signature is overall INVALID.",
     )
     verify.add_argument("--json", action="store_true", help="Emit the verdict as JSON.")
+
+    # --- calibrate: run the eval harness and write .warrant/calibration.json ---
+    calibrate = sub.add_parser(
+        "calibrate",
+        help="Run the grader eval corpus and write .warrant/calibration.json.",
+        description=(
+            "Run the Layer 7 G5 calibration: evaluate the grader against the "
+            "labelled eval corpus (eval/run_eval.py) and write a "
+            "calibration.json summary (grader, corpus size, per-class recall, "
+            "coverage estimate) into .warrant/. The stored artefact can then "
+            "be loaded by check_calibration() without re-running the eval."
+        ),
+    )
+    calibrate.add_argument(
+        "--grader",
+        choices=("heuristic", "llm", "codex"),
+        default="heuristic",
+        help="Which grader to calibrate (default: heuristic, free/offline).",
+    )
+    calibrate.add_argument(
+        "--grader-corpus",
+        default=None,
+        help="Path to the grader JSONL corpus (default: the bundled eval corpus).",
+    )
+    calibrate.add_argument(
+        "--out",
+        default=None,
+        help="Output path for calibration.json (default: .warrant/calibration.json).",
+    )
+    calibrate.add_argument(
+        "--json", action="store_true",
+        help="Emit the calibration summary as JSON on stdout.",
+    )
 
     return parser
 
@@ -1042,6 +1087,106 @@ def _cmd_verify_external(args) -> int:
     return 0 if result["overall"] == "VALID" else 1
 
 
+def _cmd_calibrate(args) -> int:
+    """G5 calibration: run the grader eval corpus and write calibration.json.
+
+    Reuses eval/run_eval.py's corpus loader, grader runner, and metric
+    computation so the calibration figures come from the same code that
+    produces the published eval report. Writes a compact summary
+    (grader, corpus size, per-class recall, coverage estimate) into
+    .warrant/calibration.json for check_calibration() to load.
+    """
+    import importlib.util
+
+    eval_path = _REPO_ROOT / "eval" / "run_eval.py"
+    if not eval_path.is_file():
+        sys.stderr.write("warrantos calibrate: eval/run_eval.py not found at %s\n" % eval_path)
+        return 2
+    spec = importlib.util.spec_from_file_location("_warrantos_run_eval", str(eval_path))
+    run_eval = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(run_eval)
+
+    from warrantos.provenance.grade import HeuristicGrader
+
+    if args.grader == "heuristic":
+        grader, grader_label = HeuristicGrader(), "HeuristicGrader"
+    elif args.grader == "llm":
+        from warrantos.provenance.grade import LLMGrader
+        grader, grader_label = LLMGrader(), "LLMGrader"
+    else:  # codex
+        from warrantos.provenance.grade import CodexGrader
+        grader, grader_label = CodexGrader(), "CodexGrader"
+
+    corpus_path = args.grader_corpus or str(
+        _REPO_ROOT / "eval" / "corpus" / "grader.jsonl"
+    )
+    items = run_eval.load_grader_corpus(corpus_path)
+    results = run_eval.grade_grader_corpus(items, grader)
+    metrics = run_eval.compute_grader_metrics(results)
+
+    # Coverage estimate: the fraction of corpus rows whose graded verdict
+    # is a typed calibration label (verified/contradicted). The offline
+    # heuristic emits no numeric confidence, so confidence-coverage is 0;
+    # the typed-fraction is the honest stand-in the heuristic CAN report.
+    typed_labels = {"verified", "contradicted"}
+    typed = sum(1 for _id, _gold, pred in results if pred in typed_labels)
+    corpus_size = metrics["n"]
+    coverage_estimate = (typed / corpus_size) if corpus_size else 0.0
+
+    per_class_recall = {
+        cls: round(d["recall"], 4) for cls, d in metrics["per_class"].items()
+    }
+
+    summary = {
+        "grader": grader_label,
+        "corpus": corpus_path,
+        "corpus_size": corpus_size,
+        "typed": typed,
+        "per_class_recall": per_class_recall,
+        "macro_recall": round(metrics["macro"]["recall"], 4),
+        "accuracy": round(metrics["accuracy"], 4),
+        "coverage_estimate": round(coverage_estimate, 4),
+        "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "note": (
+            "G5 calibration summary. The offline HeuristicGrader emits no "
+            "numeric confidence, so Brier-style confidence coverage is 0; "
+            "coverage_estimate reports the typed-verdict fraction and "
+            "per_class_recall is the meaningful calibration measure. Use an "
+            "LLM grader for confidence-bearing calibration."
+        ),
+    }
+
+    _cwd = Path(".").resolve()
+    raw_out = args.out or str(Path(".warrant") / "calibration.json")
+    try:
+        out = resolve_under(_cwd, raw_out)
+    except ValueError as exc:
+        sys.stderr.write(
+            "warrantos calibrate: --out path is outside the current working directory: %s\n" % exc
+        )
+        return 2
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
+    if args.json:
+        sys.stdout.write(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    else:
+        sys.stdout.write(
+            "warrantos calibrate\n"
+            "  grader:            %s\n"
+            "  corpus size:       %d\n"
+            "  macro recall:      %.4f\n"
+            "  accuracy:          %.4f\n"
+            "  coverage estimate: %.4f (typed-verdict fraction)\n"
+            "  written to:        %s\n"
+            % (
+                grader_label, corpus_size, summary["macro_recall"],
+                summary["accuracy"], coverage_estimate, out,
+            )
+        )
+    return 0
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -1066,6 +1211,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "verify-external":
         return _cmd_verify_external(args)
+
+    if args.command == "calibrate":
+        return _cmd_calibrate(args)
 
     if args.command != "check":
         parser.print_help()
@@ -1119,6 +1267,23 @@ def main(argv: Optional[List[str]] = None) -> int:
     except FileNotFoundError:
         sys.stderr.write("warrantos: draft file not found: %s\n" % args.draft)
         return 2
+
+    # --- F-classification sensitivity gate (optional, fail-closed) ---
+    if getattr(args, "sensitivity_check", False):
+        from warrantos.provenance.classification import (
+            SensitivityBlock,
+            gate_sensitivity,
+        )
+        try:
+            gate_sensitivity(draft)
+        except SensitivityBlock as block:
+            sys.stderr.write("warrantos: %s\n" % block)
+            sys.stderr.write(
+                "warrantos: --sensitivity-check refused to process this draft. "
+                "The keyword heuristics are a starter set; review and extend "
+                "for your environment if this is a false positive.\n"
+            )
+            return 3
 
     try:
         context_items_raw = load_context(args.context)

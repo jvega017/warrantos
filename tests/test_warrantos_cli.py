@@ -697,5 +697,91 @@ class TestExplainProfile(unittest.TestCase):
         self.assertIn("SUPPRESSED", proc.stdout)
 
 
+class TestSensitivityCheckFlag(unittest.TestCase):
+    """F-classification gate wired into `warrantos check --sensitivity-check`."""
+
+    def setUp(self):
+        self.h = _Harness()
+
+    def tearDown(self):
+        self.h.cleanup()
+
+    def test_sensitive_draft_is_refused_with_exit_3(self):
+        draft = self.h.write(
+            "sensitive.md",
+            "This Cabinet submission recommends a $250M allocation.\n",
+        )
+        proc = self.h.run(
+            str(draft), "--profile", "brief-light", "--sensitivity-check",
+        )
+        self.assertEqual(proc.returncode, 3, msg=proc.stdout + proc.stderr)
+        self.assertIn("Sensitivity gate BLOCKED", proc.stderr)
+
+    def test_clean_draft_proceeds_normally(self):
+        draft = self.h.write(
+            "clean.md",
+            "Open data improves transparency per https://example.gov.\n",
+        )
+        proc = self.h.run(
+            str(draft), "--profile", "brief-light", "--sensitivity-check",
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertIn(data["verdict"], {"PASS", "HOLD"})
+
+    def test_flag_off_by_default_does_not_block_sensitive_draft(self):
+        """Without --sensitivity-check the gate never runs."""
+        draft = self.h.write(
+            "sensitive.md",
+            "This Cabinet submission recommends a $250M allocation.\n",
+        )
+        proc = self.h.run(str(draft), "--profile", "brief-light")
+        # No sensitivity refusal: the run proceeds and emits a JSON report.
+        self.assertNotEqual(proc.returncode, 3)
+        data = json.loads(proc.stdout)
+        self.assertIn("verdict", data)
+
+
+class TestCalibrateSubcommand(unittest.TestCase):
+    """G5: `warrantos calibrate` runs the eval corpus and writes
+    .warrant/calibration.json."""
+
+    def setUp(self):
+        uid = uuid.uuid4().hex[:8]
+        self.out = _REPO_ROOT / ".warrant" / ("calib_test_" + uid + ".json")
+
+    def tearDown(self):
+        try:
+            self.out.unlink()
+        except OSError:
+            pass
+
+    def _run(self, *args):
+        cmd = [sys.executable, str(_CLI_PATH), "calibrate"] + list(args)
+        return subprocess.run(
+            cmd, cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=120
+        )
+
+    def test_calibrate_writes_calibration_json(self):
+        proc = self._run("--out", str(self.out), "--json")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        self.assertTrue(self.out.is_file())
+        summary = json.loads(self.out.read_text(encoding="utf-8"))
+        for key in (
+            "grader", "corpus_size", "per_class_recall", "coverage_estimate",
+        ):
+            self.assertIn(key, summary)
+        self.assertGreater(summary["corpus_size"], 0)
+
+    def test_stored_calibration_loads_back_into_check_calibration(self):
+        proc = self._run("--out", str(self.out))
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        from warrantos.provenance.gates import check_calibration
+        summary = json.loads(self.out.read_text(encoding="utf-8"))
+        result = check_calibration(summary)
+        self.assertEqual(result.total, summary["corpus_size"])
+        self.assertAlmostEqual(result.coverage, summary["coverage_estimate"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

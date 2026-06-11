@@ -54,17 +54,30 @@ class LayerStatus:
 def _module_has(module_path: str, *names: str) -> bool:
     """Return True if every name exists on the named module.
 
+    The canonical namespace for this package is `warrantos.provenance.*`.
+    For backward compatibility the status rows are written with the bare
+    `provenance.*` path, so this helper tries the `warrantos.`-prefixed
+    module first and falls back to the bare path. This keeps the status
+    report accurate whether the install resolves `provenance` to the
+    `warrantos.provenance` namespace or to a legacy top-level alias.
+
     Tolerant: returns False on ImportError or AttributeError so that a
     partially-installed package still produces a useful status report.
     """
-    try:
-        mod = import_module(module_path)
-    except ImportError:
-        return False
-    for n in names:
-        if not hasattr(mod, n):
-            return False
-    return True
+    candidates = (module_path,)
+    if module_path.startswith("provenance."):
+        candidates = ("warrantos." + module_path, module_path)
+    elif module_path == "provenance":
+        candidates = ("warrantos.provenance", module_path)
+
+    for candidate in candidates:
+        try:
+            mod = import_module(candidate)
+        except ImportError:
+            continue
+        if all(hasattr(mod, n) for n in names):
+            return True
+    return False
 
 
 def collect_status() -> List[LayerStatus]:
@@ -221,12 +234,25 @@ def collect_status() -> List[LayerStatus]:
     rows.append(LayerStatus(
         layer_id="L7-G5",
         name="G5 Evaluation & Calibration",
-        status="STARTER",
-        module="provenance.gates",
+        status="BUILT" if _module_has(
+            "provenance.gates", "check_calibration", "_calibration_from_stored"
+        ) else "STARTER",
+        module="provenance.gates, eval/run_eval.py, cli.warrantos_cli",
         surfaces=[
-            "check_calibration() [Brier-with-explicit-coverage]",
+            "check_calibration() [accepts live verdict rows OR a stored calibration.json]",
+            "CLI: warrantos calibrate (runs eval/run_eval.py, writes .warrant/calibration.json)",
+            "calibration.json: grader / corpus size / per-class recall / coverage estimate",
         ],
-        notes="Coverage typically 0 with HeuristicGrader (no confidence emitted). Becomes meaningful with LLM grader.",
+        notes=(
+            "warrantos calibrate runs the grader against the labelled eval "
+            "corpus and writes .warrant/calibration.json (grader, corpus "
+            "size, per-class recall, coverage estimate). check_calibration() "
+            "accepts either live verdict rows (Brier-with-explicit-coverage) "
+            "or the stored calibration.json. Confidence coverage is typically "
+            "0 with the offline HeuristicGrader (no confidence emitted); "
+            "per-class recall is the meaningful measure until an LLM grader "
+            "supplies numeric confidence."
+        ),
     ))
 
     rows.append(LayerStatus(
@@ -257,10 +283,26 @@ def collect_status() -> List[LayerStatus]:
     rows.append(LayerStatus(
         layer_id="F-classification",
         name="Foundation: Data Classification (sensitivity tiers)",
-        status="NOT_BUILT",
-        module="-",
-        surfaces=[],
-        notes="Requires a domain-specific sensitivity taxonomy from the adopter. v1.0 deferral; cannot be fabricated.",
+        status="BUILT" if _module_has(
+            "provenance.classification",
+            "SensitivityTier", "classify_sensitivity", "gate_sensitivity",
+            "SensitivityBlock", "DEFAULT_TIERS",
+        ) else "NOT_BUILT",
+        module="provenance.classification",
+        surfaces=[
+            "SensitivityTier dataclass + 4-tier DEFAULT_TIERS (Public/Official/Sensitive/Credentials)",
+            "classify_sensitivity() [starter keyword heuristics]",
+            "gate_sensitivity() / SensitivityBlock [fail-closed]",
+            "CLI: warrantos check --sensitivity-check",
+        ],
+        notes=(
+            "4-tier default registry mirrors the reference adopter's data "
+            "gate. Keyword heuristics (Cabinet, ministerial, legal advice, "
+            "Crown Solicitor, HR/PIP/termination, $NNNM/B budget markers, "
+            "credential patterns) are a documented STARTER set; production "
+            "deployments SHALL extend them with a domain taxonomy. Unmatched "
+            "text defaults to Official, never silently Public."
+        ),
     ))
 
     rows.append(LayerStatus(
