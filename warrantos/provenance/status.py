@@ -187,7 +187,8 @@ def collect_status() -> List[LayerStatus]:
         module="provenance.verify, provenance.grade, provenance.extract",
         surfaces=[
             "verify_claim()",
-            "HeuristicGrader / LLMGrader / LocalLLMGrader",
+            "HeuristicGrader / LLMGrader / LocalLLMGrader / ClaudeCliGrader",
+            "PROVENANCE_GRADER env override; claude-CLI subscription-over-API auto-select",
             "Salience-weighted load-bearing detection",
             "11 CLAIM_TRIGGERS (Phase 1): year/percentage/magnitude/statute/"
             "attribution/decision/superlative/causal/numeric_approx/named_body/comparison",
@@ -221,14 +222,26 @@ def collect_status() -> List[LayerStatus]:
     rows.append(LayerStatus(
         layer_id="L7-G4",
         name="G4 Safety & Contamination",
-        status="STARTER",
-        module="provenance.gates",
+        status="BUILT" if _module_has(
+            "provenance.gates", "check_contamination"
+        ) else "STARTER",
+        module="provenance.gates, eval/corpus/contamination.jsonl",
         surfaces=[
             "check_contamination()",
-            "8 starter prompt-injection patterns",
-            "corpus_completeness='starter' flag in result",
+            "8 generic prompt-injection patterns + 4 policy-domain patterns "
+            "(legislative-format injection, authority impersonation, "
+            "classification-laundering, output-override headings)",
+            "corpus_completeness='domain-extended' flag in result",
+            "Labelled corpus: eval/corpus/contamination.jsonl (24 items)",
         ],
-        notes="Production deployments SHALL replace or extend with a documented threat-model corpus. v1.0 deferral.",
+        notes=(
+            "v0.9 Phase 3 extended the generic starter set with policy-domain "
+            "patterns and a 24-item labelled corpus "
+            "(eval/corpus/contamination.jsonl), flipping corpus_completeness "
+            "from 'starter' to 'domain-extended'. The list is still not "
+            "exhaustive; production deployments SHOULD continue to extend it "
+            "against their own documented threat model."
+        ),
     ))
 
     rows.append(LayerStatus(
@@ -340,10 +353,25 @@ def collect_status() -> List[LayerStatus]:
     rows.append(LayerStatus(
         layer_id="F-retention",
         name="Foundation: Retention & Deletion (tombstones)",
-        status="NOT_BUILT",
-        module="-",
-        surfaces=[],
-        notes="INV-011 PROPOSITION. Requires the adopter to specify retention windows. v1.0 deferral.",
+        status="BUILT" if _module_has(
+            "provenance.retention",
+            "set_window", "list_expired", "tombstone_run", "list_tombstones",
+        ) else "NOT_BUILT",
+        module="provenance.retention, schema/provenance.sql",
+        surfaces=[
+            "retention_window_days column on provenance_run",
+            "provenance_tombstone + retention_window append-only tables",
+            "set_window() / list_expired() / tombstone_run() / list_tombstones()",
+            "CLI: warrantos retention set-window|list-expired|tombstone-run|list",
+        ],
+        notes=(
+            "INV-011 implemented as APPEND-ONLY tombstones in v0.9 Phase 3: "
+            "no hard delete. Expiry of a retention window appends a tombstone "
+            "marking the run logically retired while preserving every ledger "
+            "row (INV-004 append-only is never violated). Per-run windows are "
+            "set at run creation (column) or appended later via set_window() "
+            "(latest override wins). Adopters still specify the window."
+        ),
     ))
 
     rows.append(LayerStatus(

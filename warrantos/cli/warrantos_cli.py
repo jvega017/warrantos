@@ -377,6 +377,59 @@ def build_parser() -> argparse.ArgumentParser:
         help="Emit the calibration summary as JSON on stdout.",
     )
 
+    # --- retention: F-retention tombstones (INV-011) ---
+    retention = sub.add_parser(
+        "retention",
+        help="Manage F-retention windows and tombstones (no hard delete).",
+        description=(
+            "F-retention (INV-011): set a per-run retention window, list runs "
+            "whose window has elapsed, and tombstone expired runs. Tombstoning "
+            "is APPEND-ONLY: it marks a run as logically retired without "
+            "deleting any ledger row, preserving the append-only audit trail."
+        ),
+    )
+    retention.add_argument(
+        "--db",
+        default=str(Path(".warrant") / "provenance.db"),
+        help="Path to the provenance ledger database.",
+    )
+    retention.add_argument(
+        "--json", action="store_true",
+        help="Emit the result as JSON on stdout.",
+    )
+    retention_sub = retention.add_subparsers(
+        dest="retention_action", metavar="<action>"
+    )
+
+    rset = retention_sub.add_parser(
+        "set-window",
+        help="Record a retention window (days) for a run (append-only).",
+    )
+    rset.add_argument("--run-id", type=int, required=True, help="provenance_run id.")
+    rset.add_argument(
+        "--days", type=int, required=True,
+        help="Retention window in days (>= 0). Use 0 to expire immediately.",
+    )
+
+    retention_sub.add_parser(
+        "list-expired",
+        help="List runs whose effective window has elapsed (read-only).",
+    )
+
+    rtomb = retention_sub.add_parser(
+        "tombstone-run",
+        help="Append a tombstone for a run (logical retire; no delete).",
+    )
+    rtomb.add_argument("--run-id", type=int, required=True, help="provenance_run id.")
+    rtomb.add_argument(
+        "--reason", default="retention_window_elapsed",
+        help="Reason recorded on the tombstone (default: retention_window_elapsed).",
+    )
+
+    retention_sub.add_parser(
+        "list", help="List all tombstones (read-only)."
+    )
+
     return parser
 
 
@@ -1187,6 +1240,106 @@ def _cmd_calibrate(args) -> int:
     return 0
 
 
+def _cmd_retention(args) -> int:
+    """F-retention (INV-011): set-window / list-expired / tombstone-run / list.
+
+    Tombstoning never deletes a ledger row; it appends a marker so the
+    append-only guarantee (INV-004) is preserved.
+    """
+    from warrantos.provenance import retention as _retention
+
+    action = getattr(args, "retention_action", None)
+    if not action:
+        sys.stderr.write(
+            "warrantos retention: an action is required "
+            "(set-window | list-expired | tombstone-run | list)\n"
+        )
+        return 2
+
+    # B5 path containment: confine --db under cwd.
+    _cwd = Path(".").resolve()
+    try:
+        db = str(resolve_under(_cwd, args.db))
+    except ValueError as exc:
+        sys.stderr.write(
+            "warrantos retention: --db path is outside the current working directory: %s\n"
+            % exc
+        )
+        return 2
+
+    as_json = getattr(args, "json", False)
+
+    if action == "set-window":
+        try:
+            _retention.set_window(db, args.run_id, args.days)
+        except ValueError as exc:
+            sys.stderr.write("warrantos retention: %s\n" % exc)
+            return 2
+        msg = {
+            "action": "set-window",
+            "run_id": args.run_id,
+            "retention_window_days": args.days,
+        }
+        if as_json:
+            sys.stdout.write(json.dumps(msg, indent=2, sort_keys=True) + "\n")
+        else:
+            sys.stdout.write(
+                "retention window set: run %d -> %d day(s) (recorded append-only)\n"
+                % (args.run_id, args.days)
+            )
+        return 0
+
+    if action == "list-expired":
+        expired = _retention.list_expired(db)
+        if as_json:
+            sys.stdout.write(
+                json.dumps([e.to_dict() for e in expired], indent=2, sort_keys=True) + "\n"
+            )
+        else:
+            if not expired:
+                sys.stdout.write("no runs have passed their retention window.\n")
+            else:
+                sys.stdout.write("expired runs (window elapsed, not yet tombstoned):\n")
+                for e in expired:
+                    sys.stdout.write(
+                        "  run %d  window=%dd  expired_after=%s\n"
+                        % (e.run_id, e.retention_window_days, e.expired_after)
+                    )
+        return 0
+
+    if action == "tombstone-run":
+        tomb = _retention.tombstone_run(db, args.run_id, reason=args.reason)
+        if as_json:
+            sys.stdout.write(json.dumps(tomb.to_dict(), indent=2, sort_keys=True) + "\n")
+        else:
+            sys.stdout.write(
+                "tombstone appended: run %d  reason=%s  (no ledger row deleted)\n"
+                % (tomb.run_id, tomb.reason)
+            )
+        return 0
+
+    if action == "list":
+        tombs = _retention.list_tombstones(db)
+        if as_json:
+            sys.stdout.write(
+                json.dumps([t.to_dict() for t in tombs], indent=2, sort_keys=True) + "\n"
+            )
+        else:
+            if not tombs:
+                sys.stdout.write("no tombstones recorded.\n")
+            else:
+                sys.stdout.write("tombstones:\n")
+                for t in tombs:
+                    sys.stdout.write(
+                        "  #%d  run %d  reason=%s  ts=%s\n"
+                        % (t.id, t.run_id, t.reason, t.ts)
+                    )
+        return 0
+
+    sys.stderr.write("warrantos retention: unknown action %r\n" % action)
+    return 2
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -1214,6 +1367,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "calibrate":
         return _cmd_calibrate(args)
+
+    if args.command == "retention":
+        return _cmd_retention(args)
 
     if args.command != "check":
         parser.print_help()

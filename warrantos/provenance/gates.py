@@ -188,14 +188,19 @@ def check_self_grounding(
 # G4 contamination scan (starter pattern list)
 # ---------------------------------------------------------------------------
 
-# Starter list of prompt-injection patterns. This list is DELIBERATELY
-# INCOMPLETE. A production deployment SHALL replace or extend the list
-# with a documented threat model and labelled corpus. The list below is
-# drawn from publicly known prompt-injection literature (Greshake et al.
-# 2023; Liu et al. 2023; Anthropic's prompt-injection guidance) and is
-# intended only as a starter so the gate can fire on the most common
-# patterns rather than silently passing every input.
+# Contamination pattern list. The first block is the generic
+# prompt-injection starter set drawn from publicly known prompt-injection
+# literature (Greshake et al. 2023; Liu et al. 2023; Anthropic's
+# prompt-injection guidance). The second block (v0.9 Phase 3) extends the
+# corpus with POLICY-DOMAIN patterns observed in public-sector document
+# pipelines: legislatively-formatted injections, role-impersonation of a
+# Director-General or Minister, classification-laundering, and
+# output-override headings. The labelled corpus that exercises these lives
+# in eval/corpus/contamination.jsonl. The list is still not exhaustive; a
+# production deployment SHOULD continue to extend it against its own threat
+# model, but it is no longer a bare starter.
 _CONTAMINATION_PATTERNS = (
+    # --- Generic prompt-injection (starter set) ---
     ("ignore_instructions", re.compile(
         r"\b(?:ignore|disregard)\b[^.]{0,40}\b(?:previous|prior|earlier|all)\b[^.]{0,40}\b(?:instructions?|prompt|rules?)\b",
         re.I,
@@ -207,6 +212,37 @@ _CONTAMINATION_PATTERNS = (
     ("override_role", re.compile(r"\b(?:role\s*[:=]\s*system|act\s+as\s+(?:an?\s+)?admin|developer\s+mode)\b", re.I)),
     ("end_of_prompt_marker", re.compile(r"\b(?:END\s+OF\s+PROMPT|END\s+OF\s+INSTRUCTIONS?)\b", re.I)),
     ("repeat_above", re.compile(r"\brepeat\s+(?:the\s+)?(?:above|previous|earlier)\b[^.]{0,40}\b(?:prompt|instructions?|text)\b", re.I)),
+
+    # --- Policy-domain extension (v0.9 Phase 3) ---
+    # Legislatively-formatted injections: a fake statutory clause that
+    # "directs" or "requires" the assistant to do something, dressed up as
+    # a section/subsection so it reads like binding law inside a document.
+    ("legislative_injection", re.compile(
+        r"(?:section|subsection|clause|schedule|part)\s+\d+[a-z]?(?:\([0-9a-z]+\))*\b[^.]{0,80}\b(?:the\s+(?:assistant|model|system|ai)|you)\b[^.]{0,40}\b(?:must|shall|(?:is|are)\s+required\s+to|(?:is|are)\s+directed\s+to)\b",
+        re.I,
+    )),
+    # Role-impersonation of a Director-General or Minister: an instruction
+    # that claims to come from a senior officeholder to borrow authority.
+    ("authority_impersonation", re.compile(
+        r"\b(?:as|on\s+behalf\s+of|by\s+(?:order|direction)\s+of|instructed\s+by)\b[^.]{0,30}\b(?:the\s+)?(?:director[\s-]general|director general|minister|premier|secretary|chief\s+executive)\b",
+        re.I,
+    )),
+    # Classification-laundering: text that asserts a document is downgraded,
+    # declassified, or "now public/official" to slip sensitive content
+    # through, or instructs the reader to treat protected material as public.
+    ("classification_laundering", re.compile(
+        r"\b(?:declassif(?:y|ied)|downgrade(?:d)?|reclassif(?:y|ied)|treat\s+(?:this|it|the\s+above)\s+as)\b[^.]{0,40}\b(?:public|official|unclassified|releasable)\b"
+        r"|\b(?:this\s+(?:document|material|content)\s+is\s+now)\b[^.]{0,20}\b(?:public|unclassified|declassified|releasable)\b",
+        re.I,
+    )),
+    # Output-override headings: a heading or directive that tells the model
+    # what to put in the final output, overriding the real task ("FINAL
+    # ANSWER:", "OUTPUT THE FOLLOWING", "## SYSTEM OVERRIDE").
+    ("output_override_heading", re.compile(
+        r"^\s*#{0,6}\s*(?:system\s+override|output\s+override|final\s+(?:answer|output|instruction)s?|new\s+(?:task|instructions?)|override(?:\s+all)?)\b"
+        r"|\boutput\s+(?:the\s+following|exactly|only)\b",
+        re.I | re.M,
+    )),
 )
 
 
@@ -237,13 +273,17 @@ class ContaminationResult:
     matches
         List of ContaminationMatch rows.
     corpus_completeness
-        Always `starter`. v0.6 ships a starter list only; a production
-        deployment SHALL replace or extend with a documented corpus.
+        `domain-extended` (v0.9 Phase 3): the generic prompt-injection
+        starter set is now extended with policy-domain patterns
+        (legislatively-formatted injections, authority-role impersonation,
+        classification-laundering, output-override headings), exercised by
+        the labelled corpus at eval/corpus/contamination.jsonl. Still not
+        exhaustive; production deployments SHOULD continue to extend it.
     """
 
     verdict: str
     matches: List[ContaminationMatch]
-    corpus_completeness: str = "starter"
+    corpus_completeness: str = "domain-extended"
 
     def to_dict(self) -> Dict[str, object]:
         return {
@@ -251,9 +291,13 @@ class ContaminationResult:
             "matches": [m.to_dict() for m in self.matches],
             "corpus_completeness": self.corpus_completeness,
             "note": (
-                "The contamination pattern list is a starter set. "
-                "Production deployments SHALL replace or extend it "
-                "with a documented threat model and labelled corpus."
+                "The contamination pattern list is domain-extended: a generic "
+                "prompt-injection starter set plus policy-domain patterns "
+                "(legislative-format injection, authority impersonation, "
+                "classification-laundering, output-override headings), exercised "
+                "by eval/corpus/contamination.jsonl. It is not exhaustive; "
+                "production deployments SHOULD continue to extend it against "
+                "their own documented threat model."
             ),
         }
 

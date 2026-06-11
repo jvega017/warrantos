@@ -683,32 +683,208 @@ class CodexGrader:
 
 
 # ---------------------------------------------------------------------------
+# ClaudeCliGrader (subscription-over-API: shells out to `claude --print`)
+# ---------------------------------------------------------------------------
+
+class ClaudeCliGrader:
+    """Grader driven by the local ``claude`` CLI in non-interactive mode.
+
+    This is the subscription-over-API path: it shells out to
+    ``claude --print`` (the headless one-shot mode) instead of calling the
+    Anthropic Messages API with an ``ANTHROPIC_API_KEY``. It is auto-selected
+    by ``get_grader()`` when the ``claude`` binary is on PATH and neither
+    ``ANTHROPIC_API_KEY`` nor ``PROVENANCE_LOCAL_GRADER_URL`` is set, so a
+    user on a Claude subscription verifies through their plan rather than
+    spending API credits.
+
+    It feeds ``claude --print`` exactly the same system prompt, claim, source
+    and citation as ``LLMGrader``, so the two are a same-task, same-inputs
+    comparison. Degrades to ``HeuristicGrader`` on ANY failure (binary
+    missing, non-zero exit, timeout, empty output, JSON parse failure) so the
+    grader never raises and never blocks.
+
+    Configuration (environment, all optional):
+        PROVENANCE_CLAUDE_BIN      claude binary name or path (default
+                                   "claude"; resolved across platforms)
+        PROVENANCE_CLAUDE_TIMEOUT  per-call timeout in seconds (default 120)
+        PROVENANCE_CLAUDE_MODEL    model passed to `claude --model` (default:
+                                   the CLI's configured default; not overridden)
+
+    Stdlib only: subprocess, json, os, re. Python 3.8 compatible.
+    """
+
+    def grade(
+        self,
+        claim_text: str,
+        source_text: Optional[str],
+        citation: Optional[str],
+    ) -> Verdict:
+        """Grade a claim via `claude --print`.
+
+        Falls back to HeuristicGrader on any failure. Never raises.
+        """
+        import subprocess
+
+        claude_bin = os.environ.get("PROVENANCE_CLAUDE_BIN") or self._resolve_claude_bin()
+        try:
+            timeout = int(os.environ.get("PROVENANCE_CLAUDE_TIMEOUT", "120"))
+        except (TypeError, ValueError):
+            timeout = 120
+        model = os.environ.get("PROVENANCE_CLAUDE_MODEL", "")
+
+        grader_label = (
+            "fetch+claude-cli" if source_text is not None else "claude-cli"
+        )
+
+        prompt = (
+            _SYSTEM_PROMPT
+            + "\n\n"
+            + _build_user_message(claim_text, source_text, citation)
+            + "\n\nAnswer only with the JSON object described above."
+        )
+
+        cmd = [claude_bin, "--print"]
+        if model:
+            cmd += ["--model", model]
+
+        try:
+            proc = subprocess.run(
+                cmd,
+                input=prompt,
+                capture_output=True,
+                text=True,
+                timeout=timeout,
+            )
+        except FileNotFoundError:
+            return HeuristicGrader().grade(claim_text, source_text, citation)
+        except subprocess.TimeoutExpired:
+            return HeuristicGrader().grade(claim_text, source_text, citation)
+        except Exception:
+            return HeuristicGrader().grade(claim_text, source_text, citation)
+
+        if proc.returncode != 0:
+            return HeuristicGrader().grade(claim_text, source_text, citation)
+
+        raw = (proc.stdout or "").strip()
+        if not raw:
+            return HeuristicGrader().grade(claim_text, source_text, citation)
+
+        parsed = CodexGrader._extract_json(raw)
+        if parsed is None:
+            return HeuristicGrader().grade(claim_text, source_text, citation)
+
+        verdict_str = str(parsed.get("verdict", "error"))
+        if verdict_str not in _VALID_VERDICTS:
+            verdict_str = "error"
+
+        raw_conf = parsed.get("confidence")
+        try:
+            confidence = float(raw_conf) if raw_conf is not None else None
+            if confidence is not None:
+                confidence = max(0.0, min(1.0, confidence))
+        except (TypeError, ValueError):
+            confidence = None
+
+        rationale = str(parsed.get("rationale", ""))[:200]
+
+        return Verdict(
+            claim_text=claim_text,
+            citation=citation,
+            verdict=verdict_str,
+            confidence=confidence,
+            rationale=rationale,
+            grader=grader_label,
+        )
+
+    @staticmethod
+    def _resolve_claude_bin():
+        """Resolve the claude executable robustly across platforms.
+
+        On Windows the npm-installed `claude` shim is an extensionless shell
+        script that CreateProcess cannot launch, so a bare "claude" fails
+        with FileNotFoundError. Prefer an extension Windows can execute, then
+        fall back to the bare name so behaviour is unchanged on POSIX.
+        """
+        import shutil
+        for name in ("claude.cmd", "claude.exe", "claude"):
+            found = shutil.which(name)
+            if found:
+                return found
+        return "claude"
+
+    @staticmethod
+    def is_available():
+        """Return True if a launchable `claude` binary is on PATH.
+
+        Honours PROVENANCE_CLAUDE_BIN: when set to an explicit path that
+        shutil.which resolves, that wins; otherwise the standard shims are
+        probed. Used by get_grader() for auto-selection.
+        """
+        import shutil
+        override = os.environ.get("PROVENANCE_CLAUDE_BIN")
+        if override:
+            return shutil.which(override) is not None
+        for name in ("claude.cmd", "claude.exe", "claude"):
+            if shutil.which(name):
+                return True
+        return False
+
+
+# ---------------------------------------------------------------------------
 # Factory function
 # ---------------------------------------------------------------------------
+
+_GRADER_OVERRIDE_REGISTRY = {
+    "heuristic": lambda: HeuristicGrader(),
+    "local": lambda: LocalLLMGrader(),
+    "local-llm": lambda: LocalLLMGrader(),
+    "llm": lambda: LLMGrader(),
+    "anthropic": lambda: LLMGrader(),
+    "claude": lambda: ClaudeCliGrader(),
+    "claude-cli": lambda: ClaudeCliGrader(),
+    "codex": lambda: CodexGrader(),
+}
+
 
 def get_grader():
     """Return the most capable grader available in the current environment.
 
-    Selection order (first match wins):
+    An explicit ``PROVENANCE_GRADER`` override wins over auto-selection.
+    Recognised values (case-insensitive): ``heuristic``, ``local`` /
+    ``local-llm``, ``llm`` / ``anthropic``, ``claude`` / ``claude-cli``,
+    ``codex``. An unrecognised value is ignored and auto-selection runs.
+
+    Auto-selection order (first match wins):
 
     1. ``LocalLLMGrader`` if ``PROVENANCE_LOCAL_GRADER_URL`` is set. No
        data egress, no Anthropic API key required. See LocalLLMGrader
        docstring for env vars.
     2. ``LLMGrader`` if ``ANTHROPIC_API_KEY`` is set. Calls the
        Anthropic Messages API.
-    3. ``HeuristicGrader`` otherwise. Local, free, deterministic, but
+    3. ``ClaudeCliGrader`` if the ``claude`` CLI is on PATH (and neither
+       of the above applies). This is the subscription-over-API path: it
+       shells out to ``claude --print`` so a user on a Claude plan verifies
+       through their subscription rather than spending API credits.
+    4. ``HeuristicGrader`` otherwise. Local, free, deterministic, but
        cannot emit ``contradicted`` by construction.
 
     ``CodexGrader`` is never auto-selected: it is an evaluation-only
-    backend that must be requested explicitly by the eval harness.
+    backend that must be requested explicitly (via ``PROVENANCE_GRADER``
+    or the eval harness).
 
-    Order rationale: a local LLM is the user's explicit preference
-    when configured (it suggests they want zero data egress, or no
-    Anthropic account). The Anthropic key path is the fallback when
-    no local model is available. The heuristic is the final fallback.
+    Order rationale: an explicit API key or local-LLM URL signals a
+    deliberate choice and is honoured first. The ``claude`` CLI is the
+    subscription-over-API fallback (no credits spent) when no key is set.
+    The heuristic is the final fallback.
     """
+    override = (os.environ.get("PROVENANCE_GRADER") or "").strip().lower()
+    if override in _GRADER_OVERRIDE_REGISTRY:
+        return _GRADER_OVERRIDE_REGISTRY[override]()
+
     if os.environ.get("PROVENANCE_LOCAL_GRADER_URL"):
         return LocalLLMGrader()
     if os.environ.get("ANTHROPIC_API_KEY"):
         return LLMGrader()
+    if ClaudeCliGrader.is_available():
+        return ClaudeCliGrader()
     return HeuristicGrader()

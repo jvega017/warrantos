@@ -4,16 +4,17 @@
 --   sqlite3 .provenance/provenance.db < schema/provenance.sql
 
 CREATE TABLE IF NOT EXISTS provenance_run (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts           TEXT    NOT NULL,           -- ISO-8601 UTC
-    session_id   TEXT,
-    source_event TEXT,                       -- Stop | PostToolUse
-    file_path    TEXT,                       -- set for PostToolUse on Write/Edit
-    mode         TEXT    NOT NULL,           -- report | enforce
-    total        INTEGER NOT NULL,
-    supported    INTEGER NOT NULL,
-    tagged       INTEGER NOT NULL,           -- explicit [CITE NEEDED], compliant
-    unsupported  INTEGER NOT NULL
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts                    TEXT    NOT NULL,           -- ISO-8601 UTC
+    session_id            TEXT,
+    source_event          TEXT,                       -- Stop | PostToolUse
+    file_path             TEXT,                       -- set for PostToolUse on Write/Edit
+    mode                  TEXT    NOT NULL,           -- report | enforce
+    total                 INTEGER NOT NULL,
+    supported             INTEGER NOT NULL,
+    tagged                INTEGER NOT NULL,           -- explicit [CITE NEEDED], compliant
+    unsupported           INTEGER NOT NULL,
+    retention_window_days INTEGER                     -- F-retention (INV-011): NULL = keep indefinitely
 );
 
 CREATE TABLE IF NOT EXISTS provenance_claim (
@@ -249,4 +250,38 @@ CREATE TRIGGER IF NOT EXISTS prevent_delete_human_override
 BEFORE DELETE ON human_override
 BEGIN
     SELECT RAISE(ABORT, 'INV-004: human_override is append-only per SPEC-L2-S002');
+END;
+
+-- F-retention (INV-011): retention as tombstones, NEVER hard delete.
+-- A provenance_run carries an optional retention_window_days. When the
+-- window elapses, retention.tombstone_run() appends a row here recording
+-- that the run is logically expired. The underlying ledger rows are
+-- preserved (append-only is never violated); a tombstone is an additive
+-- marker that downstream readers consult to treat the run as retired.
+-- This is deliberately NOT a DELETE: the audit trail stays intact and the
+-- expiry itself becomes part of the append-only record.
+
+CREATE TABLE IF NOT EXISTS provenance_tombstone (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts                    TEXT    NOT NULL,           -- ISO-8601 UTC the tombstone was written
+    run_id                INTEGER NOT NULL REFERENCES provenance_run(id),
+    reason                TEXT    NOT NULL,           -- e.g. retention_window_elapsed
+    retention_window_days INTEGER,                    -- the window that triggered expiry (snapshot)
+    expired_after         TEXT                        -- ISO-8601 UTC cutoff the run fell past
+);
+
+CREATE INDEX IF NOT EXISTS idx_tombstone_run ON provenance_tombstone(run_id);
+
+-- The tombstone ledger is itself append-only: a tombstone, once written,
+-- is part of the permanent audit record and cannot be amended or removed.
+CREATE TRIGGER IF NOT EXISTS trg_provenance_tombstone_no_update
+BEFORE UPDATE ON provenance_tombstone
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: UPDATE forbidden');
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_provenance_tombstone_no_delete
+BEFORE DELETE ON provenance_tombstone
+BEGIN
+    SELECT RAISE(ABORT, 'append-only ledger: DELETE forbidden');
 END;
