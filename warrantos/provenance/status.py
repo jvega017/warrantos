@@ -448,13 +448,45 @@ def collect_status() -> List[LayerStatus]:
         ),
     ))
 
+    # F-compliance is BUILT when the documentation surface is complete:
+    #   1. the normative SPEC document is committed (docs/SPEC.md), AND
+    #   2. a control-mapping document is committed (docs/COMPLIANCE.md) that
+    #      maps the enforced controls to ISO/IEC 42001 and the NIST AI RMF.
+    # BUILT here means the documented-mapping ceiling, NOT certified
+    # conformance. The honest ceiling for this row is "committed SPEC +
+    # documented self-assessment mapping"; accredited certification is
+    # explicitly out of scope (see docs/COMPLIANCE.md §5). Both artefacts are
+    # checked for presence on disk rather than assumed.
+    _compliance_doc = _repo_file_exists("docs/COMPLIANCE.md")
+    _f_compliance_built = _spec_committed and _compliance_doc
     rows.append(LayerStatus(
         layer_id="F-compliance",
         name="Foundation: Compliance & Standards (ISO / NIST / Gov)",
-        status="PARTIAL",
-        module="SPEC IDs in code (SPEC document not yet in repo)",
-        surfaces=["RFC 2119 conformance language; SPEC-ID references in tests and modules"],
-        notes="No automated compliance check; the SPEC IDs in code and tests are the compliance surface. The normative SPEC document is in preparation and will be committed alongside a future release.",
+        status="BUILT" if _f_compliance_built else "PARTIAL",
+        module="docs/SPEC.md, docs/COMPLIANCE.md; SPEC-IDs grep-traceable in code/tests",
+        surfaces=[
+            "docs/SPEC.md (normative spec, RFC 2119) committed",
+            "docs/COMPLIANCE.md: control mapping to ISO/IEC 42001 + NIST AI RMF + AU/QLD gov",
+            "RFC 2119 conformance language; SPEC-ID references grep-traceable (SPEC §8)",
+        ],
+        notes=(
+            "BUILT = documented-mapping ceiling: the normative SPEC "
+            "(docs/SPEC.md) and a self-assessment control mapping "
+            "(docs/COMPLIANCE.md) are both committed, mapping the enforced "
+            "controls (gates G1-G5, override ledger, classification, "
+            "retention/tombstones, Merkle/attestation) to ISO/IEC 42001 and "
+            "NIST AI RMF clauses. This is NOT certified conformance: no "
+            "accredited body has assessed the project, and certification is "
+            "explicitly out of scope (docs/COMPLIANCE.md disclaimer + §5). "
+            "There is still no automated SPEC-ID conformance check; the "
+            "grep-traceable SPEC IDs in code and tests remain the technical "
+            "compliance surface."
+        ) if _f_compliance_built else (
+            "No automated compliance check; the SPEC IDs in code and tests "
+            "are the compliance surface. The normative SPEC (docs/SPEC.md) "
+            "and/or the control-mapping document (docs/COMPLIANCE.md) are not "
+            "both present in this install."
+        ),
     ))
 
     rows.append(LayerStatus(

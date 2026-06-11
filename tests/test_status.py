@@ -50,6 +50,19 @@ class TestCollectStatus(unittest.TestCase):
         self.assertEqual(len(roles.REQUIRED_ACTOR_ROLE_IDS), 6)
         self.assertTrue((_REPO_ROOT / "docs" / "SPEC.md").is_file())
 
+    def test_f_compliance_built_requires_spec_and_mapping(self):
+        # F-compliance is BUILT only when BOTH the normative SPEC and the
+        # control-mapping document are committed. BUILT here is the
+        # documented-mapping ceiling, never certified conformance. Guard the
+        # flip so removing either artefact would surface here.
+        rows = {r.layer_id: r for r in collect_status()}
+        self.assertEqual(rows["F-compliance"].status, "BUILT")
+        self.assertTrue((_REPO_ROOT / "docs" / "SPEC.md").is_file())
+        self.assertTrue((_REPO_ROOT / "docs" / "COMPLIANCE.md").is_file())
+        # The notes must not overclaim certification.
+        notes = rows["F-compliance"].notes.lower()
+        self.assertIn("not certified", notes)
+
     def test_layer_status_to_dict_is_serialisable(self):
         rows = collect_status()
         # Round-trip through JSON.
