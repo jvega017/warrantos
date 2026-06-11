@@ -6,33 +6,30 @@ Status values: **BUILT** (full SHALL coverage + tests + runtime enforcement); **
 
 | Layer | Status | Module | Notes |
 |---|---|---|---|
-| **L1 Context Classification (11 classes)** | `BUILT` | `provenance.context_admissibility` | 11 canonical SPEC §2.2 classes via regex; SPEC-L1-S005 review-role gating via source_agent kwarg. |
+| **L1 Context Classification (11 classes)** | `BUILT` | `provenance.context_admissibility` | 11 canonical SPEC 2.2 classes via regex; SPEC-L1-S005 review-role gating via source_agent kwarg. |
 | **L2 Provenance Ledger (5 sub-ledgers + override)** | `BUILT` | `provenance.ledger_write, provenance.overrides` | INV-004 storage-level enforcement added in v0.9 via SQLite BEFORE UPDATE triggers. |
 | **L3 Applied Insight Compiler** | `BUILT` | `provenance.context_admissibility, provenance.ledger_write` | SPEC-L3-N001 closure: persist_context_transform() writes the ledger row per derived requirement (v0.9). |
 | **L4 Context Admissibility Engine (6 actor roles)** | `BUILT` | `provenance.context_admissibility, provenance.cbom` | Per-item flags + 6-role actor identity in CBOM v0.2. |
 | **L5 Clean-Room Writer Pack (5 sections)** | `BUILT` | `provenance.writer_pack` | Clean Brief / Approved Sources / Style Rules / Acceptance Tests / Banned Residue. |
 | **L6 Clean-Room Generation (discipline + subprocess isolation)** | `BUILT` | `provenance.clean_room` | WarrantOS does not call any LLM itself. The caller invokes their writer model through the InvocationPlan. |
 | **L7-G1 G1 Prose Boundary** | `BUILT` | `provenance.context_admissibility` | v0.9 added prompt-template profile after empirical calibration on real briefs. |
-| **L7-G2 G2 Source & Warrant Check** | `BUILT` | `provenance.verify, provenance.grade` | Three graders: heuristic (default, free), Anthropic LLM (paid), Local LLM (free, OpenAI-compatible). |
+| **L7-G2 G2 Source & Warrant Check** | `BUILT` | `provenance.verify, provenance.grade, provenance.extract` | Three graders: heuristic (default, free), Anthropic LLM (paid), Local LLM (free, OpenAI-compatible). Phase 1 (2026-06-11) added the decision trigger (closing the salience/detection misalignment) plus five categories (superlative, causal, numeric-approximation, named-body attribution, empirical comparison) with +0.30 salience weights for causal/comparison/body-attribution, and per-profile unsupported-fraction HOLD thresholds so an audit run cannot return a bare PASS with all claims unsupported. |
 | **L7-G3 G3 Non-Self-Grounding** | `BUILT` | `provenance.gates` | Wired into warrantos CLI via --writer-model / --verifier-model. |
-| **L7-G4 G4 Safety & Contamination** | `STARTER` | `provenance.gates` | Production deployments SHALL replace or extend with a documented threat-model corpus. v1.0 deferral. |
-| **L7-G5 G5 Evaluation & Calibration** | `STARTER` | `provenance.gates` | Coverage typically 0 with HeuristicGrader (no confidence emitted). Becomes meaningful with LLM grader. |
+| **L7-G4 G4 Safety & Contamination** | `BUILT` | `provenance.gates, eval/corpus/contamination.jsonl` | v0.9 Phase 3 extended the generic starter set with policy-domain patterns and a 24-item labelled corpus (eval/corpus/contamination.jsonl), flipping corpus_completeness from 'starter' to 'domain-extended'. The list is still not exhaustive; production deployments SHOULD continue to extend it against their own documented threat model. |
+| **L7-G5 G5 Evaluation & Calibration** | `BUILT` | `provenance.gates, eval/run_eval.py, cli.warrantos_cli` | warrantos calibrate runs the grader against the labelled eval corpus and writes .warrant/calibration.json (grader, corpus size, per-class recall, coverage estimate). check_calibration() accepts either live verdict rows (Brier-with-explicit-coverage) or the stored calibration.json. Confidence coverage is typically 0 with the offline HeuristicGrader (no confidence emitted); per-class recall is the meaningful measure until an LLM grader supplies numeric confidence. |
 | **L8 Human Review & Decision Authority** | `BUILT` | `provenance.overrides, provenance.footer` | Escalation routing is a documented taxonomy not an automated workflow. |
 | **F-policy Foundation: Policy & Role Definitions** | `PARTIAL` | `docs/STACK.md; SPEC IDs in code` | Roles are documented and the CBOM actor_identity field carries them. A runtime registry is not built. The normative SPEC document is not yet committed to this repository; SPEC IDs in code and tests are the source of truth at v0.9.0b1. |
-| **F-classification Foundation: Data Classification (sensitivity tiers)** | `NOT_BUILT` | `-` | Requires a domain-specific sensitivity taxonomy from the adopter. v1.0 deferral; cannot be fabricated. |
+| **F-classification Foundation: Data Classification (sensitivity tiers)** | `BUILT` | `provenance.classification` | 4-tier default registry mirrors the reference adopter's data gate. Keyword heuristics (Cabinet, ministerial, legal advice, Crown Solicitor, HR/PIP/termination, $NNNM/B budget markers, credential patterns) are a documented STARTER set; production deployments SHALL extend them with a domain taxonomy. Unmatched text defaults to Official, never silently Public. |
 | **F-audit Foundation: Audit Logging** | `BUILT` | `SQLite ledger + per-run JSON artefacts` | Audit lives in SQLite (cross-run) + per-run JSON (single-run snapshot) + shadow log (observation history). |
 | **F-integrity Foundation: Ledger Integrity & Attestation** | `BUILT` | `provenance.merkle, provenance.attestation, provenance.warrant_bundle` | Stdlib Merkle integrity + fail-closed .warrant verification need no key; Ed25519 signing needs the optional [attestation] extra. Envelope is project-defined (DSSE/COSE migration under consideration). |
-| **F-retention Foundation: Retention & Deletion (tombstones)** | `NOT_BUILT` | `-` | INV-011 PROPOSITION. Requires the adopter to specify retention windows. v1.0 deferral. |
+| **F-retention Foundation: Retention & Deletion (tombstones)** | `BUILT` | `provenance.retention, schema/provenance.sql` | INV-011 implemented as APPEND-ONLY tombstones in v0.9 Phase 3: no hard delete. Expiry of a retention window appends a tombstone marking the run logically retired while preserving every ledger row (INV-004 append-only is never violated). Per-run windows are set at run creation (column) or appended later via set_window() (latest override wins). Adopters still specify the window. |
 | **F-compliance Foundation: Compliance & Standards (ISO / NIST / Gov)** | `PARTIAL` | `SPEC IDs in code (SPEC document not yet in repo)` | No automated compliance check; the SPEC IDs in code and tests are the compliance surface. The normative SPEC document is in preparation and will be committed alongside a future release. |
 | **F-override Foundation: Human Override** | `BUILT` | `provenance.overrides` | Most complete of the foundation items. |
 | **F-metrics Foundation: Metrics & Monitoring** | `PARTIAL` | `tools/warrantos-shadow-observe.py` | Shadow log is the closest thing to metrics today. A full metrics pipeline is v1.0+. |
 
 ## Summary
 
-- **BUILT**: 13
+- **BUILT**: 17
 - **PARTIAL**: 3
-- **STARTER**: 2
-- **NOT_BUILT**: 2
 
 Generated against the running install of `provenance.*`. Re-run after each version bump to refresh.
-
