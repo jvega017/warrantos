@@ -1470,6 +1470,16 @@ def _cmd_retention(args) -> int:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    # Reports may contain non-Latin-1 characters (maths symbols, Greek such as
+    # the provenance tuple's tau, smart quotes). On Windows stdout defaults to
+    # cp1252 and a bare write would crash with UnicodeEncodeError. Force UTF-8
+    # so the CLI is robust to any document content on any platform.
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, ValueError):
+            pass
+
     parser = build_parser()
     args = parser.parse_args(argv)
 
