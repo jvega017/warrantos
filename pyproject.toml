@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "warrantos"
 # Version is the single source of truth in warrantos/__init__.py (__version__).
 # Declared dynamic here so the packaged metadata can never drift from the
-# module constant (the 0.9.1/0.9.3 desync that this release fixes).
+# module constant (the 0.9.1-vs-0.9.x desync this release fixes).
 dynamic = ["version"]
 description = "WarrantOS: a governance harness for AI-assisted writing that ships clean prose and a separate auditable provenance ledger"
 readme = "README.md"

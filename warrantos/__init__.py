@@ -10,4 +10,4 @@ Subpackages:
     warrantos.hooks       the Claude Code Stop-hook surfaces
 """
 
-__version__ = "0.9.3"
+__version__ = "0.9.4"
