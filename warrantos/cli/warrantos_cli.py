@@ -64,6 +64,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import uuid
 from datetime import datetime, timezone
@@ -208,8 +209,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check.add_argument(
         "--db",
-        default=str(Path(".warrant") / "provenance.db"),
-        help="Path to the override ledger database. Used to look up overrides.",
+        default=os.environ.get(
+            "WARRANTOS_DB", str(Path(".warrant") / "provenance.db")
+        ),
+        help=(
+            "Path to the override ledger database. Used to look up overrides. "
+            "Defaults to the WARRANTOS_DB environment variable when set, "
+            "otherwise ./.warrant/provenance.db."
+        ),
     )
     check.add_argument(
         "--out-dir",
@@ -428,8 +435,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     retention.add_argument(
         "--db",
-        default=str(Path(".warrant") / "provenance.db"),
-        help="Path to the provenance ledger database.",
+        default=os.environ.get(
+            "WARRANTOS_DB", str(Path(".warrant") / "provenance.db")
+        ),
+        help=(
+            "Path to the provenance ledger database. Defaults to the "
+            "WARRANTOS_DB environment variable when set, otherwise "
+            "./.warrant/provenance.db."
+        ),
     )
     retention.add_argument(
         "--json", action="store_true",

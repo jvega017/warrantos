@@ -1,6 +1,6 @@
 {
   "name": "claude-provenance",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "description": "Claude Code plugin: the legacy v0.3 in-session citation Stop hook and slash commands. Every factual claim needs a source or an explicit [CITE NEEDED], logged to a portable ledger. The full WarrantOS pipeline (CLI, MCP server, four-state verdict, attestation) installs separately from PyPI as `warrantos`; wiring the WarrantOS surfaces into the plugin is a later item.",
   "author": {
     "name": "Juan Vega",

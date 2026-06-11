@@ -99,7 +99,7 @@ User-outcome language; SPEC IDs in [`CHANGELOG.md`](CHANGELOG.md).
 
 - One CLI runs the full pipeline end-to-end (`warrantos check`).
 - Human overrides cannot be recorded without a written risk-acceptance rationale and a compensating-control note. The check is at the write path, so the row does not exist if the rationale is missing. SQLite `BEFORE UPDATE` and `BEFORE DELETE` triggers on every ledger table mean recorded rows cannot be silently edited or deleted later (storage-level append-only, installed by default, not application-level discipline). This covers the SQLite ledger the hook writes misses to; the per-run JSON artefacts under `.warrant/runs/` are working output, not the append-only ledger.
-- Separation-of-duties helper (`provenance/overrides.py::enforce_single_actor_rule`) detects a reviewer-equals-writer pair when an override is recorded and surfaces it in the reader-facing footer. The same check is wired into `consolidate_verdict()` on the CLI and MCP paths: a final-artefact profile is downgraded to `HOLD`, the strict `audit` profile to `BLOCK`.
+- Separation-of-duties helper (`warrantos/provenance/overrides.py::enforce_single_actor_rule`) detects a reviewer-equals-writer pair when an override is recorded and surfaces it in the reader-facing footer. The same check is wired into `consolidate_verdict()` on the CLI and MCP paths: a final-artefact profile is downgraded to `HOLD`, the strict `audit` profile to `BLOCK`.
 - MCP server exposes four tools (`warrant_check`, `warrant_classify`, `warrant_record_override`, `warrant_get_run`) callable from any MCP host.
 - Shadow-mode observer runs over an already-published artefact in read-only mode. Never blocks. Never modifies production scripts.
 - `warrantos status` reports a per-layer build state, and `docs/STATUS.md` carries the rendered table.
@@ -113,7 +113,7 @@ The Provenance Loop is the original v0.3 mental model: **Extract** the claim, **
 
 A verdict you have to trust is weaker than one you can recompute. WarrantOS turns a checked run into a portable, tamper-evident `.warrant` bundle that a third party verifies offline, with no access to your ledger and no network call.
 
-- **Tamper-evident ledger.** A deterministic, RFC 6962 style Merkle tree (`provenance.merkle`, pure stdlib) over the audit entries. One root digest fixes the entire ledger state: any insert, edit, delete, or reorder changes it.
+- **Tamper-evident ledger.** A deterministic, RFC 6962 style Merkle tree (`warrantos.provenance.merkle`, pure stdlib) over the audit entries. One root digest fixes the entire ledger state: any insert, edit, delete, or reorder changes it.
 - **Signed checkpoint and portable bundle.** `create_warrant()` packages the prose digest, the CBOM, the relevant ledger entries, and an Ed25519-signed checkpoint into one `.warrant` file. Signing uses the optional `[attestation]` extra; the integrity check needs nothing beyond the standard library.
 - **Fail-closed verification.** `warrantos verify-external` recomputes the Merkle root and matches the checkpoint. An unsigned or signature-unavailable bundle is overall `INVALID` unless `--allow-unsigned` is passed explicitly. A client-side browser verifier (`web/verify.html`) is validated against the Python verifier by a differential test over the supported value domain, and renders all untrusted fields as inert text under a strict CSP.
 
@@ -166,7 +166,7 @@ never emits `contradicted`.
 
 ## Install as a Claude Code plugin (legacy v0.3 hook)
 
-The Claude Code plugin currently wires the **legacy v0.3** in-session Stop hook (`hooks/provenance_check.py`), not the WarrantOS surfaces. It remains a fast, stdlib-only citation tripwire for live Claude Code sessions. For the v0.9 WarrantOS pipeline (CLI + MCP server + per-layer dashboard + four-state verdict) use the source install above; the WarrantOS plugin wiring is a v0.10 design item.
+The Claude Code plugin currently wires the **legacy v0.3** in-session Stop hook (`warrantos/hooks/provenance_check.py`), not the WarrantOS surfaces. It remains a fast, stdlib-only citation tripwire for live Claude Code sessions. For the v0.9 WarrantOS pipeline (CLI + MCP server + per-layer dashboard + four-state verdict) use the source install above; the WarrantOS plugin wiring is a v0.10 design item.
 
 ```
 /plugin marketplace add /path/to/claude-provenance
@@ -196,10 +196,10 @@ Environment variables. See [`docs/COST.md`](docs/COST.md) for spend-control flag
 The `provenance` entry point is kept for users on the v0.3 mental model (citations only). New users should use `warrantos` instead, which wraps detection, verification, admissibility, gates, and the override ledger as one pipeline. The legacy CLI runs the detection-and-verification loop over a file, a directory, or stdin, outside a live session:
 
 ```
-python cli/provenance_cli.py path/to/draft.md             # offline detection
-python cli/provenance_cli.py --verify path/to/draft.md    # fetch and grade
-python cli/provenance_cli.py --ci docs/                   # exit 1 on a miss
-python cli/provenance_cli.py --cbom --context context.json final.md
+provenance path/to/draft.md             # offline detection
+provenance --verify path/to/draft.md    # fetch and grade
+provenance --ci docs/                   # exit 1 on a miss
+provenance --cbom --context context.json final.md
 ```
 
 `--ci` exits 1 if any claim is `contradicted` or `unsupported`. `--json` emits machine-readable output. CBOM mode (`--cbom`) classifies context material and scans final prose for process leakage such as "based on your feedback".
@@ -208,10 +208,10 @@ In a Claude session, `/provenance-report` summarises the ledger and `/provenance
 
 ## Governance: epistemic debt
 
-The ledger is the point, not a side effect. `provenance/ledger.py` computes an
+The ledger is the point, not a side effect. `warrantos/provenance/ledger.py` computes an
 **epistemic-debt** metric (load-bearing unsupported claims, normalised, with a
 direction over the last runs) and exports an evidence matrix to Markdown or
-CSV. Load-bearing is scored by `provenance/salience.py`: a statutory reference
+CSV. Load-bearing is scored by `warrantos/provenance/salience.py`: a statutory reference
 inside a recommendation is weighted above a date in passing. The governance
 question is not "is this sentence cited" but "is our AI-assisted output getting
 more or less sourced over time", and the ledger answers it.

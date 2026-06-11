@@ -19,6 +19,7 @@ BLOCK-on-boundary-violation branch is exercised here.
 """
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -781,6 +782,53 @@ class TestCalibrateSubcommand(unittest.TestCase):
         result = check_calibration(summary)
         self.assertEqual(result.total, summary["corpus_size"])
         self.assertAlmostEqual(result.coverage, summary["coverage_estimate"])
+
+
+class TestWarrantosDbEnvVar(unittest.TestCase):
+    """WARRANTOS_DB is honoured as the default --db path.
+
+    The README Configuration table documents WARRANTOS_DB as the
+    warrantos ledger path; this asserts the doc is true by exercising
+    the resolved --db default through the argument parser. The default
+    is read from the environment at parser-build time, so setting the
+    env var and rebuilding the parser is the unit under test. Legacy
+    PROVENANCE_DB behaviour (the v0.3 hook) is unaffected and not
+    touched here.
+    """
+
+    def setUp(self):
+        self._saved = os.environ.get("WARRANTOS_DB")
+
+    def tearDown(self):
+        if self._saved is None:
+            os.environ.pop("WARRANTOS_DB", None)
+        else:
+            os.environ["WARRANTOS_DB"] = self._saved
+
+    def _check_db_default(self):
+        # Import lazily so the module-level os import in the CLI is used.
+        from warrantos.cli.warrantos_cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["check", "draft.md"])
+        return args.db
+
+    def test_env_var_sets_check_db_default(self):
+        os.environ["WARRANTOS_DB"] = "/tmp/custom-warrant-ledger.db"
+        self.assertEqual(self._check_db_default(), "/tmp/custom-warrant-ledger.db")
+
+    def test_default_db_when_env_var_absent(self):
+        os.environ.pop("WARRANTOS_DB", None)
+        expected = str(Path(".warrant") / "provenance.db")
+        self.assertEqual(self._check_db_default(), expected)
+
+    def test_env_var_sets_retention_db_default(self):
+        os.environ["WARRANTOS_DB"] = "/tmp/custom-retention-ledger.db"
+        from warrantos.cli.warrantos_cli import build_parser
+
+        parser = build_parser()
+        args = parser.parse_args(["retention", "list"])
+        self.assertEqual(args.db, "/tmp/custom-retention-ledger.db")
 
 
 if __name__ == "__main__":
