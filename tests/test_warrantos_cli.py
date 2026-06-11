@@ -577,5 +577,125 @@ class TestG3WiringThroughCli(unittest.TestCase):
         self.assertIsNone(data["g3_self_grounding"])
 
 
+class TestProfileUnsupportedThreshold(unittest.TestCase):
+    """Phase 1 item 3: per-profile unsupported-claim fraction thresholds.
+
+    When the unsupported fraction exceeds the profile threshold the verdict
+    is raised to HOLD even when no single claim is load-bearing, and the
+    fired rule is surfaced in the run report JSON.
+    """
+
+    def setUp(self):
+        self.h = _Harness()
+        self.actor = self.h.write_json("actor.json", _FINAL_ACTOR)
+
+    def tearDown(self):
+        self.h.cleanup()
+
+    def test_audit_profile_holds_on_unsupported_year_claims(self):
+        """Two uncited year-only claims (neither load-bearing) under the
+        audit profile (threshold 0.0) HOLD on the fraction rule alone."""
+        draft = self.h.write(
+            "draft.md",
+            "# Run log\n\n"
+            "The portal launched in 2019.\n"
+            "A refresh shipped in 2021.\n",
+        )
+        proc = self.h.run(str(draft), "--profile", "audit")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["verdict"], "HOLD")
+        self.assertIsNotNone(data["verdict_rule_fired"])
+        self.assertEqual(
+            data["verdict_rule_fired"]["rule"], "profile_unsupported_fraction"
+        )
+        self.assertEqual(data["verdict_rule_fired"]["profile"], "audit")
+        self.assertTrue(
+            any("unsupported fraction" in r for r in data["reasons"]),
+            msg=data["reasons"],
+        )
+
+    def test_changelog_profile_never_holds_on_fraction(self):
+        """The changelog profile threshold is 1.0, so an all-unsupported
+        set of non-load-bearing claims does not HOLD on fraction."""
+        draft = self.h.write(
+            "draft.md",
+            "# Changelog\n\n"
+            "The portal launched in 2019.\n"
+            "A refresh shipped in 2021.\n",
+        )
+        proc = self.h.run(str(draft), "--profile", "changelog")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["verdict"], "PASS")
+        self.assertIsNone(data["verdict_rule_fired"])
+
+    def test_fired_rule_absent_when_all_claims_supported(self):
+        """A fully-cited claim set does not trip the fraction rule."""
+        draft = self.h.write(
+            "draft.md",
+            "# Run log\n\n"
+            "The portal launched in 2019 (https://www.qld.gov.au/portal).\n",
+        )
+        proc = self.h.run(str(draft), "--profile", "audit")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["verdict"], "PASS")
+        self.assertIsNone(data["verdict_rule_fired"])
+
+
+class TestDecisionTriggerDetected(unittest.TestCase):
+    """Phase 1 item 1: the decision trigger now fires so must/shall/require
+    sentences are detected as claims (previously silently PASSed)."""
+
+    def setUp(self):
+        self.h = _Harness()
+        self.actor = self.h.write_json("actor.json", _FINAL_ACTOR)
+
+    def tearDown(self):
+        self.h.cleanup()
+
+    def test_must_comply_sentence_detected_and_holds(self):
+        draft = self.h.write(
+            "draft.md",
+            "# Brief\n\n"
+            "All agencies must comply with the data-sharing protocol.\n",
+        )
+        proc = self.h.run(
+            str(draft),
+            "--profile", "final-prose",
+            "--actor-identity", str(self.actor),
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertGreaterEqual(data["claims_detected"], 1)
+        # final-prose threshold is 0.0, so an uncited claim HOLDs.
+        self.assertEqual(data["verdict"], "HOLD")
+
+
+class TestExplainProfile(unittest.TestCase):
+    """Phase 1 item 2: --explain-profile prints suppression per profile
+    without running the pipeline (no draft required)."""
+
+    def setUp(self):
+        self.h = _Harness()
+
+    def tearDown(self):
+        self.h.cleanup()
+
+    def test_explain_profile_prints_table_without_draft(self):
+        cmd = [
+            sys.executable, str(_CLI_PATH),
+            "check", "--explain-profile",
+        ]
+        proc = subprocess.run(
+            cmd, cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=60
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        self.assertIn("boundary gate", proc.stdout)
+        self.assertIn("audit", proc.stdout)
+        self.assertIn("SUPPRESSED", proc.stdout)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

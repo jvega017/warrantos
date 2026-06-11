@@ -107,6 +107,14 @@ _NON_FINAL_PROFILES = frozenset({
     "audit", "methodology", "consultation_report", "changelog",
 })
 
+# Profiles for which scan_prose_boundary() returns pass unconditionally,
+# suppressing the G1 prose-boundary gate. Kept in sync with
+# context_admissibility.scan_prose_boundary. Used for verdict transparency
+# so a PASS under these profiles names the suppression.
+_BOUNDARY_SUPPRESSING_PROFILES = frozenset({
+    "audit", "methodology", "consultation_report", "changelog",
+})
+
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -154,7 +162,12 @@ def build_parser() -> argparse.ArgumentParser:
             "actor_identity (Codex C1 closure)."
         ),
     )
-    check.add_argument("draft", help="Path to the draft Markdown file.")
+    check.add_argument(
+        "draft",
+        nargs="?",
+        default=None,
+        help="Path to the draft Markdown file. Optional only with --explain-profile.",
+    )
     check.add_argument(
         "--context",
         default=None,
@@ -202,6 +215,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--out-dir",
         default=None,
         help="Output directory. Defaults to .warrant/runs/<run_id>/.",
+    )
+    check.add_argument(
+        "--explain-profile",
+        action="store_true",
+        help=(
+            "Print what each profile suppresses (boundary-gate suppression and "
+            "the unsupported-fraction HOLD threshold) and exit without running "
+            "the pipeline."
+        ),
     )
     check.add_argument(
         "--json",
@@ -550,6 +572,32 @@ _SOD_FINAL_ARTEFACT_PROFILES = frozenset({
 # The strictest profiles: a same-actor review BLOCKs rather than HOLDs.
 _SOD_BLOCK_PROFILES = frozenset({"audit"})
 
+# Per-profile unsupported-claim fraction thresholds (Phase 1 item 3).
+# When the fraction of detected claims that are unsupported exceeds the
+# profile threshold, the verdict is raised to HOLD even when no single claim
+# is load-bearing. This closes the bug where an audit run with 2 of 2 claims
+# unsupported could return a bare PASS (the audit profile suppresses the
+# boundary gate, and neither claim alone was load-bearing).
+#
+#   audit         0.00  any unsupported claim HOLDs
+#   final-prose   0.00  backstop: any unsupported claim HOLDs
+#   paper-full    0.20  tolerates a small uncited minority
+#   brief-light   0.25  tolerates routine date references etc.
+#   methodology   0.40  methods prose is allowed more uncited statement
+#   changelog     1.00  never fires on fraction alone
+_PROFILE_UNSUPPORTED_THRESHOLD: Dict[str, float] = {
+    "audit": 0.0,
+    "final-prose": 0.0,
+    "paper-full": 0.20,
+    "brief-light": 0.25,
+    "methodology": 0.40,
+    "changelog": 1.0,
+}
+# Profiles without an explicit entry use this default (lenient: never fires
+# on fraction alone, preserving prior behaviour for prompt-template and the
+# other process profiles).
+_DEFAULT_UNSUPPORTED_THRESHOLD = 1.0
+
 
 def consolidate_verdict(
     boundary_report: BoundaryResult,
@@ -559,10 +607,14 @@ def consolidate_verdict(
     classification_overrides: List[ClassificationOverrideRecord],
     artefact_role: str,
     single_actor_override: bool = False,
-) -> Tuple[str, List[str]]:
-    """Return (verdict, reasons).
+) -> Tuple[str, List[str], Optional[Dict[str, Any]]]:
+    """Return (verdict, reasons, fired_rule).
 
     Verdict is one of PASS, HOLD, BLOCK, NOT_ASSESSABLE.
+
+    `fired_rule` is None unless the per-profile unsupported-fraction
+    threshold raised the verdict to HOLD, in which case it is a dict
+    describing the rule that fired (for surfacing in the run report JSON).
 
     Decision order:
 
@@ -570,9 +622,11 @@ def consolidate_verdict(
        violation occurred in a blocking profile, or a same-actor review
        (single_actor_override) was recorded on a strict profile (SoD).
     2. HOLD if any unsupported load-bearing claim exists, any verifier
-       verdict is `unverifiable` for a load-bearing claim, or a same-actor
-       review was recorded on a final-artefact profile (separation of
-       duties, SPEC-L8-S003: an independent reviewer is required to PASS).
+       verdict is `unverifiable` for a load-bearing claim, the unsupported
+       fraction exceeds the per-profile threshold
+       (`_PROFILE_UNSUPPORTED_THRESHOLD`), or a same-actor review was
+       recorded on a final-artefact profile (separation of duties,
+       SPEC-L8-S003: an independent reviewer is required to PASS).
     3. NOT_ASSESSABLE if the artefact role is `final-prose` and the
        run has no `actor_identity` map. This is the Codex C1 fix:
        a final-prose artefact requires the minimum override/identity
@@ -584,6 +638,7 @@ def consolidate_verdict(
     duties a verdict-layer property, not just a footer marker.
     """
     reasons: List[str] = []
+    fired_rule: Optional[Dict[str, Any]] = None
     role_lower = artefact_role.strip().lower()
 
     # 1. BLOCK conditions
@@ -609,7 +664,7 @@ def consolidate_verdict(
         )
 
     if reasons:
-        return (VERDICT_BLOCK, reasons)
+        return (VERDICT_BLOCK, reasons, fired_rule)
 
     # 2. HOLD conditions
     for claim in claim_rows:
@@ -625,6 +680,38 @@ def consolidate_verdict(
                 "HOLD: unverifiable load-bearing claim: " + (v.get("claim_text") or "")[:80]
             )
 
+    # Per-profile unsupported-fraction threshold (Phase 1 item 3).
+    # Raise HOLD when the unsupported fraction exceeds the profile threshold,
+    # even if no single claim is load-bearing. Surface the fired rule.
+    total_claims = len(claim_rows)
+    unsupported_claims = sum(1 for c in claim_rows if not c.get("citation"))
+    if total_claims > 0:
+        unsupported_fraction = unsupported_claims / total_claims
+        threshold = _PROFILE_UNSUPPORTED_THRESHOLD.get(
+            role_lower, _DEFAULT_UNSUPPORTED_THRESHOLD
+        )
+        if unsupported_fraction > threshold:
+            fired_rule = {
+                "rule": "profile_unsupported_fraction",
+                "profile": role_lower,
+                "unsupported": unsupported_claims,
+                "total": total_claims,
+                "unsupported_fraction": round(unsupported_fraction, 4),
+                "threshold": threshold,
+            }
+            reasons.append(
+                "HOLD: unsupported fraction %d/%d (%.0f%%) exceeds the '%s' "
+                "profile threshold of %.0f%%; verify the uncited claims or add "
+                "sources."
+                % (
+                    unsupported_claims,
+                    total_claims,
+                    unsupported_fraction * 100,
+                    role_lower,
+                    threshold * 100,
+                )
+            )
+
     # Separation of duties (SPEC-L8-S003): on a final-artefact profile a same-actor
     # review downgrades to HOLD. An independent reviewer is required to certify PASS.
     if single_actor_override and role_lower in _SOD_FINAL_ARTEFACT_PROFILES:
@@ -635,7 +722,7 @@ def consolidate_verdict(
         )
 
     if reasons:
-        return (VERDICT_HOLD, reasons)
+        return (VERDICT_HOLD, reasons, fired_rule)
 
     # 3. NOT_ASSESSABLE (Codex C1)
     if role_lower == "final-prose" and not actor_identity:
@@ -645,9 +732,9 @@ def consolidate_verdict(
             "actor_identity supplied. Either provide --actor-identity or use "
             "a non-final-prose profile."
         )
-        return (VERDICT_NOT_ASSESSABLE, reasons)
+        return (VERDICT_NOT_ASSESSABLE, reasons, fired_rule)
 
-    return (VERDICT_PASS, reasons)
+    return (VERDICT_PASS, reasons, fired_rule)
 
 
 # ---------------------------------------------------------------------------
@@ -744,6 +831,52 @@ def write_run_artefacts(
 # Output formatting
 # ---------------------------------------------------------------------------
 
+def explain_profiles() -> str:
+    """Describe, per profile, what is suppressed.
+
+    Phase 1 item 2: makes profile leniency self-documenting. Two suppression
+    surfaces are reported: whether the G1 prose-boundary gate is suppressed,
+    and the per-profile unsupported-fraction HOLD threshold.
+    """
+    profiles = [
+        "final-prose",
+        "brief-light",
+        "paper-full",
+        "prompt-template",
+        "audit",
+        "methodology",
+        "consultation_report",
+        "changelog",
+    ]
+    lines = ["warrantos profiles: what each profile suppresses", ""]
+    lines.append(
+        "  %-20s %-18s %s" % ("profile", "boundary gate", "unsupported-fraction HOLD")
+    )
+    lines.append("  " + "-" * 70)
+    for p in profiles:
+        boundary = (
+            "SUPPRESSED" if p in _BOUNDARY_SUPPRESSING_PROFILES else "enforced"
+        )
+        threshold = _PROFILE_UNSUPPORTED_THRESHOLD.get(
+            p, _DEFAULT_UNSUPPORTED_THRESHOLD
+        )
+        if threshold >= 1.0:
+            thr = "never (fraction alone never HOLDs)"
+        else:
+            thr = "HOLD when unsupported fraction > %.0f%%" % (threshold * 100)
+        lines.append("  %-20s %-18s %s" % (p, boundary, thr))
+    lines.append("")
+    lines.append(
+        "Notes: a SUPPRESSED boundary gate means scan_prose_boundary() returns "
+        "pass unconditionally for that profile, so AI-residue and "
+        "process-narration leakage is not gated. A PASS under such a profile "
+        "still reports any unsupported-claim count on the verdict line so the "
+        "leniency is visible. Load-bearing unsupported claims always HOLD "
+        "regardless of profile."
+    )
+    return "\n".join(lines)
+
+
 def format_text_report(report: Dict[str, Any]) -> str:
     lines = []
     lines.append("warrantos check")
@@ -770,9 +903,42 @@ def format_text_report(report: Dict[str, Any]) -> str:
     )
     lines.append("  overrides on record: %d" % report["overrides_total"])
     lines.append("")
-    lines.append("VERDICT: " + report["verdict"])
+
+    # Verdict transparency (Phase 1 item 2): always make the unsupported-claims
+    # count visible on the verdict line, and annotate a PASS that carries
+    # unsupported claims so leniency is never silent. Profiles that suppress
+    # the boundary gate (audit/methodology/consultation_report/changelog) say so.
+    verdict = report["verdict"]
+    unsupported = report.get("claims_unsupported", 0)
+    verdict_line = "VERDICT: " + verdict
+    if verdict == VERDICT_PASS and unsupported > 0:
+        profile = report.get("profile", "")
+        if profile in _BOUNDARY_SUPPRESSING_PROFILES:
+            verdict_line += (
+                " (%d unsupported claim(s); %s profile suppresses the prose "
+                "boundary gate; verify manually)" % (unsupported, profile)
+            )
+        else:
+            verdict_line += (
+                " (%d unsupported claim(s); none load-bearing under this "
+                "profile; verify manually)" % unsupported
+            )
+    lines.append(verdict_line)
     for reason in report.get("reasons") or []:
         lines.append("  - " + reason)
+    fired = report.get("verdict_rule_fired")
+    if fired:
+        lines.append(
+            "  rule fired: %s (%d/%d unsupported = %.0f%% > %.0f%% threshold for '%s')"
+            % (
+                fired.get("rule"),
+                fired.get("unsupported", 0),
+                fired.get("total", 0),
+                fired.get("unsupported_fraction", 0.0) * 100,
+                fired.get("threshold", 0.0) * 100,
+                fired.get("profile", ""),
+            )
+        )
     lines.append("")
     lines.append("artefacts written to: " + report["out_dir"])
     return "\n".join(lines)
@@ -905,6 +1071,17 @@ def main(argv: Optional[List[str]] = None) -> int:
         parser.print_help()
         return 0
 
+    if getattr(args, "explain_profile", False):
+        sys.stdout.write(explain_profiles() + "\n")
+        return 0
+
+    if not args.draft:
+        sys.stderr.write(
+            "warrantos check: the draft argument is required "
+            "(it is optional only with --explain-profile)\n"
+        )
+        return 2
+
     run_id = args.run_id or "run_" + uuid.uuid4().hex[:12]
 
     # B5 path containment: run_id must match the safe-character pattern.
@@ -1020,7 +1197,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     single_actor_override = any(
         getattr(o, "single_actor", False) for o in overrides_on_record
     )
-    verdict, reasons = consolidate_verdict(
+    verdict, reasons, fired_rule = consolidate_verdict(
         boundary,
         claim_rows,
         verifier_rows,
@@ -1080,6 +1257,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "overrides_total": len(overrides_on_record),
         "verdict": verdict,
         "reasons": reasons,
+        "verdict_rule_fired": fired_rule,
         "out_dir": str(out_dir),
         "cbom_schema": cbom.schema,
         "load_bearing_threshold": LOAD_BEARING_THRESHOLD,

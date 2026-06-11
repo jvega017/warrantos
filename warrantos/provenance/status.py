@@ -171,13 +171,25 @@ def collect_status() -> List[LayerStatus]:
         layer_id="L7-G2",
         name="G2 Source & Warrant Check",
         status="BUILT",
-        module="provenance.verify, provenance.grade",
+        module="provenance.verify, provenance.grade, provenance.extract",
         surfaces=[
             "verify_claim()",
             "HeuristicGrader / LLMGrader / LocalLLMGrader",
             "Salience-weighted load-bearing detection",
+            "11 CLAIM_TRIGGERS (Phase 1): year/percentage/magnitude/statute/"
+            "attribution/decision/superlative/causal/numeric_approx/named_body/comparison",
+            "Per-profile unsupported-fraction HOLD thresholds (consolidate_verdict)",
         ],
-        notes="Three graders: heuristic (default, free), Anthropic LLM (paid), Local LLM (free, OpenAI-compatible).",
+        notes=(
+            "Three graders: heuristic (default, free), Anthropic LLM (paid), "
+            "Local LLM (free, OpenAI-compatible). Phase 1 (2026-06-11) added the "
+            "decision trigger (closing the salience/detection misalignment) plus "
+            "five categories (superlative, causal, numeric-approximation, "
+            "named-body attribution, empirical comparison) with +0.30 salience "
+            "weights for causal/comparison/body-attribution, and per-profile "
+            "unsupported-fraction HOLD thresholds so an audit run cannot return a "
+            "bare PASS with all claims unsupported."
+        ),
     ))
 
     rows.append(LayerStatus(

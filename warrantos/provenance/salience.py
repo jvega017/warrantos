@@ -20,6 +20,11 @@ Scoring heuristics (additive, capped at 1.0):
           Decision language alone exceeds the 0.5 load-bearing threshold.
   +0.55  magnitude reference (million, billion, trillion, $N, bn, tn)
           Magnitude claims alone exceed the 0.5 load-bearing threshold.
+  +0.30  causal language (caused, led to, results in, due to, driven by)
+  +0.30  empirical comparison (compared to, twice as, increase of, higher than)
+  +0.30  named-body attribution (OECD, ABS, Treasury, ANAO and similar)
+          These three fall below the 0.5 threshold alone but push a claim
+          load-bearing in combination with magnitude, percentage or each other.
   +0.15  percentage in a non-hedged context
   +0.10  year in a non-trivial sentence (penalised if hedged or descriptive)
   -0.20  hedging language (may, might, could, perhaps, possibly, unclear,
@@ -84,6 +89,32 @@ _DESCRIPTIVE_ATTRIBUTION = re.compile(
     re.I,
 )
 
+# Causal language — asserting a cause-effect relationship is consequential and
+# load-bearing when unsupported. Weight +0.30 (Phase 1 item 4).
+_CAUSAL = re.compile(
+    r"\b(?:caused|causes|causing|led\s+to|leads?\s+to|results?\s+in|"
+    r"resulted\s+in|due\s+to|as\s+a\s+result\s+of|because\s+of|"
+    r"driven\s+by|attributable\s+to)\b",
+    re.I,
+)
+
+# Empirical comparison — quantified comparative claims. Weight +0.30.
+_COMPARISON = re.compile(
+    r"\b(?:compared\s+(?:to|with)|relative\s+to|twice\s+as|half\s+as|"
+    r"\d+\s+times\s+(?:more|less|higher|lower)|increase\s+of|decrease\s+of|"
+    r"outperform(?:s|ed)?|higher\s+than|lower\s+than)\b",
+    re.I,
+)
+
+# Named-body attribution (OECD, ABS, Treasury, ANAO and similar). A claim
+# attributed to a named authoritative body carries reputational weight and is
+# load-bearing when uncited. Weight +0.30.
+_BODY_ATTRIBUTION = re.compile(
+    r"\b(?:OECD|ABS|Treasury|ANAO|APSC|DTA|Productivity\s+Commission|"
+    r"World\s+Bank|IMF|United\s+Nations|UN|Reserve\s+Bank|RBA|"
+    r"Bureau\s+of\s+Statistics)\b"
+)
+
 
 def score_claim(sentence: str, trigger: Optional[str] = None) -> float:
     """Return a salience score between 0.0 and 1.0 for *sentence*.
@@ -127,6 +158,16 @@ def score_claim(sentence: str, trigger: Optional[str] = None) -> float:
     # Weight is 0.55 so a magnitude claim alone exceeds the 0.5 threshold.
     if _MAGNITUDE.search(sentence):
         score += 0.55
+
+    # Causal, comparison and named-body attribution: each +0.30. On their own
+    # they fall below the 0.5 threshold, but in combination with a magnitude,
+    # percentage, or each other they push a consequential claim load-bearing.
+    if _CAUSAL.search(sentence):
+        score += 0.30
+    if _COMPARISON.search(sentence):
+        score += 0.30
+    if _BODY_ATTRIBUTION.search(sentence):
+        score += 0.30
 
     # Percentage: directional but not always decisive on its own.
     if _PERCENTAGE.search(sentence):
