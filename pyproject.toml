@@ -4,7 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "warrantos"
-version = "0.9.3"
+# Version is the single source of truth in warrantos/__init__.py (__version__).
+# Declared dynamic here so the packaged metadata can never drift from the
+# module constant (the 0.9.1/0.9.3 desync that this release fixes).
+dynamic = ["version"]
 description = "WarrantOS: a governance harness for AI-assisted writing that ships clean prose and a separate auditable provenance ledger"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -73,6 +76,9 @@ provenance = "warrantos.cli.provenance_cli:main"
 warrantos-mcp = "warrantos.provenance.mcp_server:run_stdio_server"
 warrantos-verify-hook = "warrantos.hooks.claude_code_verify_hook:main"
 
+[tool.setuptools.dynamic]
+version = { attr = "warrantos.__version__" }
+
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["warrantos*"]
@@ -85,3 +91,9 @@ exclude = [
     ".warrant*",
     ".provenance*",
 ]
+
+[tool.setuptools.package-data]
+# Ship the honest-demo fixtures inside the package so `warrantos demo` works
+# from a clean `pip install` (examples/ is not packaged). Without this the
+# bundled first-run demo would file-not-found for installed users.
+warrantos = ["demo_assets/*.md", "demo_assets/*.json"]

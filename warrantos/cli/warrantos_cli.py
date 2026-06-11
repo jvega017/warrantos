@@ -97,6 +97,7 @@ from warrantos.provenance.salience import LOAD_BEARING_THRESHOLD, is_load_bearin
 from warrantos.provenance.verify import extract_citation, verify_claim, verify_text  # noqa: E402
 from warrantos.provenance.extract import CLAIM_TRIGGERS, sentences  # noqa: E402
 from warrantos.provenance.gates import check_self_grounding  # noqa: E402
+from warrantos import __version__  # noqa: E402
 
 
 VERDICT_PASS = "PASS"
@@ -132,7 +133,25 @@ def build_parser() -> argparse.ArgumentParser:
             "consolidated verdict (PASS, HOLD, BLOCK, NOT_ASSESSABLE)."
         ),
     )
+    # An audit tool should be able to report which version produced a verdict.
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="warrantos %s" % __version__,
+        help="Print the WarrantOS version and exit.",
+    )
     sub = parser.add_subparsers(dest="command", metavar="<command>")
+
+    sub.add_parser(
+        "demo",
+        help="Run the bundled honest demo (a real BLOCK verdict, no setup).",
+        description=(
+            "Run WarrantOS over a bundled synthetic AI-style draft that "
+            "deliberately contains unsupported claims and scaffold residue. "
+            "Returns a BLOCK verdict. Zero setup: the fixtures ship with the "
+            "package, so this works from a clean install."
+        ),
+    )
 
     status_parser = sub.add_parser(
         "status",
@@ -1469,6 +1488,47 @@ def _cmd_retention(args) -> int:
     return 2
 
 
+def _cmd_demo(args) -> int:
+    """Run the bundled honest demo from package data. Zero setup required.
+
+    The three fixtures ship as package-data inside warrantos/demo_assets/, so
+    this works from a clean `pip install` with no repository checkout. The run
+    is isolated to a temporary directory so it never writes into the user's
+    working tree.
+    """
+    import tempfile
+    from importlib import resources
+
+    assets = resources.files("warrantos") / "demo_assets"
+    sys.stdout.write(
+        "WarrantOS honest demo\n"
+        "---------------------\n"
+        "Checking a synthetic AI-style draft that deliberately contains\n"
+        "unsupported factual claims and conversational scaffold residue.\n"
+        "Expect a BLOCK verdict.\n\n"
+    )
+    original_cwd = os.getcwd()
+    with tempfile.TemporaryDirectory(prefix="warrantos-demo-") as tmp:
+        tmp_path = Path(tmp)
+        for name in ("draft.md", "context.json", "actor.json"):
+            (tmp_path / name).write_text(
+                (assets / name).read_text(encoding="utf-8"), encoding="utf-8"
+            )
+        # Run from inside the temp dir so the B5 path-containment guard (which
+        # confines outputs under cwd) is satisfied and the demo never writes
+        # into the user's working tree. Relative paths keep everything contained.
+        try:
+            os.chdir(tmp_path)
+            return main([
+                "check", "draft.md",
+                "--context", "context.json",
+                "--actor-identity", "actor.json",
+                "--profile", "final-prose",
+            ])
+        finally:
+            os.chdir(original_cwd)
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     # Reports may contain non-Latin-1 characters (maths symbols, Greek such as
     # the provenance tuple's tau, smart quotes). On Windows stdout defaults to
@@ -1497,6 +1557,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             sys.stdout.write(render_text(rows) + "\n")
         return 0
+
+    if args.command == "demo":
+        return _cmd_demo(args)
 
     if args.command == "attest":
         return _cmd_attest(args)

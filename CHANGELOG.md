@@ -14,9 +14,14 @@ A patch release over 0.9.2. No change to the build state (still **20 BUILT / 0 P
 
 - **Windows unicode crash in the CLI.** `stdout`/`stderr` are now forced to UTF-8, so the CLI no longer crashes when report content contains non-Latin-1 characters (Greek, mathematical symbols, smart quotes) on a Windows `cp1252` console.
 - **`WARRANTOS_DB` is now actually read.** The `WARRANTOS_DB` environment variable now sets the `--db` default for the `check` and `retention` commands. It was documented but had been a no-op.
+- **WarrantOS no longer misreports its own version.** `warrantos/__init__.py` declared `__version__ = "0.9.1"` while the packaged metadata read `0.9.x`. A provenance tool reporting false provenance about itself is fixed: the version is single-sourced in `warrantos/__init__.py`, and `pyproject.toml` now reads it dynamically (`dynamic = ["version"]`), so the module constant and the packaged metadata can never drift apart again.
+- **Naive timezone in a provenance timestamp.** The context bill-of-materials `created_utc` field used the deprecated `datetime.utcnow()` (a naive timestamp, slated for removal in a future Python). It now uses `datetime.now(timezone.utc)` with the identical `...Z` output format, removing the last deprecation warning.
 
 ### Added
 
+- **`warrantos demo`.** A zero-setup first run: WarrantOS checks a bundled synthetic AI-style draft and returns a real `BLOCK` verdict (6 claims, 0 supported, 7 boundary violations). The fixtures ship as package data (`warrantos/demo_assets/`), so it works from a clean `pip install` with no repository checkout. The run is isolated to a temporary directory and never writes into the user's working tree.
+- **`warrantos --version`.** Prints the version and exits, so the version that produced a verdict can be recorded.
+- **Regression tests** (`tests/test_release_0_9_3_fixes.py`) pinning each of the above: version single-source, the `WARRANTOS_DB` default, `--version`, the bundled `demo`, and the cp1252 unicode-write path.
 - **`.claude-plugin/marketplace.json`** so the documented `/plugin marketplace add` flow works. `plugin.json` version is aligned to the release.
 
 ### Changed

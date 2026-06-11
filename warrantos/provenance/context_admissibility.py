@@ -11,7 +11,7 @@ Stdlib only. Python 3.8 compatible.
 import hashlib
 import re
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Iterable, List, Optional, Tuple
 
 from warrantos.provenance.cbom import ClassificationOverrideRecord
@@ -614,7 +614,9 @@ def compile_cbom(
     return {
         "schema": "context-bill-of-materials/v1",
         "cbom_id": run_id or _stable_cbom_id(item_list, final_text),
-        "created_utc": datetime.utcnow().replace(microsecond=0).isoformat() + "Z",
+        "created_utc": datetime.now(timezone.utc)
+        .replace(microsecond=0, tzinfo=None)
+        .isoformat() + "Z",
         "artefact_role": artefact_role,
         "summary": {
             "total_context_items": len(item_list),
