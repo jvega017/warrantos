@@ -9,10 +9,15 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        # Test on all three platforms. Windows is not optional: the 0.9.3
+        # cp1252 unicode crash shipped because CI was Linux-only and never
+        # exercised the Windows console encoding path. macOS is cheap extra
+        # coverage for path and encoding quirks.
+        os: [ubuntu-latest, windows-latest, macos-latest]
         # Minimum supported Python is 3.11 (the codebase uses 3.11+ features; 3.8-3.10 are EOL/near-EOL).
         python-version: ["3.11", "3.12", "3.13"]
     steps:
