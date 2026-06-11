@@ -68,6 +68,13 @@ GALLERY: List[Case] = [
         rationale='"Based on your feedback" trips Layer 7 G1 in the final-prose profile.',
     ),
     Case(
+        name="honest-demo (BLOCK)",
+        directory="examples/honest-demo",
+        expected_verdict="BLOCK",
+        use_actor_identity=True,
+        rationale="A reproducible AI-style first draft: 6 unsupported claims and 7 boundary violations (scaffold/residue) under the final-prose profile. The public, re-runnable version of the honest demo.",
+    ),
+    Case(
         name="04-not-assessable-missing-actor",
         directory="examples/04-not-assessable-missing-actor",
         expected_verdict="NOT_ASSESSABLE",

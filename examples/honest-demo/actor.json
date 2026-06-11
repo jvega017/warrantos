@@ -1,0 +1,8 @@
+{
+  "context_classifier": "agent:warrantos-classifier",
+  "insight_compiler": "human:demo.user",
+  "source_curator": "human:demo.user",
+  "clean_room_writer": "model:claude-opus-4-8",
+  "reviewer_qa": "agent:policy-red-team",
+  "auditor": "human:demo.director"
+}

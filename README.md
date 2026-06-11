@@ -16,7 +16,15 @@ It governs the artefact, not the model. It runs at the writer's desk, on one doc
 
 Built in a personal capacity by an independent policy researcher for the people who publish AI-assisted writing under their own name and carry the reputational liability for a fabricated citation: research-integrity, policy, and academic-governance practitioners. It is a personal open-source project, not associated with, funded by, or endorsed by any employer or government. It is informed by the working paper *From Citation to Epistemic Governance* (Prometheus Policy Lab, in preparation): it operationalises that paper's problem framing, the gap between citation as attribution and citation as evidence, rather than its formal model.
 
-**The honest demo.** I ran WarrantOS over the first draft of my own daily policy brief, before remediation. It returned `BLOCK`: 14 claims, 0 supported, 7 boundary violations (illustrative figures from one unremediated draft, not a fixed benchmark). That is the gate working as designed on an unremediated draft: it names the epistemic debt so it can be paid down before the artefact ships, instead of going out silently. A governance tool worth trusting is one that holds its own author to that standard.
+**The honest demo, reproducible.** The repository ships the demo so you do not have to take an anecdote on trust. Run WarrantOS over the bundled AI-style first draft at `examples/honest-demo/draft.md` under the `final-prose` profile and it returns `BLOCK`: 6 claims detected, 0 supported, 7 boundary violations (scaffold and conversational residue). Clone the repo and re-run the command below to get the identical verdict; `tools/run_gallery.py` asserts it on every CI push.
+
+```bash
+warrantos check examples/honest-demo/draft.md \
+  --context examples/honest-demo/context.json \
+  --actor-identity examples/honest-demo/actor.json --profile final-prose
+```
+
+That is the gate working as designed on an unremediated AI draft: it names the epistemic debt so it can be paid down before the artefact ships, instead of going out silently. A governance tool worth trusting is one anyone can hold to its own standard.
 
 Under the hood, `claude-provenance` wraps AI-assisted writing in an eight-layer pipeline so the final artefact ships clean prose, while a separate audit ledger carries the sources, the feedback, the review history, the transformations, and the structured overrides that produced it. The per-layer status dashboard tells you exactly what is built and what is not.
 
