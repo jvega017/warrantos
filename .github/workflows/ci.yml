@@ -63,7 +63,7 @@ jobs:
           python -m venv /tmp/venv
           /tmp/venv/bin/python -m pip install dist/*.whl
           /tmp/venv/bin/warrantos status >/dev/null
-          /tmp/venv/bin/python -c "import provenance, cli, hooks; print('packages import')"
+          /tmp/venv/bin/python -c "from warrantos import provenance, cli, hooks; print('packages import')"
       - name: Upload built artefacts
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
