@@ -8,12 +8,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from provenance.footer import render_override_footer
-from provenance.overrides import HumanOverride, record_override
+from warrantos.provenance.footer import render_override_footer
+from warrantos.provenance.overrides import HumanOverride, record_override
 
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_CLI_PATH = _REPO_ROOT / "cli" / "warrantos_cli.py"
+_CLI_PATH = _REPO_ROOT / "warrantos" / "cli" / "warrantos_cli.py"
 
 
 def _make_override(
@@ -140,7 +140,7 @@ class TestFooterIntegrationWithLedger(unittest.TestCase):
             compensating_control="B.",
         )
 
-        from provenance.overrides import list_overrides_for_run
+        from warrantos.provenance.overrides import list_overrides_for_run
         footer = render_override_footer(list_overrides_for_run(self.db_path, "run_e2e"))
 
         self.assertIn("ovr_%d" % first.id, footer)

@@ -9,7 +9,7 @@ must let the insight travel while blocking process narration in final prose.
 import json
 import unittest
 
-from provenance.context_admissibility import (
+from warrantos.provenance.context_admissibility import (
     ContextItem,
     admissibility_summary,
     classify_context,

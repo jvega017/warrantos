@@ -6,6 +6,30 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-06-11
+
+### Added
+
+- **Claim detection expanded from 5 to 11 triggers** (`provenance.extract`). The detector now fires on six additional categories beyond the original year / percentage / magnitude / statute / attribution set: `decision` (must/shall/required/recommend, closing the salience/detection misalignment where decision-language sentences scored load-bearing but were not detected), `superlative` (largest/first/unprecedented), `causal` (caused/led to/results in/due to), `numeric_approx`, `named_body` (OECD/ABS/Treasury/ANAO/RBA and similar named authorities), and `comparison`. Causal, comparison, and named-body attribution carry +0.30 salience weight.
+- **Per-profile unsupported-claim HOLD thresholds** (Layer 7 G2). A run can no longer return a bare `PASS` while a large fraction of its load-bearing claims are unsupported; each profile carries an unsupported-fraction threshold above which the verdict is downgraded to `HOLD`. The strict `audit` profile is the tightest.
+- **Improved verdict transparency.** The verdict path surfaces why a verdict was reached (the triggering rule, the unsupported fraction, the separation-of-duties flag) rather than emitting a bare state.
+- **`ClaudeCliGrader`** (`provenance.grade.ClaudeCliGrader`, grader id `claude-cli` / `fetch+claude-cli`). A subscription-over-API verification path that shells out to `claude --print`, so a user on a Claude subscription verifies through their plan rather than spending on `ANTHROPIC_API_KEY`. Falls back to the heuristic on any failure; never called from the blocking hook.
+
+### Changed
+
+- **G4 Safety & Contamination is now BUILT** (was STARTER). The generic starter pattern set is extended with policy-domain contamination patterns and a 24-item labelled corpus (`eval/corpus/contamination.jsonl`); `corpus_completeness` flips from `starter` to `domain-extended`. The list is still not exhaustive: production deployments SHOULD continue to extend it against their own documented threat model.
+- **G5 Evaluation & Calibration is now BUILT** (was STARTER). `warrantos calibrate` runs the grader against the labelled eval corpus and writes `.warrant/calibration.json` (grader, corpus size, per-class recall, coverage estimate); `check_calibration()` accepts either live verdict rows (Brier-with-explicit-coverage) or the stored calibration file. Confidence coverage is typically 0 with the offline `HeuristicGrader`; per-class recall is the meaningful measure until an LLM grader supplies numeric confidence.
+- **Foundation: Data Classification is now BUILT** (was NOT_BUILT) (`provenance.classification`). A 4-tier default registry mirrors the reference adopter's data gate; keyword heuristics (Cabinet, ministerial, legal advice, Crown Solicitor, HR/PIP/termination, $NNNM/B budget markers, credential patterns) are a documented STARTER set that production deployments SHALL extend with a domain taxonomy. Unmatched text defaults to Official, never silently Public.
+- **Foundation: Retention & Deletion (tombstones) is now BUILT** (was NOT_BUILT) (`provenance.retention`, `schema/provenance.sql`). INV-011 is implemented as append-only tombstones: no hard delete. Expiry of a retention window appends a tombstone marking the run logically retired while preserving every ledger row (INV-004 append-only is never violated). Per-run windows are set at run creation or appended later via `set_window()` (latest override wins). Adopters still specify the window.
+- **Build state moves from 13 BUILT / 3 PARTIAL / 2 STARTER / 2 NOT_BUILT** at v0.9.1 to **20 BUILT / 0 PARTIAL** at v0.9.2. The final three foundation rows closed: **F-policy** (the normative spec `docs/SPEC.md` plus a machine-readable six-role registry `warrantos/provenance/roles.py`), **F-compliance** (a self-assessment control mapping to ISO/IEC 42001 and the NIST AI RMF in `docs/COMPLIANCE.md` — a documented mapping, explicitly not certified conformance; an automated SPEC-ID conformance check remains future work), and **F-metrics** (shadow-log aggregation via `warrantos/provenance/metrics.py` and the `warrantos metrics` command). Status flips are conditional on the artefacts existing on disk, pinned by guard tests. Adopter-specific configuration (sensitivity tiers, retention windows) remains adopter-supplied by design.
+- **Minimum supported Python lifted to 3.11** (`requires-python = ">=3.11"`). The CI matrix is now 3.11 / 3.12 / 3.13. Python 3.8 through 3.10 are dropped: they are end-of-life or near end-of-life and the code uses 3.11+ features.
+
+### Fixed
+
+- **CI smoke-test fix.** The CI smoke test is corrected to run against the supported Python matrix.
+
+## [0.9.1] - 2026-06-10
+
 ### Added
 
 - **AI assistant scaffold-residue detection** (Layer 7 G1). The prose-boundary scanner now catches the conversational and scaffold residue that bleeds from the chat into a final artefact, which is a core value proposition: AI self-reference ("as an AI language model"), capability disclaimers ("I cannot verify"), assistant openers ("Certainly!") and closers ("I hope this helps, let me know if"), delivery framing ("here's the revised version"), request acknowledgements ("as requested"), hedged provenance ("based on the information provided"), future-promise narration, and scaffold placeholders (`[TODO: ...]`, `lorem ipsum`, `TKTK`). On a representative leak document, detection went from 1 violation to 11. Verified to not false-positive on real academic and policy prose. Applies to final-prose, brief-light, and paper-full profiles; process-discussing profiles (audit, methodology, prompt-template) are unaffected.
@@ -13,6 +37,22 @@ and Semantic Versioning.
 - **`warrantos attest` and `warrantos verify-external` CLI** (P1.3/P1.4 surface). `attest` bundles a completed check run into a portable `.warrant` (prose digest + CBOM + ledger entries + signed checkpoint); `verify-external` verifies it offline and exits non-zero on any failure, so it drops straight into CI. The integrity check needs no dependencies; signature attribution uses the `[attestation]` extra.
 - **Ed25519 signed checkpoints and the `.warrant` verifiable artefact** (`provenance.attestation`, `provenance.warrant_bundle`). A checkpoint's Merkle root can now be Ed25519-signed, and `create_warrant()` bundles the prose digest, CBOM, the relevant ledger entries, and the signed checkpoint into a portable `.warrant` object. `verify_warrant()` checks it offline: the integrity half (recompute the Merkle root from the entries, match the checkpoint) is pure stdlib; only the signature trust-anchor needs the new `[attestation]` extra (`pip install "claude-provenance[attestation]"`), since the standard library ships no public-key signing. Verdicts: integrity VALID/INVALID, signature VALID/INVALID/UNKNOWN_KEY/UNSIGNED. Production adopters set `WARRANTOS_SIGNING_KEY`; the project ships no real default key. This makes the HTTPS analogy literal: a document anyone can verify offline.
 - **Merkle-ised ledger core** (`provenance.merkle`, pure stdlib). A deterministic, RFC 6962 style Merkle tree (leaf/node domain separation, odd-node promotion) over the audit ledger. Provides the ledger integrity hash (one root digest that fixes the entire ordered ledger state; any insert, edit, delete, or reorder changes it) and the attestation root that signed checkpoints will commit to and external verifiers will check inclusion proofs against. Includes `MerkleTree`, `ledger_root()`, `build_checkpoint()`, and inclusion-proof verification. Foundation for the cryptographic-integrity wave (.warrant attestation + offline verifier).
+
+### Security (pre-launch hardening, multi-agent review: Codex + Gemini + Opus + Fable)
+
+- **SSRF and scheme guard in the URL verifier** (`provenance/verify.py`). `fetch_text` now refuses any non-`http(s)` scheme (closes `file://` and `ftp://` local-file disclosure) and resolves the host, rejecting any address that is not globally routable (`ipaddress.is_global`, which also closes RFC 6598 CGNAT `100.64.0.0/10`, loopback, link-local, private, reserved, IPv4-mapped IPv6). Redirects are re-validated per hop with a per-request cap. The check runs before any network call. DNS-rebinding TOCTOU and NAT64 are documented residuals for this opt-in path.
+- **Web verifier XSS and fail-closed signature** (`web/verify.html`). All untrusted `.warrant` fields render via `textContent`, never `innerHTML`; a strict CSP blocks external requests. The signature model is now tri-state (`SIGNED_VALID` / `UNSIGNED` / `SIGNATURE_INVALID`): a present-but-corrupt signature is `SIGNATURE_INVALID` and forces overall `INVALID`, which the allow-unsigned toggle can never override.
+- **Path containment across all CLI and MCP surfaces** (`provenance/pathguard.py`, `mcp_server.py`, `cli/warrantos_cli.py`). Caller-supplied `run_id` is regex-validated; every output and DB path is confined under its intended root by resolved-path containment (not string matching). Closes arbitrary file write to the ledger via `tool_warrant_record_override` and arbitrary file read via `tool_warrant_get_run`.
+- **Supply chain: release and CI workflows pinned** (`.github/workflows/`). Every action is pinned to a full commit SHA; permissions are job-scoped (`id-token: write` only on the PyPI publish job, behind a protected environment).
+
+### Changed
+
+- **Separation of duties is now a verdict-layer property** (`consolidate_verdict()`, CLI and MCP). A same-actor writer/reviewer override downgrades a final-artefact profile to `HOLD` and the strict `audit` profile to `BLOCK`; an independent reviewer is required to certify `PASS` (SPEC-L8-S003). The `0.9.0b1` tag surfaced this in the footer only.
+- **Append-only triggers installed by default** (`schema/provenance.sql`, hook and ledger-write schema paths). `BEFORE UPDATE` and `BEFORE DELETE` `RAISE(ABORT)` triggers ship on every ledger table on the default `warrantos check` and hook path, not only via an optional installer. INV-004 now matches the README claim; DELETE is covered as well as UPDATE.
+
+### Documentation
+
+- README, `docs/OVERVIEW.md`, `docs/STATUS.md` reconciled with `main`: separation of duties presented as wired (was "not wired"), the cryptographic-verifiability wave surfaced (new `docs/VERIFICATION.md`, README section, tooling-map entries), a new `F-integrity` status row (rollup now **13 BUILT**, was 12), and the append-only claim scoped to the SQLite ledger.
 
 ## [0.9.0b1] - 2026-06-06
 

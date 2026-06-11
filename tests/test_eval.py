@@ -115,8 +115,8 @@ class TestMetricsInRange(unittest.TestCase):
 
         if str(_REPO_ROOT) not in sys.path:
             sys.path.insert(0, str(_REPO_ROOT))
-        from provenance.verify import verify_text
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.verify import verify_text
+        from warrantos.provenance.grade import HeuristicGrader
 
         grader = HeuristicGrader()
         all_axis1 = []
@@ -264,7 +264,7 @@ class TestV0FalseNegativeLabelled(unittest.TestCase):
         in the expected direction, not just asserting a vacuous label.
         """
         spec = importlib.util.spec_from_file_location(
-            "_hook", str(_REPO_ROOT / "hooks" / "provenance_check.py")
+            "_hook", str(_REPO_ROOT / "warrantos" / "hooks" / "provenance_check.py")
         )
         hook_mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(hook_mod)
@@ -651,7 +651,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
     # -- grade_grader_corpus --
 
     def test_grade_grader_corpus_returns_one_tuple_per_item(self):
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         self.assertEqual(
@@ -661,7 +661,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
         )
 
     def test_grade_grader_corpus_tuples_have_three_elements(self):
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         for tup in results:
@@ -672,7 +672,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
             )
 
     def test_grade_grader_corpus_pred_in_valid_set(self):
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         for item_id, gold, pred in results:
@@ -685,7 +685,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
 
     def test_grade_grader_corpus_gold_preserved(self):
         """gold in each result tuple must match the corpus gold label."""
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         by_id = {item["id"]: item["gold"] for item in items}
@@ -700,7 +700,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
     # -- compute_grader_metrics --
 
     def test_compute_grader_metrics_n_equals_corpus_size(self):
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         metrics = self._mod.compute_grader_metrics(results)
@@ -711,7 +711,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
         )
 
     def test_compute_grader_metrics_accuracy_in_range(self):
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         metrics = self._mod.compute_grader_metrics(results)
@@ -720,7 +720,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
         self.assertLessEqual(acc, 1.0, "accuracy must be <= 1.0")
 
     def test_compute_grader_metrics_per_class_keys_present(self):
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         metrics = self._mod.compute_grader_metrics(results)
@@ -733,7 +733,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
             )
 
     def test_compute_grader_metrics_per_class_metric_keys(self):
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         metrics = self._mod.compute_grader_metrics(results)
@@ -748,7 +748,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
                 )
 
     def test_compute_grader_metrics_per_class_floats_in_range(self):
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         metrics = self._mod.compute_grader_metrics(results)
@@ -766,7 +766,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
                 )
 
     def test_compute_grader_metrics_macro_keys_present(self):
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         metrics = self._mod.compute_grader_metrics(results)
@@ -775,7 +775,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
             self.assertIn(key, macro, "macro dict missing key %r" % key)
 
     def test_compute_grader_metrics_macro_floats_in_range(self):
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         metrics = self._mod.compute_grader_metrics(results)
@@ -786,7 +786,7 @@ class TestGraderFunctionsDirectly(unittest.TestCase):
 
     def test_compute_grader_metrics_confusion_matrix_row_sums(self):
         """Each confusion matrix row (gold class) must sum to that class's support."""
-        from provenance.grade import HeuristicGrader
+        from warrantos.provenance.grade import HeuristicGrader
         items = self._mod.load_grader_corpus(str(_GRADER_CORPUS))
         results = self._mod.grade_grader_corpus(items, HeuristicGrader())
         metrics = self._mod.compute_grader_metrics(results)

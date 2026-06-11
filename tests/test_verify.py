@@ -8,17 +8,26 @@ Run from the repo root:
     python -m unittest tests.test_verify -v
 """
 
+import socket
 import unittest
 import unittest.mock
 from unittest.mock import MagicMock, patch
 
-from provenance.grade import HeuristicGrader
-from provenance.verify import (
+from warrantos.provenance.grade import HeuristicGrader
+import warrantos.provenance.verify as _verify_module
+from warrantos.provenance.verify import (
     extract_citation,
     fetch_text,
     verify_claim,
     verify_text,
 )
+
+# A public IP used by tests that need _is_safe_url to pass without real DNS.
+_PUBLIC_IP = "93.184.216.34"  # example.com
+
+
+def _make_getaddrinfo_public(host, port, *args, **kwargs):
+    return [(socket.AF_INET, socket.SOCK_STREAM, 0, "", (_PUBLIC_IP, port or 80))]
 
 
 class TestFetchText(unittest.TestCase):
@@ -51,8 +60,9 @@ class TestFetchText(unittest.TestCase):
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = fetch_text("https://example.org/plain")
+        with patch("socket.getaddrinfo", _make_getaddrinfo_public):
+            with patch.object(_verify_module._safe_opener, "open", return_value=mock_resp):
+                result = fetch_text("https://example.org/plain")
         self.assertIsNotNone(result)
         self.assertIn("Hello world", result)
 
@@ -68,8 +78,9 @@ class TestFetchText(unittest.TestCase):
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = fetch_text("https://example.org/page")
+        with patch("socket.getaddrinfo", _make_getaddrinfo_public):
+            with patch.object(_verify_module._safe_opener, "open", return_value=mock_resp):
+                result = fetch_text("https://example.org/page")
         self.assertIsNotNone(result)
         self.assertIn("Visible content", result)
         self.assertNotIn("alert", result)
@@ -82,8 +93,9 @@ class TestFetchText(unittest.TestCase):
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
 
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = fetch_text("https://example.org/spaced")
+        with patch("socket.getaddrinfo", _make_getaddrinfo_public):
+            with patch.object(_verify_module._safe_opener, "open", return_value=mock_resp):
+                result = fetch_text("https://example.org/spaced")
         self.assertIsNotNone(result)
         self.assertNotIn("  ", result)  # no double spaces
         self.assertNotIn("\n", result)
@@ -137,7 +149,7 @@ class TestVerifyClaim(unittest.TestCase):
         claim = "The fund held 4 billion in 2023."
         url = "https://example.org/treasury-report"
 
-        with patch("provenance.verify.fetch_text", return_value=source) as mock_fetch:
+        with patch("warrantos.provenance.verify.fetch_text", return_value=source) as mock_fetch:
             grader = HeuristicGrader()
             v = verify_claim(claim, url, grader=grader)
             mock_fetch.assert_called_once_with(url)
@@ -150,7 +162,7 @@ class TestVerifyClaim(unittest.TestCase):
         claim = "Revenue rose 15 per cent in 2022."
         url = "https://example.org/governance"
 
-        with patch("provenance.verify.fetch_text", return_value=source):
+        with patch("warrantos.provenance.verify.fetch_text", return_value=source):
             grader = HeuristicGrader()
             v = verify_claim(claim, url, grader=grader)
 
@@ -159,7 +171,7 @@ class TestVerifyClaim(unittest.TestCase):
     def test_apa_citation_does_not_fetch(self):
         """An APA citation (non-URL) should not cause a network call."""
         claim = "Output fell 3 per cent (Jones, 2023)."
-        with patch("provenance.verify.fetch_text") as mock_fetch:
+        with patch("warrantos.provenance.verify.fetch_text") as mock_fetch:
             grader = HeuristicGrader()
             v = verify_claim(claim, "(Jones, 2023)", grader=grader)
             mock_fetch.assert_not_called()
@@ -176,7 +188,7 @@ class TestVerifyClaim(unittest.TestCase):
         import os
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("ANTHROPIC_API_KEY", None)
-            with patch("provenance.verify.fetch_text", return_value=None):
+            with patch("warrantos.provenance.verify.fetch_text", return_value=None):
                 v = verify_claim("Output rose 5 per cent.", None, grader=None)
         self.assertIsInstance(v.verdict, str)
 
@@ -195,7 +207,7 @@ class TestVerifyText(unittest.TestCase):
         def _fail_if_called(url):
             raise AssertionError("fetch_text called with fetch=False: url=%s" % url)
 
-        with patch("provenance.verify.fetch_text", side_effect=_fail_if_called):
+        with patch("warrantos.provenance.verify.fetch_text", side_effect=_fail_if_called):
             verdicts = verify_text(text, grader=grader, fetch=False)
 
         self.assertIsInstance(verdicts, list)
@@ -226,7 +238,7 @@ class TestVerifyText(unittest.TestCase):
         text = "Emissions fell 12 per cent (https://example.org/data)."
         grader = HeuristicGrader()
 
-        with patch("provenance.verify.fetch_text", return_value="emissions fell 12 per cent") as mock_fetch:
+        with patch("warrantos.provenance.verify.fetch_text", return_value="emissions fell 12 per cent") as mock_fetch:
             verdicts = verify_text(text, grader=grader, fetch=True)
             mock_fetch.assert_called()
 
@@ -234,7 +246,7 @@ class TestVerifyText(unittest.TestCase):
         self.assertEqual(verdicts[0].verdict, "verified")
 
     def test_returns_list_of_verdict_instances(self):
-        from provenance.grade import Verdict
+        from warrantos.provenance.grade import Verdict
         text = "The 2021 review found that output rose 5 per cent."
         grader = HeuristicGrader()
         verdicts = verify_text(text, grader=grader, fetch=False)

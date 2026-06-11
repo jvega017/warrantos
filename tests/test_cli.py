@@ -99,15 +99,15 @@ def _make_fake_provenance_package(verdicts_to_return):
     the CLI codes to.
     """
     # provenance (top-level)
-    fake_provenance = types.ModuleType("provenance")
+    fake_provenance = types.ModuleType("warrantos.provenance")
 
     # provenance.grade
-    fake_grade = types.ModuleType("provenance.grade")
+    fake_grade = types.ModuleType("warrantos.provenance.grade")
     fake_grade.Verdict = FakeVerdict
     fake_provenance.grade = fake_grade
 
     # provenance.extract
-    fake_extract = types.ModuleType("provenance.extract")
+    fake_extract = types.ModuleType("warrantos.provenance.extract")
     fake_extract.CLAIM_TRIGGERS = []
     fake_extract.CITATION_MARKERS = []
     fake_extract.CITE_NEEDED = None
@@ -115,7 +115,7 @@ def _make_fake_provenance_package(verdicts_to_return):
     fake_provenance.extract = fake_extract
 
     # provenance.verify
-    fake_verify = types.ModuleType("provenance.verify")
+    fake_verify = types.ModuleType("warrantos.provenance.verify")
     # verify_text accepts (text, grader=None, fetch=True) per the contract
     def _fake_verify_text(text, grader=None, fetch=True):
         return list(verdicts_to_return)
@@ -123,11 +123,29 @@ def _make_fake_provenance_package(verdicts_to_return):
     fake_provenance.verify = fake_verify
 
     return {
-        "provenance": fake_provenance,
-        "provenance.grade": fake_grade,
-        "provenance.extract": fake_extract,
-        "provenance.verify": fake_verify,
+        "warrantos.provenance": fake_provenance,
+        "warrantos.provenance.grade": fake_grade,
+        "warrantos.provenance.extract": fake_extract,
+        "warrantos.provenance.verify": fake_verify,
     }
+
+
+def _install_fake_provenance(stubs):
+    """Make the fake provenance package authoritative in sys.modules.
+
+    Cross-file hygiene: an earlier test module may have imported the real
+    warrantos.provenance.* package. Purge it, install the fakes, and repoint the
+    warrantos package's .provenance attribute, so the reloaded CLI binds only to
+    the fakes. Callers run under patch.dict(sys.modules), so tearDown restores
+    the originals.
+    """
+    for key in [m for m in sys.modules
+                if m == "warrantos.provenance" or m.startswith("warrantos.provenance.")]:
+        del sys.modules[key]
+    for name, mod in stubs.items():
+        sys.modules[name] = mod
+    if "warrantos" in sys.modules:
+        sys.modules["warrantos"].provenance = stubs["warrantos.provenance"]
 
 
 class _CliTestBase(unittest.TestCase):
@@ -147,8 +165,7 @@ class _CliTestBase(unittest.TestCase):
 
         # 1. Inject fake modules BEFORE the CLI module is (re-)imported.
         self._stub_modules = _make_fake_provenance_package(self.__class__._verdicts)
-        for name, mod in self._stub_modules.items():
-            sys.modules[name] = mod
+        _install_fake_provenance(self._stub_modules)
 
         # 2. Remove any previously cached version of the CLI module so the
         #    lazy imports inside functions resolve against the freshly
@@ -158,7 +175,7 @@ class _CliTestBase(unittest.TestCase):
                 del sys.modules[key]
 
         # 3. Import the CLI module.
-        cli_path = REPO_ROOT / "cli" / "provenance_cli.py"
+        cli_path = REPO_ROOT / "warrantos" / "cli" / "provenance_cli.py"
         spec = importlib.util.spec_from_file_location("provenance_cli", str(cli_path))
         self._cli_module = importlib.util.module_from_spec(spec)
         sys.modules["provenance_cli"] = self._cli_module
@@ -421,17 +438,13 @@ class TestJsonOutput(_CliTestBase):
     def test_json_ci_exit_1_when_contradicted(self):
         """Inject contradicted verdict and verify --json --ci still exits 1."""
         # Re-stub with contradicted verdicts.
-        for name in list(self._stub_modules.keys()):
-            sys.modules.pop(name, None)
-
         new_stubs = _make_fake_provenance_package(VERDICTS_WITH_CONTRADICTED)
-        for name, mod in new_stubs.items():
-            sys.modules[name] = mod
+        _install_fake_provenance(new_stubs)
         # Force CLI re-import so lazy imports pick up the new stubs.
         for key in list(sys.modules.keys()):
             if "provenance_cli" in key:
                 del sys.modules[key]
-        cli_path = REPO_ROOT / "cli" / "provenance_cli.py"
+        cli_path = REPO_ROOT / "warrantos" / "cli" / "provenance_cli.py"
         spec = importlib.util.spec_from_file_location("provenance_cli", str(cli_path))
         self._cli_module = importlib.util.module_from_spec(spec)
         sys.modules["provenance_cli"] = self._cli_module

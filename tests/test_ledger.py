@@ -16,12 +16,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from provenance.ledger import (
+from warrantos.provenance.ledger import (
     export_evidence_matrix,
     epistemic_debt,
     open_ledger,
 )
-from provenance.salience import is_load_bearing, score_claim
+from warrantos.provenance.salience import is_load_bearing, score_claim
 
 # ---------------------------------------------------------------------------
 # Inline schema (matches schema/provenance.sql shape exactly)

@@ -13,11 +13,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The README claims Python 3.8+. Test every version it claims.
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+        # Minimum supported Python is 3.11 (the codebase uses 3.11+ features; 3.8-3.10 are EOL/near-EOL).
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Run the suite (stdlib only, nothing to install)
@@ -32,8 +32,8 @@ jobs:
   attestation:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
       - name: Install the attestation extra and run the suite
@@ -48,8 +48,8 @@ jobs:
   package:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
       - name: Build sdist and wheel
@@ -63,9 +63,9 @@ jobs:
           python -m venv /tmp/venv
           /tmp/venv/bin/python -m pip install dist/*.whl
           /tmp/venv/bin/warrantos status >/dev/null
-          /tmp/venv/bin/python -c "import provenance, cli, hooks; print('packages import')"
+          /tmp/venv/bin/python -c "from warrantos import provenance, cli, hooks; print('packages import')"
       - name: Upload built artefacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dist
           path: dist/*

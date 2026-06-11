@@ -3,7 +3,7 @@
 
 import unittest
 
-from provenance.review import (
+from warrantos.provenance.review import (
     ReviewFinding,
     consolidate_findings,
     render_review_markdown,

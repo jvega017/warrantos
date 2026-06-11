@@ -1,5 +1,5 @@
 # Demo brief: the proposed customer data programme
 
-The programme appears in the Queensland Treasury Bulletin, 2026 (https://www.treasury.qld.gov.au/budget/forward-estimates).
+The programme appears in the Arcadia Treasury Bulletin, 2026 (https://treasury.arcadia.gov.example/budget/forward-estimates).
 
-The Act will save AUD 250 million over the forward estimates.
+The Act will save 250 million credits over the forward estimates.

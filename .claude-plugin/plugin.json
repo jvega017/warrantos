@@ -1,7 +1,7 @@
 {
   "name": "claude-provenance",
-  "version": "0.9.0b1",
-  "description": "WarrantOS reference implementation. A stdlib-first governance harness for AI-assisted writing: claim provenance, context admissibility, CBOM v0.2, four-state verdict (PASS/HOLD/BLOCK/NOT_ASSESSABLE), structured human-override ledger, and an explicit per-layer conformance dashboard. MCP server, Claude Code Stop hook, and a shadow observer for read-only beta deployment are included.",
+  "version": "0.9.1",
+  "description": "Claude Code plugin: the legacy v0.3 in-session citation Stop hook and slash commands. Every factual claim needs a source or an explicit [CITE NEEDED], logged to a portable ledger. The full WarrantOS pipeline (CLI, MCP server, four-state verdict, attestation) installs separately from PyPI as `warrantos`; wiring the WarrantOS surfaces into the plugin is a later item.",
   "author": {
     "name": "Juan Vega",
     "url": "https://prometheuspolicylab.com"
@@ -19,6 +19,6 @@
     "citations",
     "epistemics"
   ],
-  "hooks": "./hooks/hooks.json",
+  "hooks": "./warrantos/hooks/hooks.json",
   "commands": "./commands"
 }

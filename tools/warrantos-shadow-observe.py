@@ -78,7 +78,7 @@ def observe_one(
     log_path: Path,
 ) -> int:
     """Run the harness once and append a one-line summary to the log."""
-    from provenance.mcp_server import tool_warrant_check
+    from warrantos.provenance.mcp_server import tool_warrant_check
 
     try:
         result = tool_warrant_check(

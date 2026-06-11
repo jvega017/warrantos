@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-CLI = REPO_ROOT / "cli" / "provenance_cli.py"
+CLI = REPO_ROOT / "warrantos" / "cli" / "provenance_cli.py"
 
 
 class TestContextCli(unittest.TestCase):

@@ -15,7 +15,7 @@ import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any, Dict, Optional
 
-from provenance.grade import (
+from warrantos.provenance.grade import (
     HeuristicGrader,
     LocalLLMGrader,
     Verdict,
@@ -239,16 +239,26 @@ class TestGetGraderSelectionOrder(_LocalGraderTestBase):
         del os.environ["PROVENANCE_LOCAL_GRADER_URL"]
         os.environ["ANTHROPIC_API_KEY"] = "sk-anthropic-test"
         try:
-            from provenance.grade import LLMGrader
+            from warrantos.provenance.grade import LLMGrader
             grader = get_grader()
             self.assertIsInstance(grader, LLMGrader)
         finally:
             del os.environ["ANTHROPIC_API_KEY"]
 
     def test_no_keys_picks_heuristic(self):
+        from unittest.mock import patch
+        from warrantos.provenance.grade import ClaudeCliGrader
         del os.environ["PROVENANCE_LOCAL_GRADER_URL"]
-        grader = get_grader()
-        self.assertIsInstance(grader, HeuristicGrader)
+        # Neutralise the subscription-over-API claude-CLI auto-select and any
+        # explicit override so this isolates the final heuristic fallback.
+        saved_override = os.environ.pop("PROVENANCE_GRADER", None)
+        try:
+            with patch.object(ClaudeCliGrader, "is_available", return_value=False):
+                grader = get_grader()
+            self.assertIsInstance(grader, HeuristicGrader)
+        finally:
+            if saved_override is not None:
+                os.environ["PROVENANCE_GRADER"] = saved_override
 
 
 if __name__ == "__main__":

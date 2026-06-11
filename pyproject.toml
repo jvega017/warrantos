@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "claude-provenance"
-version = "0.9.0b1"
-description = "WarrantOS reference implementation: a governance harness for AI-assisted writing that ships clean prose and a separate auditable provenance ledger"
+name = "warrantos"
+version = "0.9.2"
+description = "WarrantOS: a governance harness for AI-assisted writing that ships clean prose and a separate auditable provenance ledger"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 authors = [
     { name = "Juan Vega" }
 ]
@@ -71,14 +71,14 @@ Documentation = "https://github.com/jvega017/claude-provenance/blob/main/docs/OV
 [project.scripts]
 # Single-command entry points so users can run the tool without
 # remembering a Python module path.
-warrantos = "cli.warrantos_cli:main"
-provenance = "cli.provenance_cli:main"
-warrantos-mcp = "provenance.mcp_server:run_stdio_server"
-warrantos-verify-hook = "hooks.claude_code_verify_hook:main"
+warrantos = "warrantos.cli.warrantos_cli:main"
+provenance = "warrantos.cli.provenance_cli:main"
+warrantos-mcp = "warrantos.provenance.mcp_server:run_stdio_server"
+warrantos-verify-hook = "warrantos.hooks.claude_code_verify_hook:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["provenance*", "cli*", "hooks*"]
+include = ["warrantos*"]
 exclude = [
     "tests*",
     "eval*",

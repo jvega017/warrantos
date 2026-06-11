@@ -1,30 +1,36 @@
 # claude-provenance
 
 [![ci](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml)
-[![layers: 12B / 3P / 2S / 2NB](https://img.shields.io/badge/layers-12B%20%2F%203P%20%2F%202S%20%2F%202NB-blue)](docs/STATUS.md)
-![version: 0.9.0b1](https://img.shields.io/badge/version-0.9.0b1-orange)
-![python: 3.8--3.13](https://img.shields.io/badge/python-3.8--3.13-blue)
+[![layers: 20B / 0P](https://img.shields.io/badge/layers-20B%20%2F%200P-brightgreen)](docs/STATUS.md)
+![version: 0.9.2](https://img.shields.io/badge/version-0.9.2-orange)
+![python: 3.11--3.13](https://img.shields.io/badge/python-3.11--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
 
 ## No claim ships without a warrant.
 
-WarrantOS does not detect truth, and it does not try to. It enforces that every claim in an AI-assisted document carries a warrant: a source, an explicit `[CITE NEEDED]`, or a `BLOCK` on the record. A four-state verdict (`PASS` / `HOLD` / `BLOCK` / `NOT_ASSESSABLE`) gates the output before it ships, and every miss is written to a tamper-evident, append-only ledger you can hand an auditor.
+WarrantOS does not detect truth, and it does not try to. It enforces that every claim in an AI-assisted document carries a warrant: a source, an explicit `[CITE NEEDED]`, or a `BLOCK` on the record. A four-state verdict (`PASS` / `HOLD` / `BLOCK` / `NOT_ASSESSABLE`) gates the output before it ships in `enforce` mode (the default `report` mode logs every miss without blocking), and every miss is written to an append-only ledger, tamper-evident against a previously distributed checkpoint, that you can hand an auditor.
 
 It also catches the other way an AI document betrays itself: **internal scaffold and conversational residue that bleeds from the chat into the final artefact**. "Certainly! Here's the revised version", "As an AI language model, I cannot verify", "based on the information provided", "I hope this helps, let me know if you would like me to expand", a stray `[TODO: ...]` placeholder. A clean artefact carries its evidence and none of the machinery that produced it. WarrantOS blocks the machinery from shipping.
 
 It governs the artefact, not the model. It runs at the writer's desk, on one document, before it ships, with zero infrastructure: stdlib-only, MIT, no API, no account. Governance platforms watch the system after the fact; WarrantOS gates the output before the fact.
 
-Built by a serving public-sector policy officer for the people who publish AI-assisted writing under their own name and carry the reputational liability for a fabricated citation: research-integrity, policy, and academic-governance practitioners. It is the reference implementation of the forthcoming paper *From Citation to Epistemic Governance*.
+Built in a personal capacity by an independent policy researcher for the people who publish AI-assisted writing under their own name and carry the reputational liability for a fabricated citation: research-integrity, policy, and academic-governance practitioners. It is a personal open-source project, not associated with, funded by, or endorsed by any employer or government. It is informed by the working paper *From Citation to Epistemic Governance* (Prometheus Policy Lab, in preparation): it operationalises that paper's problem framing, the gap between citation as attribution and citation as evidence, rather than its formal model.
 
-**The honest demo.** I ran WarrantOS over my own daily policy brief. It returned `BLOCK`: 14 claims, 0 supported, 7 boundary violations. I ship that brief to readers. That is the point: a governance tool worth trusting is one that holds its own author to the standard.
+**The honest demo.** I ran WarrantOS over the first draft of my own daily policy brief, before remediation. It returned `BLOCK`: 14 claims, 0 supported, 7 boundary violations (illustrative figures from one unremediated draft, not a fixed benchmark). That is the gate working as designed on an unremediated draft: it names the epistemic debt so it can be paid down before the artefact ships, instead of going out silently. A governance tool worth trusting is one that holds its own author to that standard.
 
 Under the hood, `claude-provenance` wraps AI-assisted writing in an eight-layer pipeline so the final artefact ships clean prose, while a separate audit ledger carries the sources, the feedback, the review history, the transformations, and the structured overrides that produced it. The per-layer status dashboard tells you exactly what is built and what is not.
 
-> **v0.9.0b1 beta.** Build state: **12 BUILT / 3 PARTIAL / 2 STARTER / 2 NOT_BUILT**. See [`docs/STATUS.md`](docs/STATUS.md) before evaluating scope. The two `NOT_BUILT` rows (Data Classification, Retention/Tombstones) are explicit v1.0 deferrals that require domain input from the adopter and cannot be fabricated.
+> **v0.9.2.** Build state: **20 BUILT / 0 PARTIAL** (was 13 BUILT / 3 PARTIAL / 2 STARTER / 2 NOT_BUILT at v0.9.1). All five output-integrity gates (G1-G5) and all eight foundation rows are BUILT. The final three rows closed in v0.9.2: **F-policy** (the normative spec `docs/SPEC.md` and a machine-readable six-role registry are now committed), **F-compliance** (a self-assessment control mapping to ISO/IEC 42001 and the NIST AI RMF in `docs/COMPLIANCE.md` — a documented mapping, explicitly **not** certified conformance), and **F-metrics** (shadow-log aggregation via the `warrantos metrics` command). Adopter-specific configuration (sensitivity tiers, retention windows) and an automated SPEC-ID conformance check remain future work, stated plainly in those docs. See [`docs/STATUS.md`](docs/STATUS.md) before evaluating scope.
 
 ## Quickstart
 
-`claude-provenance` is not yet on PyPI. Install from source until the first published release:
+Install from PyPI:
+
+```bash
+pip install warrantos          # MCP server extra: pip install "warrantos[mcp]"
+```
+
+To run the bundled demo below, use a source checkout (it ships the examples):
 
 ```bash
 git clone https://github.com/jvega017/claude-provenance.git
@@ -38,12 +44,12 @@ warrantos check examples/quickstart-demo/draft.md \
   --profile final-prose
 ```
 
-Expected verdict: `HOLD` with one unsupported load-bearing claim. The bundled command exercises Layer 1 classification, Layer 4 admissibility, Layer 7 G1 (boundary), Layer 7 G2 detection, CBOM assembly, and the four-state verdict consolidator; add `--verify` to run the G2 verifier and `--writer-model`/`--verifier-model` to run G3. G4 and G5 ship as STARTER and are not exercised by the demo.
+Expected verdict: `HOLD` with one unsupported load-bearing claim. The bundled command exercises Layer 1 classification, Layer 4 admissibility, Layer 7 G1 (boundary), Layer 7 G2 detection, CBOM assembly, and the four-state verdict consolidator; add `--verify` to run the G2 verifier and `--writer-model`/`--verifier-model` to run G3. G4 (safety and contamination) and G5 (evaluation and calibration) are BUILT but are not exercised by this minimal demo.
 
 | Where to go next | Doc |
 |---|---|
 | Five-minute tour with explanation of each output line | [`docs/QUICKSTART.md`](docs/QUICKSTART.md) |
-| Per-layer conformance dashboard (BUILT / PARTIAL / STARTER / NOT_BUILT) | [`docs/STATUS.md`](docs/STATUS.md) |
+| Per-layer conformance dashboard (BUILT / PARTIAL) | [`docs/STATUS.md`](docs/STATUS.md) |
 | Whole-repository tour | [`docs/OVERVIEW.md`](docs/OVERVIEW.md) |
 | Connect to Claude Code or Claude Desktop as MCP tools | [`docs/MCP-CONFIG.md`](docs/MCP-CONFIG.md) |
 | Verify without an Anthropic API key (local LLM, Stop hook) | [`docs/NO-API-KEY.md`](docs/NO-API-KEY.md) |
@@ -57,6 +63,9 @@ Expected verdict: `HOLD` with one unsupported load-bearing claim. The bundled co
 | `warrantos` | Full pipeline (classify > admissibility > gates > verdict > CBOM) | Default. This is the one. |
 | `warrantos-mcp` | Stdio MCP server exposing four tools to Claude Code / Claude Desktop | When you want Claude to call the pipeline as tools |
 | `warrantos-verify-hook` | Claude Code Stop-hook entry point for in-session verification | When you want the loop closed without a separate API key |
+| `warrantos attest` | Bundle a checked run into a portable, signed `.warrant` artefact | When an artefact needs to travel with a verifiable audit proof |
+| `warrantos verify-external` | Verify a `.warrant` offline; exits non-zero on failure | In CI, or for any third party with only the file |
+| `web/verify.html` | Zero-backend browser verifier for a `.warrant` | When a reader has no install and only the file |
 | `provenance` | Legacy v0.3 citation-only CLI | Kept for v0.3 users; new users should use `warrantos` |
 
 ## The four-verdict model
@@ -64,8 +73,8 @@ Expected verdict: `HOLD` with one unsupported load-bearing claim. The bundled co
 | Verdict | Trigger | Action |
 |---|---|---|
 | `PASS` | No boundary violation, no unsupported load-bearing claim, no contradicted verifier verdict, actor identity present for final-prose | Ship the artefact |
-| `HOLD` | Unsupported or unverifiable load-bearing claim | Add a citation or downgrade the claim |
-| `BLOCK` | Boundary violation in final-prose, or a contradicted verifier verdict | Rewrite the offending text |
+| `HOLD` | Unsupported or unverifiable load-bearing claim, or a same-actor writer/reviewer override on a final-artefact profile (separation of duties) | Add a citation, downgrade the claim, or obtain an independent review |
+| `BLOCK` | Boundary violation in final-prose, a contradicted verifier verdict, or a same-actor override on the strict `audit` profile | Rewrite the offending text, or obtain an independent reviewer |
 | `NOT_ASSESSABLE` | Final-prose without `--actor-identity` | Supply actor identity or use a non-final-prose profile |
 
 `NOT_ASSESSABLE` is deliberate. Most tools binary-ise into pass/fail. The fourth state names the case where the artefact is missing the metadata required to certify, instead of certifying on incomplete information.
@@ -79,18 +88,18 @@ The four verdicts are exercised end-to-end in the [`examples/`](examples/) galle
 1. **Unsourced claims are expensive, not invisible.** The detector logs every unsupported factual sentence; the ledger keeps the count over time.
 2. **Process material cannot leak into final prose silently.** The Layer 7 G1 boundary gate blocks "based on your feedback" and the rest of the lexical-residue pattern set under the `final-prose` profile.
 3. **Overrides cannot reach the public artefact without a structured rationale.** Empty `risk_accepted` or `compensating_control` blocks the write; SQLite `BEFORE UPDATE` triggers (INV-004) prevent silent post-hoc edits.
-4. **Separation of duties is enforced where overrides are recorded.** The helper `enforce_single_actor_rule` at `provenance/overrides.py` flags a same-actor reviewer/writer pair when an override is being recorded; the reader-facing footer surfaces the flag. At v0.9.0b1 the helper is callable but not wired into the default `warrantos check` verdict path; an in-flight item for v0.9.1 wires it into `consolidate_verdict()` as a verdict-layer property.
+4. **Separation of duties is a verdict-layer property.** When an override records the writer and reviewer as the same actor, `consolidate_verdict()` acts on it: a final-artefact profile (`final-prose`, `paper-full`, `methodology`, `consultation_report`, `audit`) is downgraded to `HOLD`, and the strict `audit` profile to `BLOCK`. An independent reviewer is required to certify `PASS`. Enforced on both the CLI and MCP paths; the helper `enforce_single_actor_rule` and the reader-facing footer surface the flag for a human reader (SPEC-L8-S003).
 5. **The four-state verdict refuses to certify on incomplete information.** `NOT_ASSESSABLE` fires when the metadata required to certify is missing, instead of `PASS` masking the gap.
 
-What this does **not** guarantee: that the underlying model produced correct text, that a cited source is the strongest available source, or that adopters' domain-specific Data Classification and Retention/Tombstones rows (both `NOT_BUILT` at v0.9.0b1) are sound. Those remain adopter-supplied.
+What this does **not** guarantee: that the underlying model produced correct text, or that a cited source is the strongest available source. Data Classification and Retention/Tombstones are now BUILT, but they ship with default tiers and windows: adopters must still configure their own sensitivity taxonomy and retention policy for their domain.
 
 ## What landed in v0.9.0b1
 
 User-outcome language; SPEC IDs in [`CHANGELOG.md`](CHANGELOG.md).
 
 - One CLI runs the full pipeline end-to-end (`warrantos check`).
-- Human overrides cannot be recorded without a written risk-acceptance rationale and a compensating-control note. The check is at the write path, so the row does not exist if the rationale is missing. A SQLite `BEFORE UPDATE` trigger means recorded rows cannot be silently edited later (storage-level append-only, not application-level discipline).
-- Separation-of-duties helper (`provenance/overrides.py::enforce_single_actor_rule`) detects a reviewer-equals-writer pair when an override is recorded and surfaces it in the reader-facing footer. v0.9.1 wires the same check into the default verdict path.
+- Human overrides cannot be recorded without a written risk-acceptance rationale and a compensating-control note. The check is at the write path, so the row does not exist if the rationale is missing. SQLite `BEFORE UPDATE` and `BEFORE DELETE` triggers on every ledger table mean recorded rows cannot be silently edited or deleted later (storage-level append-only, installed by default, not application-level discipline). This covers the SQLite ledger the hook writes misses to; the per-run JSON artefacts under `.warrant/runs/` are working output, not the append-only ledger.
+- Separation-of-duties helper (`provenance/overrides.py::enforce_single_actor_rule`) detects a reviewer-equals-writer pair when an override is recorded and surfaces it in the reader-facing footer. The same check is wired into `consolidate_verdict()` on the CLI and MCP paths: a final-artefact profile is downgraded to `HOLD`, the strict `audit` profile to `BLOCK`.
 - MCP server exposes four tools (`warrant_check`, `warrant_classify`, `warrant_record_override`, `warrant_get_run`) callable from any MCP host.
 - Shadow-mode observer runs over an already-published artefact in read-only mode. Never blocks. Never modifies production scripts.
 - `warrantos status` reports a per-layer build state, and `docs/STATUS.md` carries the rendered table.
@@ -100,12 +109,30 @@ User-outcome language; SPEC IDs in [`CHANGELOG.md`](CHANGELOG.md).
 
 The Provenance Loop is the original v0.3 mental model: **Extract** the claim, **Bind** a source to it, **Verify** the source supports the claim, **Adjudicate** the verdict, **Ledger** the result. In v0.9 the loop is one component of the eight-layer WarrantOS pipeline, specifically Layer 2 (Ledger) and Layer 7-G2 (Source and Warrant Check). For the full architecture see [`docs/OVERVIEW.md`](docs/OVERVIEW.md); for the loop itself see [`docs/PROVENANCE-LOOP.md`](docs/PROVENANCE-LOOP.md).
 
+## Offline-verifiable warrants
+
+A verdict you have to trust is weaker than one you can recompute. WarrantOS turns a checked run into a portable, tamper-evident `.warrant` bundle that a third party verifies offline, with no access to your ledger and no network call.
+
+- **Tamper-evident ledger.** A deterministic, RFC 6962 style Merkle tree (`provenance.merkle`, pure stdlib) over the audit entries. One root digest fixes the entire ledger state: any insert, edit, delete, or reorder changes it.
+- **Signed checkpoint and portable bundle.** `create_warrant()` packages the prose digest, the CBOM, the relevant ledger entries, and an Ed25519-signed checkpoint into one `.warrant` file. Signing uses the optional `[attestation]` extra; the integrity check needs nothing beyond the standard library.
+- **Fail-closed verification.** `warrantos verify-external` recomputes the Merkle root and matches the checkpoint. An unsigned or signature-unavailable bundle is overall `INVALID` unless `--allow-unsigned` is passed explicitly. A client-side browser verifier (`web/verify.html`) is validated against the Python verifier by a differential test over the supported value domain, and renders all untrusted fields as inert text under a strict CSP.
+
+```bash
+warrantos attest final.md --run-dir .warrant/runs/<id> --out final.warrant
+warrantos verify-external final.warrant --prose final.md      # exits non-zero on any failure
+```
+
+Full detail in [`docs/VERIFICATION.md`](docs/VERIFICATION.md). The envelope is project-defined, with a DSSE/COSE migration under consideration.
+
 ## Why this exists
 
-This plugin is the operational form of a working paper, *From Citation to
-Epistemic Governance* (Prometheus Policy Lab, in preparation). The argument:
-AI failures in high-stakes work are rarely model-capability failures. They are
-epistemic failures. The model states something with confidence and no
+This plugin is an operational companion to a working paper, *From Citation to
+Epistemic Governance* (Prometheus Policy Lab, in preparation). It takes the
+paper's problem framing and burden-of-proof stance, not its formal apparatus:
+the provenance tuple, the five-valued confidence scale, and the warrant-decay
+model are the paper's contribution, not this tool's. The argument is that the
+AI failures that matter most in high-stakes work are often not model-capability
+failures but epistemic ones: the model states something with confidence and no
 traceable source, a human under time pressure ships it, and the error was
 never about model size. The fix is a loop that refuses to let an unsourced or
 unverified claim pass silently.
@@ -132,7 +159,10 @@ machine-checked, for example an `(Author, Year)` with no URL), **skipped**, or
 back to the heuristic. The verifier is never called from the blocking hook.
 
 The detector catches the cheap, common failure. The verifier targets the
-expensive one: a claim that is confidently cited and wrong.
+expensive one: a claim that is confidently cited and wrong. Detecting an
+outright `contradiction`, as opposed to mere non-support, needs a configured
+LLM grader; the offline default flags `unsupported` and `unverifiable` but
+never emits `contradicted`.
 
 ## Install as a Claude Code plugin (legacy v0.3 hook)
 
@@ -143,7 +173,7 @@ The Claude Code plugin currently wires the **legacy v0.3** in-session Stop hook 
 /plugin install claude-provenance
 ```
 
-The plugin install gives you the in-session Stop hook and slash commands (`/provenance-report`, `/provenance-verify`). Requires Python 3.8+ on `PATH`. No third-party packages for the core; the `[mcp]` extra adds the `mcp` SDK.
+The plugin install gives you the in-session Stop hook and slash commands (`/provenance-report`, `/provenance-verify`). Requires Python 3.11+ on `PATH`. No third-party packages for the core; the `[mcp]` extra adds the `mcp` SDK.
 
 ## Configuration
 
@@ -198,13 +228,13 @@ Stdlib only, no test dependencies. From the repo root:
 python -m unittest discover -s tests -v
 ```
 
-The suite covers detection (every trigger, inline and adjacent sourcing, the closed v0 false negative); the loop-safety guard; enforce-mode blocking; the verifier (mocked network, LLM-failure fallback, no-key path); the CBOM v0.2 schema (`actor_identity`, `classification_overrides`, `override_ledger_refs`); the four-state verdict including `NOT_ASSESSABLE`; the override ledger (SPEC-L8-S004 write-path validation, SPEC-L8-S003 separation-of-duties, INV-004 append-only triggers); the writer pack and clean-room generation; the five output-integrity gates G1-G5; the MCP server dispatch and the in-process API; the Claude Code Stop hook with loop-safety sentinel; the local LLM grader path; the per-layer status dashboard; and the grader-eval path (`sys.modules`-isolated under a unique spec name). The CI matrix runs the full suite on Python 3.8 through 3.13. See the CI badge above for the live count and pass status.
+The suite covers detection (every trigger, inline and adjacent sourcing, the closed v0 false negative); the loop-safety guard; enforce-mode blocking; the verifier (mocked network, LLM-failure fallback, no-key path); the CBOM v0.2 schema (`actor_identity`, `classification_overrides`, `override_ledger_refs`); the four-state verdict including `NOT_ASSESSABLE`; the override ledger (SPEC-L8-S004 write-path validation, SPEC-L8-S003 separation-of-duties, INV-004 append-only triggers); the writer pack and clean-room generation; the five output-integrity gates G1-G5; the MCP server dispatch and the in-process API; the Claude Code Stop hook with loop-safety sentinel; the local LLM grader path; the per-layer status dashboard; and the grader-eval path (`sys.modules`-isolated under a unique spec name). The CI matrix runs the full suite on Python 3.11 through 3.13. See the CI badge above for the live count and pass status.
 
 The rule that an internal error must never break the session is enforced throughout.
 
 ## Release status
 
-Current: **v0.9.0b1 beta**. See [`CHANGELOG.md`](CHANGELOG.md) for full release history and [`docs/STATUS.md`](docs/STATUS.md) for the current per-layer conformance dashboard. Next: publish to PyPI, close STARTER and NOT_BUILT rows that have adopter input, add release-evidence packaging for end-to-end traceability.
+Current increment: **v0.9.2**. It builds on v0.9.1 (verdict-layer separation of duties, the cryptographic-verifiability wave: Merkle ledger, Ed25519 attestation, portable `.warrant`, offline and browser verifiers, AI scaffold-residue detection, append-only triggers installed by default, and pre-launch security hardening) and adds: claim detection expanded from 5 to 11 triggers (decision, causal, comparative, superlative, named-body), per-profile unsupported-claim HOLD thresholds, improved verdict transparency, a `ClaudeCliGrader` that verifies through a Claude subscription with no API spend, the four formerly STARTER/NOT_BUILT rows moved to BUILT (G4, G5, Data Classification, Retention/Tombstones), a Python floor lifted to 3.11, and a CI smoke-test fix. See [`CHANGELOG.md`](CHANGELOG.md) and [`docs/STATUS.md`](docs/STATUS.md). Next: tag and publish to PyPI via Trusted Publishing, then close the three remaining PARTIAL rows (F-policy, F-compliance, F-metrics) once the normative SPEC document is committed.
 
 ## Limits, stated plainly
 

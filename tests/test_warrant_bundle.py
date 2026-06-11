@@ -3,7 +3,7 @@
 import os
 import unittest
 
-from provenance import attestation, warrant_bundle
+from warrantos.provenance import attestation, warrant_bundle
 
 try:
     _PRIV, _PUB = attestation.generate_keypair()

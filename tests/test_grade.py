@@ -13,7 +13,8 @@ import unittest
 import unittest.mock
 from unittest.mock import MagicMock, patch
 
-from provenance.grade import (
+from warrantos.provenance.grade import (
+    ClaudeCliGrader,
     CodexGrader,
     HeuristicGrader,
     LLMGrader,
@@ -211,21 +212,200 @@ class TestLLMGraderFallback(unittest.TestCase):
 class TestGetGrader(unittest.TestCase):
     """get_grader() returns the right type based on environment."""
 
+    def _clear_selectors(self):
+        """Remove every env var that get_grader() inspects so tests run
+        deterministically regardless of the host's installed tooling."""
+        for var in (
+            "ANTHROPIC_API_KEY",
+            "PROVENANCE_LOCAL_GRADER_URL",
+            "PROVENANCE_GRADER",
+        ):
+            os.environ.pop(var, None)
+
     def test_returns_heuristic_when_no_key(self):
+        # Force claude unavailable so this isolates the no-key path.
         with patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("ANTHROPIC_API_KEY", None)
-            grader = get_grader()
+            self._clear_selectors()
+            with patch.object(ClaudeCliGrader, "is_available", return_value=False):
+                grader = get_grader()
         self.assertIsInstance(grader, HeuristicGrader)
 
     def test_returns_llm_when_key_present(self):
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+            os.environ.pop("PROVENANCE_GRADER", None)
             grader = get_grader()
         self.assertIsInstance(grader, LLMGrader)
 
     def test_returns_heuristic_when_key_empty_string(self):
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": ""}):
+            self._clear_selectors()
+            os.environ["ANTHROPIC_API_KEY"] = ""
+            with patch.object(ClaudeCliGrader, "is_available", return_value=False):
+                grader = get_grader()
+        self.assertIsInstance(grader, HeuristicGrader)
+
+    def test_returns_claude_cli_when_available_and_no_key(self):
+        """Subscription-over-API: with no key/local URL but claude on PATH,
+        get_grader() auto-selects ClaudeCliGrader."""
+        with patch.dict(os.environ, {}, clear=False):
+            self._clear_selectors()
+            with patch.object(ClaudeCliGrader, "is_available", return_value=True):
+                grader = get_grader()
+        self.assertIsInstance(grader, ClaudeCliGrader)
+
+    def test_api_key_wins_over_claude_cli(self):
+        """An explicit ANTHROPIC_API_KEY is honoured before the CLI."""
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "test-key"}):
+            os.environ.pop("PROVENANCE_GRADER", None)
+            with patch.object(ClaudeCliGrader, "is_available", return_value=True):
+                grader = get_grader()
+        self.assertIsInstance(grader, LLMGrader)
+
+    def test_provenance_grader_override_selects_claude(self):
+        with patch.dict(os.environ, {"PROVENANCE_GRADER": "claude"}):
+            grader = get_grader()
+        self.assertIsInstance(grader, ClaudeCliGrader)
+
+    def test_provenance_grader_override_selects_heuristic_over_key(self):
+        """The explicit override beats auto-selection even when a key is set."""
+        with patch.dict(os.environ, {
+            "PROVENANCE_GRADER": "heuristic",
+            "ANTHROPIC_API_KEY": "test-key",
+        }):
             grader = get_grader()
         self.assertIsInstance(grader, HeuristicGrader)
+
+    def test_provenance_grader_override_selects_codex(self):
+        with patch.dict(os.environ, {"PROVENANCE_GRADER": "codex"}):
+            grader = get_grader()
+        self.assertIsInstance(grader, CodexGrader)
+
+    def test_unknown_override_falls_through_to_auto(self):
+        with patch.dict(os.environ, {"PROVENANCE_GRADER": "not-a-grader"}):
+            self._clear_selectors()
+            os.environ["PROVENANCE_GRADER"] = "not-a-grader"
+            with patch.object(ClaudeCliGrader, "is_available", return_value=False):
+                grader = get_grader()
+        self.assertIsInstance(grader, HeuristicGrader)
+
+
+class TestClaudeCliGraderNoSource(unittest.TestCase):
+    """No-source paths spawn no subprocess and fall back to heuristic
+    verdicts via the HeuristicGrader, matching the no-source contract."""
+
+    def setUp(self):
+        self.g = ClaudeCliGrader()
+
+    def test_citation_without_source_is_unverifiable(self):
+        # claude binary missing forces the heuristic fallback path.
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude_not_real_zzz"}):
+            v = self.g.grade("A claim.", None, "https://example.gov.au/x")
+        self.assertEqual(v.verdict, "unverifiable")
+        self.assertIn("heuristic", v.grader)
+
+    def test_no_citation_no_source_is_skipped(self):
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude_not_real_zzz"}):
+            v = self.g.grade("A claim.", None, None)
+        self.assertEqual(v.verdict, "skipped")
+        self.assertIn("heuristic", v.grader)
+
+
+class TestClaudeCliGraderSubprocess(unittest.TestCase):
+    """ClaudeCliGrader shells out to `claude --print`; the subprocess is
+    fully mocked. No real CLI invocation occurs."""
+
+    def _proc(self, returncode=0, stdout="", stderr=""):
+        m = MagicMock()
+        m.returncode = returncode
+        m.stdout = stdout
+        m.stderr = stderr
+        return m
+
+    def test_successful_call_parses_verdict(self):
+        import json as _json
+        payload = _json.dumps({
+            "verdict": "contradicted",
+            "confidence": 0.82,
+            "rationale": "Source states the opposite.",
+        })
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude"}):
+            with patch("subprocess.run", return_value=self._proc(0, payload)):
+                v = ClaudeCliGrader().grade(
+                    "Spending rose 10 per cent in 2022.",
+                    "Spending fell 10 per cent in 2022.",
+                    None,
+                )
+        self.assertEqual(v.verdict, "contradicted")
+        self.assertAlmostEqual(v.confidence, 0.82)
+        self.assertEqual(v.grader, "fetch+claude-cli")
+
+    def test_label_without_source(self):
+        import json as _json
+        payload = _json.dumps({
+            "verdict": "unverifiable", "confidence": None, "rationale": "no source",
+        })
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude"}):
+            with patch("subprocess.run", return_value=self._proc(0, payload)):
+                v = ClaudeCliGrader().grade("A claim.", "source text", "cite")
+        # source_text present -> fetch+claude-cli label.
+        self.assertEqual(v.grader, "fetch+claude-cli")
+
+    def test_prose_wrapped_json_is_extracted(self):
+        raw = 'Sure:\n{"verdict": "verified", "confidence": 0.9, "rationale": "ok"}\nDone.'
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude"}):
+            with patch("subprocess.run", return_value=self._proc(0, raw)):
+                v = ClaudeCliGrader().grade("c", "s", None)
+        self.assertEqual(v.verdict, "verified")
+
+    def test_nonzero_exit_falls_back_to_heuristic(self):
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude"}):
+            with patch("subprocess.run", return_value=self._proc(1, "", "boom")):
+                v = ClaudeCliGrader().grade(
+                    "Output rose 5 per cent.", "Output rose 5 per cent.", None,
+                )
+        self.assertEqual(v.verdict, "verified")  # heuristic match
+        self.assertIn("heuristic", v.grader)
+
+    def test_empty_stdout_falls_back_to_heuristic(self):
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude"}):
+            with patch("subprocess.run", return_value=self._proc(0, "   ")):
+                v = ClaudeCliGrader().grade("c", "unrelated source", None)
+        self.assertIn("heuristic", v.grader)
+
+    def test_garbage_output_falls_back_to_heuristic(self):
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude"}):
+            with patch("subprocess.run", return_value=self._proc(0, "no json here")):
+                v = ClaudeCliGrader().grade("c", "unrelated source", None)
+        self.assertIn("heuristic", v.grader)
+
+    def test_missing_binary_falls_back_and_never_raises(self):
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude"}):
+            with patch("subprocess.run", side_effect=FileNotFoundError("nope")):
+                try:
+                    v = ClaudeCliGrader().grade("c", "s", None)
+                except Exception as exc:  # pragma: no cover
+                    self.fail("ClaudeCliGrader raised: %r" % exc)
+        self.assertIn("heuristic", v.grader)
+
+    def test_timeout_falls_back_and_never_raises(self):
+        import subprocess
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude"}):
+            with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("claude", 1)):
+                try:
+                    v = ClaudeCliGrader().grade("c", "s", None)
+                except Exception as exc:  # pragma: no cover
+                    self.fail("ClaudeCliGrader raised on timeout: %r" % exc)
+        self.assertIn("heuristic", v.grader)
+
+    def test_invalid_verdict_label_coerced_to_error(self):
+        import json as _json
+        payload = _json.dumps({
+            "verdict": "definitely_true", "confidence": 0.5, "rationale": "x",
+        })
+        with patch.dict(os.environ, {"PROVENANCE_CLAUDE_BIN": "claude"}):
+            with patch("subprocess.run", return_value=self._proc(0, payload)):
+                v = ClaudeCliGrader().grade("c", "s", None)
+        self.assertEqual(v.verdict, "error")
 
 
 class TestCodexGraderNoSource(unittest.TestCase):

@@ -12,3 +12,8 @@ __pycache__/
 *.egg-info/
 build/
 dist/
+
+# Working-tree scratch from the hardening pass, not for the public repo
+_scaffold/
+_webverify/
+test_output.txt

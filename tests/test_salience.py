@@ -10,7 +10,7 @@ Run from the repo root:
 
 import unittest
 
-from provenance.salience import (
+from warrantos.provenance.salience import (
     LOAD_BEARING_THRESHOLD,
     is_load_bearing,
     score_claim,

@@ -83,7 +83,7 @@ def run_case(case: Case, verbose: bool = False) -> Optional[str]:
     case_dir = REPO_ROOT / case.directory
     cmd = [
         sys.executable,
-        str(REPO_ROOT / "cli" / "warrantos_cli.py"),
+        str(REPO_ROOT / "warrantos" / "cli" / "warrantos_cli.py"),
         "check",
         str(case_dir / "draft.md"),
         "--context",

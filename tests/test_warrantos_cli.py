@@ -19,17 +19,19 @@ BLOCK-on-boundary-violation branch is exercised here.
 """
 
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 
-from provenance.overrides import record_override
+from warrantos.provenance.overrides import record_override
 
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
-_CLI_PATH = _REPO_ROOT / "cli" / "warrantos_cli.py"
+_CLI_PATH = _REPO_ROOT / "warrantos" / "cli" / "warrantos_cli.py"
 
 
 _FINAL_ACTOR = {
@@ -43,13 +45,23 @@ _FINAL_ACTOR = {
 
 
 class _Harness:
-    """Shared scaffolding for the CLI integration tests."""
+    """Shared scaffolding for the CLI integration tests.
+
+    Input files (drafts, contexts, actor-identity) live in a temp dir.
+    Output files (--db, --out-dir) live under .warrant/ within _REPO_ROOT
+    so they are inside the working directory when the subprocess runs with
+    cwd=_REPO_ROOT (path containment requirement, B5 defence in depth).
+    """
 
     def __init__(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.tmp = Path(self._tmp.name)
-        self.db = self.tmp / "overrides.db"
-        self.out_dir = self.tmp / "runs"
+        # Unique per-harness subdirectory to avoid cross-test collisions.
+        uid = uuid.uuid4().hex[:8]
+        self._warrant_sub = _REPO_ROOT / ".warrant" / ("cli_test_" + uid)
+        self._warrant_sub.mkdir(parents=True, exist_ok=True)
+        self.db = self._warrant_sub / "overrides.db"
+        self.out_dir = self._warrant_sub / "runs"
 
     def write(self, name: str, content: str) -> Path:
         p = self.tmp / name
@@ -61,6 +73,7 @@ class _Harness:
 
     def cleanup(self) -> None:
         self._tmp.cleanup()
+        shutil.rmtree(str(self._warrant_sub), ignore_errors=True)
 
     def run(self, *args: str) -> subprocess.CompletedProcess:
         cmd = [
@@ -562,6 +575,212 @@ class TestG3WiringThroughCli(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, msg=proc.stderr)
         data = json.loads(proc.stdout)
         self.assertIsNone(data["g3_self_grounding"])
+
+
+class TestProfileUnsupportedThreshold(unittest.TestCase):
+    """Phase 1 item 3: per-profile unsupported-claim fraction thresholds.
+
+    When the unsupported fraction exceeds the profile threshold the verdict
+    is raised to HOLD even when no single claim is load-bearing, and the
+    fired rule is surfaced in the run report JSON.
+    """
+
+    def setUp(self):
+        self.h = _Harness()
+        self.actor = self.h.write_json("actor.json", _FINAL_ACTOR)
+
+    def tearDown(self):
+        self.h.cleanup()
+
+    def test_audit_profile_holds_on_unsupported_year_claims(self):
+        """Two uncited year-only claims (neither load-bearing) under the
+        audit profile (threshold 0.0) HOLD on the fraction rule alone."""
+        draft = self.h.write(
+            "draft.md",
+            "# Run log\n\n"
+            "The portal launched in 2019.\n"
+            "A refresh shipped in 2021.\n",
+        )
+        proc = self.h.run(str(draft), "--profile", "audit")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["verdict"], "HOLD")
+        self.assertIsNotNone(data["verdict_rule_fired"])
+        self.assertEqual(
+            data["verdict_rule_fired"]["rule"], "profile_unsupported_fraction"
+        )
+        self.assertEqual(data["verdict_rule_fired"]["profile"], "audit")
+        self.assertTrue(
+            any("unsupported fraction" in r for r in data["reasons"]),
+            msg=data["reasons"],
+        )
+
+    def test_changelog_profile_never_holds_on_fraction(self):
+        """The changelog profile threshold is 1.0, so an all-unsupported
+        set of non-load-bearing claims does not HOLD on fraction."""
+        draft = self.h.write(
+            "draft.md",
+            "# Changelog\n\n"
+            "The portal launched in 2019.\n"
+            "A refresh shipped in 2021.\n",
+        )
+        proc = self.h.run(str(draft), "--profile", "changelog")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["verdict"], "PASS")
+        self.assertIsNone(data["verdict_rule_fired"])
+
+    def test_fired_rule_absent_when_all_claims_supported(self):
+        """A fully-cited claim set does not trip the fraction rule."""
+        draft = self.h.write(
+            "draft.md",
+            "# Run log\n\n"
+            "The portal launched in 2019 (https://www.qld.gov.au/portal).\n",
+        )
+        proc = self.h.run(str(draft), "--profile", "audit")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertEqual(data["verdict"], "PASS")
+        self.assertIsNone(data["verdict_rule_fired"])
+
+
+class TestDecisionTriggerDetected(unittest.TestCase):
+    """Phase 1 item 1: the decision trigger now fires so must/shall/require
+    sentences are detected as claims (previously silently PASSed)."""
+
+    def setUp(self):
+        self.h = _Harness()
+        self.actor = self.h.write_json("actor.json", _FINAL_ACTOR)
+
+    def tearDown(self):
+        self.h.cleanup()
+
+    def test_must_comply_sentence_detected_and_holds(self):
+        draft = self.h.write(
+            "draft.md",
+            "# Brief\n\n"
+            "All agencies must comply with the data-sharing protocol.\n",
+        )
+        proc = self.h.run(
+            str(draft),
+            "--profile", "final-prose",
+            "--actor-identity", str(self.actor),
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertGreaterEqual(data["claims_detected"], 1)
+        # final-prose threshold is 0.0, so an uncited claim HOLDs.
+        self.assertEqual(data["verdict"], "HOLD")
+
+
+class TestExplainProfile(unittest.TestCase):
+    """Phase 1 item 2: --explain-profile prints suppression per profile
+    without running the pipeline (no draft required)."""
+
+    def setUp(self):
+        self.h = _Harness()
+
+    def tearDown(self):
+        self.h.cleanup()
+
+    def test_explain_profile_prints_table_without_draft(self):
+        cmd = [
+            sys.executable, str(_CLI_PATH),
+            "check", "--explain-profile",
+        ]
+        proc = subprocess.run(
+            cmd, cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=60
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        self.assertIn("boundary gate", proc.stdout)
+        self.assertIn("audit", proc.stdout)
+        self.assertIn("SUPPRESSED", proc.stdout)
+
+
+class TestSensitivityCheckFlag(unittest.TestCase):
+    """F-classification gate wired into `warrantos check --sensitivity-check`."""
+
+    def setUp(self):
+        self.h = _Harness()
+
+    def tearDown(self):
+        self.h.cleanup()
+
+    def test_sensitive_draft_is_refused_with_exit_3(self):
+        draft = self.h.write(
+            "sensitive.md",
+            "This Cabinet submission recommends a $250M allocation.\n",
+        )
+        proc = self.h.run(
+            str(draft), "--profile", "brief-light", "--sensitivity-check",
+        )
+        self.assertEqual(proc.returncode, 3, msg=proc.stdout + proc.stderr)
+        self.assertIn("Sensitivity gate BLOCKED", proc.stderr)
+
+    def test_clean_draft_proceeds_normally(self):
+        draft = self.h.write(
+            "clean.md",
+            "Open data improves transparency per https://example.gov.\n",
+        )
+        proc = self.h.run(
+            str(draft), "--profile", "brief-light", "--sensitivity-check",
+        )
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        data = json.loads(proc.stdout)
+        self.assertIn(data["verdict"], {"PASS", "HOLD"})
+
+    def test_flag_off_by_default_does_not_block_sensitive_draft(self):
+        """Without --sensitivity-check the gate never runs."""
+        draft = self.h.write(
+            "sensitive.md",
+            "This Cabinet submission recommends a $250M allocation.\n",
+        )
+        proc = self.h.run(str(draft), "--profile", "brief-light")
+        # No sensitivity refusal: the run proceeds and emits a JSON report.
+        self.assertNotEqual(proc.returncode, 3)
+        data = json.loads(proc.stdout)
+        self.assertIn("verdict", data)
+
+
+class TestCalibrateSubcommand(unittest.TestCase):
+    """G5: `warrantos calibrate` runs the eval corpus and writes
+    .warrant/calibration.json."""
+
+    def setUp(self):
+        uid = uuid.uuid4().hex[:8]
+        self.out = _REPO_ROOT / ".warrant" / ("calib_test_" + uid + ".json")
+
+    def tearDown(self):
+        try:
+            self.out.unlink()
+        except OSError:
+            pass
+
+    def _run(self, *args):
+        cmd = [sys.executable, str(_CLI_PATH), "calibrate"] + list(args)
+        return subprocess.run(
+            cmd, cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=120
+        )
+
+    def test_calibrate_writes_calibration_json(self):
+        proc = self._run("--out", str(self.out), "--json")
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        self.assertTrue(self.out.is_file())
+        summary = json.loads(self.out.read_text(encoding="utf-8"))
+        for key in (
+            "grader", "corpus_size", "per_class_recall", "coverage_estimate",
+        ):
+            self.assertIn(key, summary)
+        self.assertGreater(summary["corpus_size"], 0)
+
+    def test_stored_calibration_loads_back_into_check_calibration(self):
+        proc = self._run("--out", str(self.out))
+        self.assertEqual(proc.returncode, 0, msg=proc.stderr)
+        from warrantos.provenance.gates import check_calibration
+        summary = json.loads(self.out.read_text(encoding="utf-8"))
+        result = check_calibration(summary)
+        self.assertEqual(result.total, summary["corpus_size"])
+        self.assertAlmostEqual(result.coverage, summary["coverage_estimate"])
 
 
 if __name__ == "__main__":
