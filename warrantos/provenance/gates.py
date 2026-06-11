@@ -495,3 +495,43 @@ def check_calibration(verdicts) -> CalibrationResult:
         brier=brier,
         note=note,
     )
+
+
+def calibration_with_monitoring(
+    verdicts,
+    shadow_log_path=None,
+) -> Dict[str, object]:
+    """G5 calibration enriched with the shadow-log monitoring signal.
+
+    Returns a dict carrying:
+
+    - ``calibration``: the CalibrationResult.to_dict() from
+      check_calibration() over the supplied verdict rows or stored
+      calibration.json (the corpus-calibration measure); and
+    - ``monitoring``: the operational unsupported-claim signal derived
+      from the shadow-observation log (observed rate, trend, sample
+      size) when ``shadow_log_path`` is supplied, otherwise None.
+
+    The two surfaces are kept SEPARATE on purpose. Corpus calibration
+    (Brier / per-class recall against a labelled corpus) and the
+    observed unsupported-claim rate on real artefacts measure different
+    things; conflating them would overstate what the shadow log proves.
+    A missing or empty shadow log yields an honest ``monitoring`` block
+    with ``observed_rows=0`` rather than an error.
+    """
+    calibration = check_calibration(verdicts)
+    monitoring = None
+    if shadow_log_path is not None:
+        # Imported lazily so the gates module has no hard dependency on
+        # the metrics module (and no import cycle at module load).
+        from warrantos.provenance.metrics import (
+            aggregate_shadow_log,
+            calibration_supplement,
+        )
+        monitoring = calibration_supplement(
+            aggregate_shadow_log(shadow_log_path)
+        )
+    return {
+        "calibration": calibration.to_dict(),
+        "monitoring": monitoring,
+    }

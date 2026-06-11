@@ -377,6 +377,44 @@ def build_parser() -> argparse.ArgumentParser:
         help="Emit the calibration summary as JSON on stdout.",
     )
 
+    # --- metrics: F-metrics shadow-log aggregation ---
+    metrics_p = sub.add_parser(
+        "metrics",
+        help="Aggregate the shadow-observation log into .warrant/metrics.json.",
+        description=(
+            "F-metrics: read the shadow-observation JSON-lines log produced "
+            "by tools/warrantos-shadow-observe.py and compute an aggregate "
+            "(verdict distribution, unsupported-claim rate over the window, "
+            "and a simple improving/worsening/stable trend split across the "
+            "earlier and later halves of the observed rows). A missing or "
+            "empty log is handled gracefully (observed=0, "
+            "trend=insufficient_data). Writes .warrant/metrics.json unless "
+            "--no-write is given."
+        ),
+    )
+    metrics_p.add_argument(
+        "--log",
+        default=None,
+        help=(
+            "Path to the shadow-observation log "
+            "(default: 08_Outputs/publish-gate-shadow.log under the repo)."
+        ),
+    )
+    metrics_p.add_argument(
+        "--out",
+        default=None,
+        help="Output path for metrics.json (default: .warrant/metrics.json).",
+    )
+    metrics_p.add_argument(
+        "--no-write",
+        action="store_true",
+        help="Do not write metrics.json; only emit the aggregate.",
+    )
+    metrics_p.add_argument(
+        "--json", action="store_true",
+        help="Emit the aggregate as JSON on stdout.",
+    )
+
     # --- retention: F-retention tombstones (INV-011) ---
     retention = sub.add_parser(
         "retention",
@@ -1240,6 +1278,84 @@ def _cmd_calibrate(args) -> int:
     return 0
 
 
+def _cmd_metrics(args) -> int:
+    """F-metrics: aggregate the shadow-observation log into metrics.json.
+
+    Reads the shadow JSON-lines log (default
+    08_Outputs/publish-gate-shadow.log under the repo root), computes
+    the verdict distribution, unsupported-claim rate, and trend via
+    provenance.metrics.aggregate_shadow_log, and writes the aggregate
+    to .warrant/metrics.json unless --no-write is given. A missing or
+    empty log is handled gracefully.
+    """
+    from warrantos.provenance.metrics import (
+        aggregate_shadow_log,
+        write_metrics_json,
+    )
+
+    if args.log:
+        log_path = Path(args.log)
+    else:
+        log_path = _REPO_ROOT / "08_Outputs" / "publish-gate-shadow.log"
+
+    metrics = aggregate_shadow_log(log_path)
+
+    if not args.no_write:
+        _cwd = Path(".").resolve()
+        raw_out = args.out or str(Path(".warrant") / "metrics.json")
+        try:
+            out = resolve_under(_cwd, raw_out)
+        except ValueError as exc:
+            sys.stderr.write(
+                "warrantos metrics: --out path is outside the current "
+                "working directory: %s\n" % exc
+            )
+            return 2
+        write_metrics_json(metrics, out)
+    else:
+        out = None
+
+    if args.json:
+        sys.stdout.write(
+            json.dumps(metrics.to_dict(), indent=2, sort_keys=True) + "\n"
+        )
+    else:
+        d = metrics.to_dict()
+        verdicts = d["verdict_distribution"]
+        verdict_str = (
+            ", ".join("%s=%d" % (k, verdicts[k]) for k in sorted(verdicts))
+            if verdicts else "(none)"
+        )
+        rate = d["unsupported_rate"]
+        rate_str = "n/a" if rate is None else ("%.4f" % rate)
+        sys.stdout.write(
+            "warrantos metrics\n"
+            "  log:                 %s%s\n"
+            "  observed rows:       %d\n"
+            "  non-observed rows:   %d\n"
+            "  malformed lines:     %d\n"
+            "  verdict distribution:%s %s\n"
+            "  unsupported rate:    %s\n"
+            "  trend:               %s\n"
+            "  window:              %s -> %s\n"
+            "  written to:          %s\n"
+            % (
+                log_path,
+                "" if log_path.is_file() else " (not found; empty aggregate)",
+                d["observed"],
+                d["non_observed"],
+                d["malformed_lines"],
+                "", verdict_str,
+                rate_str,
+                d["trend"],
+                d["window_start"] or "n/a",
+                d["window_end"] or "n/a",
+                out if out is not None else "(not written; --no-write)",
+            )
+        )
+    return 0
+
+
 def _cmd_retention(args) -> int:
     """F-retention (INV-011): set-window / list-expired / tombstone-run / list.
 
@@ -1367,6 +1483,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "calibrate":
         return _cmd_calibrate(args)
+
+    if args.command == "metrics":
+        return _cmd_metrics(args)
 
     if args.command == "retention":
         return _cmd_retention(args)

@@ -502,16 +502,50 @@ def collect_status() -> List[LayerStatus]:
         notes="Most complete of the foundation items.",
     ))
 
+    # F-metrics is BUILT when the shadow-observation log is not just
+    # appended but AGGREGATED at runtime: the metrics module computes a
+    # verdict distribution, an unsupported-claim rate over the window,
+    # and a trend, and can write .warrant/metrics.json. Checked by
+    # importing provenance.metrics and confirming the aggregation
+    # entry points resolve.
+    _metrics_built = _module_has(
+        "provenance.metrics",
+        "aggregate_shadow_log", "write_metrics_json",
+        "ShadowMetrics", "calibration_supplement",
+    )
     rows.append(LayerStatus(
         layer_id="F-metrics",
         name="Foundation: Metrics & Monitoring",
-        status="PARTIAL",
-        module="tools/warrantos-shadow-observe.py",
+        status="BUILT" if _metrics_built else "PARTIAL",
+        module="provenance.metrics, tools/warrantos-shadow-observe.py, cli.warrantos_cli",
         surfaces=[
             "Daily shadow observer (Task Scheduler at 07:00)",
             "publish-gate-shadow.log JSON-line append",
+            "metrics.aggregate_shadow_log() [verdict distribution, "
+            "unsupported-claim rate, improving/worsening/stable trend]",
+            "metrics.write_metrics_json() -> .warrant/metrics.json",
+            "CLI: warrantos metrics [--log --out --no-write --json]",
+            "gates.calibration_with_monitoring() links the G5 corpus "
+            "calibration to the shadow-log monitoring signal",
         ],
-        notes="Shadow log is the closest thing to metrics today. A full metrics pipeline is v1.0+.",
+        notes=(
+            "v0.9.1: the shadow log is now aggregated, not just appended. "
+            "provenance.metrics.aggregate_shadow_log() reads the JSON-lines "
+            "log and computes the verdict distribution, the unsupported-claim "
+            "rate over the observation window, and a simple "
+            "improving/worsening/stable trend (earlier vs later half of the "
+            "observed rows); a missing or empty log yields an honest empty "
+            "aggregate (observed=0, trend=insufficient_data) rather than an "
+            "error. `warrantos metrics` writes .warrant/metrics.json. The G5 "
+            "link is gates.calibration_with_monitoring(), which keeps the "
+            "corpus calibration and the operational shadow-rate as SEPARATE "
+            "surfaces (the shadow rate is a monitoring signal, not a "
+            "Brier-style confidence calibration). Tested in "
+            "tests/test_metrics.py."
+        ) if _metrics_built else (
+            "Shadow log is the closest thing to metrics today. A full "
+            "metrics pipeline is v1.0+."
+        ),
     ))
 
     return rows
