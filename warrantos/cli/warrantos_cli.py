@@ -107,6 +107,14 @@ _NON_FINAL_PROFILES = frozenset({
     "audit", "methodology", "consultation_report", "changelog",
 })
 
+# Profiles for which scan_prose_boundary() returns pass unconditionally,
+# suppressing the G1 prose-boundary gate. Kept in sync with
+# context_admissibility.scan_prose_boundary. Used for verdict transparency
+# so a PASS under these profiles names the suppression.
+_BOUNDARY_SUPPRESSING_PROFILES = frozenset({
+    "audit", "methodology", "consultation_report", "changelog",
+})
+
 
 # ---------------------------------------------------------------------------
 # Argument parsing
@@ -154,7 +162,12 @@ def build_parser() -> argparse.ArgumentParser:
             "actor_identity (Codex C1 closure)."
         ),
     )
-    check.add_argument("draft", help="Path to the draft Markdown file.")
+    check.add_argument(
+        "draft",
+        nargs="?",
+        default=None,
+        help="Path to the draft Markdown file. Optional only with --explain-profile.",
+    )
     check.add_argument(
         "--context",
         default=None,
@@ -204,6 +217,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Output directory. Defaults to .warrant/runs/<run_id>/.",
     )
     check.add_argument(
+        "--explain-profile",
+        action="store_true",
+        help=(
+            "Print what each profile suppresses (boundary-gate suppression and "
+            "the unsupported-fraction HOLD threshold) and exit without running "
+            "the pipeline."
+        ),
+    )
+    check.add_argument(
         "--json",
         action="store_true",
         help="Emit the run report as JSON on stdout.",
@@ -229,6 +251,18 @@ def build_parser() -> argparse.ArgumentParser:
         help=(
             "When --verify is set, do not fetch cited URLs. Forces every "
             "verification to run against citation metadata only."
+        ),
+    )
+    check.add_argument(
+        "--sensitivity-check",
+        action="store_true",
+        help=(
+            "Run the F-classification sensitivity gate over the draft "
+            "before the pipeline. Material classified at a blocking tier "
+            "(Sensitive/Protected or Credentials, per the default data "
+            "gate) causes the command to refuse to process and exit "
+            "non-zero. The keyword heuristics are a starter set; extend "
+            "them for production. Off by default."
         ),
     )
     check.add_argument(
@@ -309,6 +343,130 @@ def build_parser() -> argparse.ArgumentParser:
              "By default an unsigned or unverifiable signature is overall INVALID.",
     )
     verify.add_argument("--json", action="store_true", help="Emit the verdict as JSON.")
+
+    # --- calibrate: run the eval harness and write .warrant/calibration.json ---
+    calibrate = sub.add_parser(
+        "calibrate",
+        help="Run the grader eval corpus and write .warrant/calibration.json.",
+        description=(
+            "Run the Layer 7 G5 calibration: evaluate the grader against the "
+            "labelled eval corpus (eval/run_eval.py) and write a "
+            "calibration.json summary (grader, corpus size, per-class recall, "
+            "coverage estimate) into .warrant/. The stored artefact can then "
+            "be loaded by check_calibration() without re-running the eval."
+        ),
+    )
+    calibrate.add_argument(
+        "--grader",
+        choices=("heuristic", "llm", "codex"),
+        default="heuristic",
+        help="Which grader to calibrate (default: heuristic, free/offline).",
+    )
+    calibrate.add_argument(
+        "--grader-corpus",
+        default=None,
+        help="Path to the grader JSONL corpus (default: the bundled eval corpus).",
+    )
+    calibrate.add_argument(
+        "--out",
+        default=None,
+        help="Output path for calibration.json (default: .warrant/calibration.json).",
+    )
+    calibrate.add_argument(
+        "--json", action="store_true",
+        help="Emit the calibration summary as JSON on stdout.",
+    )
+
+    # --- metrics: F-metrics shadow-log aggregation ---
+    metrics_p = sub.add_parser(
+        "metrics",
+        help="Aggregate the shadow-observation log into .warrant/metrics.json.",
+        description=(
+            "F-metrics: read the shadow-observation JSON-lines log produced "
+            "by tools/warrantos-shadow-observe.py and compute an aggregate "
+            "(verdict distribution, unsupported-claim rate over the window, "
+            "and a simple improving/worsening/stable trend split across the "
+            "earlier and later halves of the observed rows). A missing or "
+            "empty log is handled gracefully (observed=0, "
+            "trend=insufficient_data). Writes .warrant/metrics.json unless "
+            "--no-write is given."
+        ),
+    )
+    metrics_p.add_argument(
+        "--log",
+        default=None,
+        help=(
+            "Path to the shadow-observation log "
+            "(default: 08_Outputs/publish-gate-shadow.log under the repo)."
+        ),
+    )
+    metrics_p.add_argument(
+        "--out",
+        default=None,
+        help="Output path for metrics.json (default: .warrant/metrics.json).",
+    )
+    metrics_p.add_argument(
+        "--no-write",
+        action="store_true",
+        help="Do not write metrics.json; only emit the aggregate.",
+    )
+    metrics_p.add_argument(
+        "--json", action="store_true",
+        help="Emit the aggregate as JSON on stdout.",
+    )
+
+    # --- retention: F-retention tombstones (INV-011) ---
+    retention = sub.add_parser(
+        "retention",
+        help="Manage F-retention windows and tombstones (no hard delete).",
+        description=(
+            "F-retention (INV-011): set a per-run retention window, list runs "
+            "whose window has elapsed, and tombstone expired runs. Tombstoning "
+            "is APPEND-ONLY: it marks a run as logically retired without "
+            "deleting any ledger row, preserving the append-only audit trail."
+        ),
+    )
+    retention.add_argument(
+        "--db",
+        default=str(Path(".warrant") / "provenance.db"),
+        help="Path to the provenance ledger database.",
+    )
+    retention.add_argument(
+        "--json", action="store_true",
+        help="Emit the result as JSON on stdout.",
+    )
+    retention_sub = retention.add_subparsers(
+        dest="retention_action", metavar="<action>"
+    )
+
+    rset = retention_sub.add_parser(
+        "set-window",
+        help="Record a retention window (days) for a run (append-only).",
+    )
+    rset.add_argument("--run-id", type=int, required=True, help="provenance_run id.")
+    rset.add_argument(
+        "--days", type=int, required=True,
+        help="Retention window in days (>= 0). Use 0 to expire immediately.",
+    )
+
+    retention_sub.add_parser(
+        "list-expired",
+        help="List runs whose effective window has elapsed (read-only).",
+    )
+
+    rtomb = retention_sub.add_parser(
+        "tombstone-run",
+        help="Append a tombstone for a run (logical retire; no delete).",
+    )
+    rtomb.add_argument("--run-id", type=int, required=True, help="provenance_run id.")
+    rtomb.add_argument(
+        "--reason", default="retention_window_elapsed",
+        help="Reason recorded on the tombstone (default: retention_window_elapsed).",
+    )
+
+    retention_sub.add_parser(
+        "list", help="List all tombstones (read-only)."
+    )
 
     return parser
 
@@ -550,6 +708,32 @@ _SOD_FINAL_ARTEFACT_PROFILES = frozenset({
 # The strictest profiles: a same-actor review BLOCKs rather than HOLDs.
 _SOD_BLOCK_PROFILES = frozenset({"audit"})
 
+# Per-profile unsupported-claim fraction thresholds (Phase 1 item 3).
+# When the fraction of detected claims that are unsupported exceeds the
+# profile threshold, the verdict is raised to HOLD even when no single claim
+# is load-bearing. This closes the bug where an audit run with 2 of 2 claims
+# unsupported could return a bare PASS (the audit profile suppresses the
+# boundary gate, and neither claim alone was load-bearing).
+#
+#   audit         0.00  any unsupported claim HOLDs
+#   final-prose   0.00  backstop: any unsupported claim HOLDs
+#   paper-full    0.20  tolerates a small uncited minority
+#   brief-light   0.25  tolerates routine date references etc.
+#   methodology   0.40  methods prose is allowed more uncited statement
+#   changelog     1.00  never fires on fraction alone
+_PROFILE_UNSUPPORTED_THRESHOLD: Dict[str, float] = {
+    "audit": 0.0,
+    "final-prose": 0.0,
+    "paper-full": 0.20,
+    "brief-light": 0.25,
+    "methodology": 0.40,
+    "changelog": 1.0,
+}
+# Profiles without an explicit entry use this default (lenient: never fires
+# on fraction alone, preserving prior behaviour for prompt-template and the
+# other process profiles).
+_DEFAULT_UNSUPPORTED_THRESHOLD = 1.0
+
 
 def consolidate_verdict(
     boundary_report: BoundaryResult,
@@ -559,10 +743,14 @@ def consolidate_verdict(
     classification_overrides: List[ClassificationOverrideRecord],
     artefact_role: str,
     single_actor_override: bool = False,
-) -> Tuple[str, List[str]]:
-    """Return (verdict, reasons).
+) -> Tuple[str, List[str], Optional[Dict[str, Any]]]:
+    """Return (verdict, reasons, fired_rule).
 
     Verdict is one of PASS, HOLD, BLOCK, NOT_ASSESSABLE.
+
+    `fired_rule` is None unless the per-profile unsupported-fraction
+    threshold raised the verdict to HOLD, in which case it is a dict
+    describing the rule that fired (for surfacing in the run report JSON).
 
     Decision order:
 
@@ -570,9 +758,11 @@ def consolidate_verdict(
        violation occurred in a blocking profile, or a same-actor review
        (single_actor_override) was recorded on a strict profile (SoD).
     2. HOLD if any unsupported load-bearing claim exists, any verifier
-       verdict is `unverifiable` for a load-bearing claim, or a same-actor
-       review was recorded on a final-artefact profile (separation of
-       duties, SPEC-L8-S003: an independent reviewer is required to PASS).
+       verdict is `unverifiable` for a load-bearing claim, the unsupported
+       fraction exceeds the per-profile threshold
+       (`_PROFILE_UNSUPPORTED_THRESHOLD`), or a same-actor review was
+       recorded on a final-artefact profile (separation of duties,
+       SPEC-L8-S003: an independent reviewer is required to PASS).
     3. NOT_ASSESSABLE if the artefact role is `final-prose` and the
        run has no `actor_identity` map. This is the Codex C1 fix:
        a final-prose artefact requires the minimum override/identity
@@ -584,6 +774,7 @@ def consolidate_verdict(
     duties a verdict-layer property, not just a footer marker.
     """
     reasons: List[str] = []
+    fired_rule: Optional[Dict[str, Any]] = None
     role_lower = artefact_role.strip().lower()
 
     # 1. BLOCK conditions
@@ -609,7 +800,7 @@ def consolidate_verdict(
         )
 
     if reasons:
-        return (VERDICT_BLOCK, reasons)
+        return (VERDICT_BLOCK, reasons, fired_rule)
 
     # 2. HOLD conditions
     for claim in claim_rows:
@@ -625,6 +816,38 @@ def consolidate_verdict(
                 "HOLD: unverifiable load-bearing claim: " + (v.get("claim_text") or "")[:80]
             )
 
+    # Per-profile unsupported-fraction threshold (Phase 1 item 3).
+    # Raise HOLD when the unsupported fraction exceeds the profile threshold,
+    # even if no single claim is load-bearing. Surface the fired rule.
+    total_claims = len(claim_rows)
+    unsupported_claims = sum(1 for c in claim_rows if not c.get("citation"))
+    if total_claims > 0:
+        unsupported_fraction = unsupported_claims / total_claims
+        threshold = _PROFILE_UNSUPPORTED_THRESHOLD.get(
+            role_lower, _DEFAULT_UNSUPPORTED_THRESHOLD
+        )
+        if unsupported_fraction > threshold:
+            fired_rule = {
+                "rule": "profile_unsupported_fraction",
+                "profile": role_lower,
+                "unsupported": unsupported_claims,
+                "total": total_claims,
+                "unsupported_fraction": round(unsupported_fraction, 4),
+                "threshold": threshold,
+            }
+            reasons.append(
+                "HOLD: unsupported fraction %d/%d (%.0f%%) exceeds the '%s' "
+                "profile threshold of %.0f%%; verify the uncited claims or add "
+                "sources."
+                % (
+                    unsupported_claims,
+                    total_claims,
+                    unsupported_fraction * 100,
+                    role_lower,
+                    threshold * 100,
+                )
+            )
+
     # Separation of duties (SPEC-L8-S003): on a final-artefact profile a same-actor
     # review downgrades to HOLD. An independent reviewer is required to certify PASS.
     if single_actor_override and role_lower in _SOD_FINAL_ARTEFACT_PROFILES:
@@ -635,7 +858,7 @@ def consolidate_verdict(
         )
 
     if reasons:
-        return (VERDICT_HOLD, reasons)
+        return (VERDICT_HOLD, reasons, fired_rule)
 
     # 3. NOT_ASSESSABLE (Codex C1)
     if role_lower == "final-prose" and not actor_identity:
@@ -645,9 +868,9 @@ def consolidate_verdict(
             "actor_identity supplied. Either provide --actor-identity or use "
             "a non-final-prose profile."
         )
-        return (VERDICT_NOT_ASSESSABLE, reasons)
+        return (VERDICT_NOT_ASSESSABLE, reasons, fired_rule)
 
-    return (VERDICT_PASS, reasons)
+    return (VERDICT_PASS, reasons, fired_rule)
 
 
 # ---------------------------------------------------------------------------
@@ -744,6 +967,52 @@ def write_run_artefacts(
 # Output formatting
 # ---------------------------------------------------------------------------
 
+def explain_profiles() -> str:
+    """Describe, per profile, what is suppressed.
+
+    Phase 1 item 2: makes profile leniency self-documenting. Two suppression
+    surfaces are reported: whether the G1 prose-boundary gate is suppressed,
+    and the per-profile unsupported-fraction HOLD threshold.
+    """
+    profiles = [
+        "final-prose",
+        "brief-light",
+        "paper-full",
+        "prompt-template",
+        "audit",
+        "methodology",
+        "consultation_report",
+        "changelog",
+    ]
+    lines = ["warrantos profiles: what each profile suppresses", ""]
+    lines.append(
+        "  %-20s %-18s %s" % ("profile", "boundary gate", "unsupported-fraction HOLD")
+    )
+    lines.append("  " + "-" * 70)
+    for p in profiles:
+        boundary = (
+            "SUPPRESSED" if p in _BOUNDARY_SUPPRESSING_PROFILES else "enforced"
+        )
+        threshold = _PROFILE_UNSUPPORTED_THRESHOLD.get(
+            p, _DEFAULT_UNSUPPORTED_THRESHOLD
+        )
+        if threshold >= 1.0:
+            thr = "never (fraction alone never HOLDs)"
+        else:
+            thr = "HOLD when unsupported fraction > %.0f%%" % (threshold * 100)
+        lines.append("  %-20s %-18s %s" % (p, boundary, thr))
+    lines.append("")
+    lines.append(
+        "Notes: a SUPPRESSED boundary gate means scan_prose_boundary() returns "
+        "pass unconditionally for that profile, so AI-residue and "
+        "process-narration leakage is not gated. A PASS under such a profile "
+        "still reports any unsupported-claim count on the verdict line so the "
+        "leniency is visible. Load-bearing unsupported claims always HOLD "
+        "regardless of profile."
+    )
+    return "\n".join(lines)
+
+
 def format_text_report(report: Dict[str, Any]) -> str:
     lines = []
     lines.append("warrantos check")
@@ -770,9 +1039,42 @@ def format_text_report(report: Dict[str, Any]) -> str:
     )
     lines.append("  overrides on record: %d" % report["overrides_total"])
     lines.append("")
-    lines.append("VERDICT: " + report["verdict"])
+
+    # Verdict transparency (Phase 1 item 2): always make the unsupported-claims
+    # count visible on the verdict line, and annotate a PASS that carries
+    # unsupported claims so leniency is never silent. Profiles that suppress
+    # the boundary gate (audit/methodology/consultation_report/changelog) say so.
+    verdict = report["verdict"]
+    unsupported = report.get("claims_unsupported", 0)
+    verdict_line = "VERDICT: " + verdict
+    if verdict == VERDICT_PASS and unsupported > 0:
+        profile = report.get("profile", "")
+        if profile in _BOUNDARY_SUPPRESSING_PROFILES:
+            verdict_line += (
+                " (%d unsupported claim(s); %s profile suppresses the prose "
+                "boundary gate; verify manually)" % (unsupported, profile)
+            )
+        else:
+            verdict_line += (
+                " (%d unsupported claim(s); none load-bearing under this "
+                "profile; verify manually)" % unsupported
+            )
+    lines.append(verdict_line)
     for reason in report.get("reasons") or []:
         lines.append("  - " + reason)
+    fired = report.get("verdict_rule_fired")
+    if fired:
+        lines.append(
+            "  rule fired: %s (%d/%d unsupported = %.0f%% > %.0f%% threshold for '%s')"
+            % (
+                fired.get("rule"),
+                fired.get("unsupported", 0),
+                fired.get("total", 0),
+                fired.get("unsupported_fraction", 0.0) * 100,
+                fired.get("threshold", 0.0) * 100,
+                fired.get("profile", ""),
+            )
+        )
     lines.append("")
     lines.append("artefacts written to: " + report["out_dir"])
     return "\n".join(lines)
@@ -876,6 +1178,284 @@ def _cmd_verify_external(args) -> int:
     return 0 if result["overall"] == "VALID" else 1
 
 
+def _cmd_calibrate(args) -> int:
+    """G5 calibration: run the grader eval corpus and write calibration.json.
+
+    Reuses eval/run_eval.py's corpus loader, grader runner, and metric
+    computation so the calibration figures come from the same code that
+    produces the published eval report. Writes a compact summary
+    (grader, corpus size, per-class recall, coverage estimate) into
+    .warrant/calibration.json for check_calibration() to load.
+    """
+    import importlib.util
+
+    eval_path = _REPO_ROOT / "eval" / "run_eval.py"
+    if not eval_path.is_file():
+        sys.stderr.write("warrantos calibrate: eval/run_eval.py not found at %s\n" % eval_path)
+        return 2
+    spec = importlib.util.spec_from_file_location("_warrantos_run_eval", str(eval_path))
+    run_eval = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(run_eval)
+
+    from warrantos.provenance.grade import HeuristicGrader
+
+    if args.grader == "heuristic":
+        grader, grader_label = HeuristicGrader(), "HeuristicGrader"
+    elif args.grader == "llm":
+        from warrantos.provenance.grade import LLMGrader
+        grader, grader_label = LLMGrader(), "LLMGrader"
+    else:  # codex
+        from warrantos.provenance.grade import CodexGrader
+        grader, grader_label = CodexGrader(), "CodexGrader"
+
+    corpus_path = args.grader_corpus or str(
+        _REPO_ROOT / "eval" / "corpus" / "grader.jsonl"
+    )
+    items = run_eval.load_grader_corpus(corpus_path)
+    results = run_eval.grade_grader_corpus(items, grader)
+    metrics = run_eval.compute_grader_metrics(results)
+
+    # Coverage estimate: the fraction of corpus rows whose graded verdict
+    # is a typed calibration label (verified/contradicted). The offline
+    # heuristic emits no numeric confidence, so confidence-coverage is 0;
+    # the typed-fraction is the honest stand-in the heuristic CAN report.
+    typed_labels = {"verified", "contradicted"}
+    typed = sum(1 for _id, _gold, pred in results if pred in typed_labels)
+    corpus_size = metrics["n"]
+    coverage_estimate = (typed / corpus_size) if corpus_size else 0.0
+
+    per_class_recall = {
+        cls: round(d["recall"], 4) for cls, d in metrics["per_class"].items()
+    }
+
+    summary = {
+        "grader": grader_label,
+        "corpus": corpus_path,
+        "corpus_size": corpus_size,
+        "typed": typed,
+        "per_class_recall": per_class_recall,
+        "macro_recall": round(metrics["macro"]["recall"], 4),
+        "accuracy": round(metrics["accuracy"], 4),
+        "coverage_estimate": round(coverage_estimate, 4),
+        "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "note": (
+            "G5 calibration summary. The offline HeuristicGrader emits no "
+            "numeric confidence, so Brier-style confidence coverage is 0; "
+            "coverage_estimate reports the typed-verdict fraction and "
+            "per_class_recall is the meaningful calibration measure. Use an "
+            "LLM grader for confidence-bearing calibration."
+        ),
+    }
+
+    _cwd = Path(".").resolve()
+    raw_out = args.out or str(Path(".warrant") / "calibration.json")
+    try:
+        out = resolve_under(_cwd, raw_out)
+    except ValueError as exc:
+        sys.stderr.write(
+            "warrantos calibrate: --out path is outside the current working directory: %s\n" % exc
+        )
+        return 2
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8")
+
+    if args.json:
+        sys.stdout.write(json.dumps(summary, indent=2, sort_keys=True) + "\n")
+    else:
+        sys.stdout.write(
+            "warrantos calibrate\n"
+            "  grader:            %s\n"
+            "  corpus size:       %d\n"
+            "  macro recall:      %.4f\n"
+            "  accuracy:          %.4f\n"
+            "  coverage estimate: %.4f (typed-verdict fraction)\n"
+            "  written to:        %s\n"
+            % (
+                grader_label, corpus_size, summary["macro_recall"],
+                summary["accuracy"], coverage_estimate, out,
+            )
+        )
+    return 0
+
+
+def _cmd_metrics(args) -> int:
+    """F-metrics: aggregate the shadow-observation log into metrics.json.
+
+    Reads the shadow JSON-lines log (default
+    08_Outputs/publish-gate-shadow.log under the repo root), computes
+    the verdict distribution, unsupported-claim rate, and trend via
+    provenance.metrics.aggregate_shadow_log, and writes the aggregate
+    to .warrant/metrics.json unless --no-write is given. A missing or
+    empty log is handled gracefully.
+    """
+    from warrantos.provenance.metrics import (
+        aggregate_shadow_log,
+        write_metrics_json,
+    )
+
+    if args.log:
+        log_path = Path(args.log)
+    else:
+        log_path = _REPO_ROOT / "08_Outputs" / "publish-gate-shadow.log"
+
+    metrics = aggregate_shadow_log(log_path)
+
+    if not args.no_write:
+        _cwd = Path(".").resolve()
+        raw_out = args.out or str(Path(".warrant") / "metrics.json")
+        try:
+            out = resolve_under(_cwd, raw_out)
+        except ValueError as exc:
+            sys.stderr.write(
+                "warrantos metrics: --out path is outside the current "
+                "working directory: %s\n" % exc
+            )
+            return 2
+        write_metrics_json(metrics, out)
+    else:
+        out = None
+
+    if args.json:
+        sys.stdout.write(
+            json.dumps(metrics.to_dict(), indent=2, sort_keys=True) + "\n"
+        )
+    else:
+        d = metrics.to_dict()
+        verdicts = d["verdict_distribution"]
+        verdict_str = (
+            ", ".join("%s=%d" % (k, verdicts[k]) for k in sorted(verdicts))
+            if verdicts else "(none)"
+        )
+        rate = d["unsupported_rate"]
+        rate_str = "n/a" if rate is None else ("%.4f" % rate)
+        sys.stdout.write(
+            "warrantos metrics\n"
+            "  log:                 %s%s\n"
+            "  observed rows:       %d\n"
+            "  non-observed rows:   %d\n"
+            "  malformed lines:     %d\n"
+            "  verdict distribution:%s %s\n"
+            "  unsupported rate:    %s\n"
+            "  trend:               %s\n"
+            "  window:              %s -> %s\n"
+            "  written to:          %s\n"
+            % (
+                log_path,
+                "" if log_path.is_file() else " (not found; empty aggregate)",
+                d["observed"],
+                d["non_observed"],
+                d["malformed_lines"],
+                "", verdict_str,
+                rate_str,
+                d["trend"],
+                d["window_start"] or "n/a",
+                d["window_end"] or "n/a",
+                out if out is not None else "(not written; --no-write)",
+            )
+        )
+    return 0
+
+
+def _cmd_retention(args) -> int:
+    """F-retention (INV-011): set-window / list-expired / tombstone-run / list.
+
+    Tombstoning never deletes a ledger row; it appends a marker so the
+    append-only guarantee (INV-004) is preserved.
+    """
+    from warrantos.provenance import retention as _retention
+
+    action = getattr(args, "retention_action", None)
+    if not action:
+        sys.stderr.write(
+            "warrantos retention: an action is required "
+            "(set-window | list-expired | tombstone-run | list)\n"
+        )
+        return 2
+
+    # B5 path containment: confine --db under cwd.
+    _cwd = Path(".").resolve()
+    try:
+        db = str(resolve_under(_cwd, args.db))
+    except ValueError as exc:
+        sys.stderr.write(
+            "warrantos retention: --db path is outside the current working directory: %s\n"
+            % exc
+        )
+        return 2
+
+    as_json = getattr(args, "json", False)
+
+    if action == "set-window":
+        try:
+            _retention.set_window(db, args.run_id, args.days)
+        except ValueError as exc:
+            sys.stderr.write("warrantos retention: %s\n" % exc)
+            return 2
+        msg = {
+            "action": "set-window",
+            "run_id": args.run_id,
+            "retention_window_days": args.days,
+        }
+        if as_json:
+            sys.stdout.write(json.dumps(msg, indent=2, sort_keys=True) + "\n")
+        else:
+            sys.stdout.write(
+                "retention window set: run %d -> %d day(s) (recorded append-only)\n"
+                % (args.run_id, args.days)
+            )
+        return 0
+
+    if action == "list-expired":
+        expired = _retention.list_expired(db)
+        if as_json:
+            sys.stdout.write(
+                json.dumps([e.to_dict() for e in expired], indent=2, sort_keys=True) + "\n"
+            )
+        else:
+            if not expired:
+                sys.stdout.write("no runs have passed their retention window.\n")
+            else:
+                sys.stdout.write("expired runs (window elapsed, not yet tombstoned):\n")
+                for e in expired:
+                    sys.stdout.write(
+                        "  run %d  window=%dd  expired_after=%s\n"
+                        % (e.run_id, e.retention_window_days, e.expired_after)
+                    )
+        return 0
+
+    if action == "tombstone-run":
+        tomb = _retention.tombstone_run(db, args.run_id, reason=args.reason)
+        if as_json:
+            sys.stdout.write(json.dumps(tomb.to_dict(), indent=2, sort_keys=True) + "\n")
+        else:
+            sys.stdout.write(
+                "tombstone appended: run %d  reason=%s  (no ledger row deleted)\n"
+                % (tomb.run_id, tomb.reason)
+            )
+        return 0
+
+    if action == "list":
+        tombs = _retention.list_tombstones(db)
+        if as_json:
+            sys.stdout.write(
+                json.dumps([t.to_dict() for t in tombs], indent=2, sort_keys=True) + "\n"
+            )
+        else:
+            if not tombs:
+                sys.stdout.write("no tombstones recorded.\n")
+            else:
+                sys.stdout.write("tombstones:\n")
+                for t in tombs:
+                    sys.stdout.write(
+                        "  #%d  run %d  reason=%s  ts=%s\n"
+                        % (t.id, t.run_id, t.reason, t.ts)
+                    )
+        return 0
+
+    sys.stderr.write("warrantos retention: unknown action %r\n" % action)
+    return 2
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -901,9 +1481,29 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.command == "verify-external":
         return _cmd_verify_external(args)
 
+    if args.command == "calibrate":
+        return _cmd_calibrate(args)
+
+    if args.command == "metrics":
+        return _cmd_metrics(args)
+
+    if args.command == "retention":
+        return _cmd_retention(args)
+
     if args.command != "check":
         parser.print_help()
         return 0
+
+    if getattr(args, "explain_profile", False):
+        sys.stdout.write(explain_profiles() + "\n")
+        return 0
+
+    if not args.draft:
+        sys.stderr.write(
+            "warrantos check: the draft argument is required "
+            "(it is optional only with --explain-profile)\n"
+        )
+        return 2
 
     run_id = args.run_id or "run_" + uuid.uuid4().hex[:12]
 
@@ -942,6 +1542,23 @@ def main(argv: Optional[List[str]] = None) -> int:
     except FileNotFoundError:
         sys.stderr.write("warrantos: draft file not found: %s\n" % args.draft)
         return 2
+
+    # --- F-classification sensitivity gate (optional, fail-closed) ---
+    if getattr(args, "sensitivity_check", False):
+        from warrantos.provenance.classification import (
+            SensitivityBlock,
+            gate_sensitivity,
+        )
+        try:
+            gate_sensitivity(draft)
+        except SensitivityBlock as block:
+            sys.stderr.write("warrantos: %s\n" % block)
+            sys.stderr.write(
+                "warrantos: --sensitivity-check refused to process this draft. "
+                "The keyword heuristics are a starter set; review and extend "
+                "for your environment if this is a false positive.\n"
+            )
+            return 3
 
     try:
         context_items_raw = load_context(args.context)
@@ -1020,7 +1637,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     single_actor_override = any(
         getattr(o, "single_actor", False) for o in overrides_on_record
     )
-    verdict, reasons = consolidate_verdict(
+    verdict, reasons, fired_rule = consolidate_verdict(
         boundary,
         claim_rows,
         verifier_rows,
@@ -1080,6 +1697,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         "overrides_total": len(overrides_on_record),
         "verdict": verdict,
         "reasons": reasons,
+        "verdict_rule_fired": fired_rule,
         "out_dir": str(out_dir),
         "cbom_schema": cbom.schema,
         "load_bearing_threshold": LOAD_BEARING_THRESHOLD,

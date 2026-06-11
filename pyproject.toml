@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "warrantos"
-version = "0.9.1"
+version = "0.9.2"
 description = "WarrantOS: a governance harness for AI-assisted writing that ships clean prose and a separate auditable provenance ledger"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 authors = [
     { name = "Juan Vega" }
 ]

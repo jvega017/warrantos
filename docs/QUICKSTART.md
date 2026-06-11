@@ -111,6 +111,50 @@ WarrantOS coupling thesis summarised in
 [`docs/OVERVIEW.md`](OVERVIEW.md). Treat this tool as the operational
 form of that thesis, not as a correctness oracle.
 
+## Wiring a pre-publish gate (shadow first, then blocking)
+
+WarrantOS ships a standalone pre-publish gate script,
+`tools/warrantos-pre-publish-gate.ps1`, that runs
+`warrantos check --profile brief-light --ci` over a draft and appends the
+JSON verdict to a shadow log. It is designed for a two-stage rollout so a
+gate never blocks publishing before you have evidence it behaves on your
+real traffic.
+
+**Stage 1: shadow (log only, never blocks).** This is the default. The
+script observes every draft and records the verdict, but always exits 0,
+so the surrounding publish flow proceeds regardless:
+
+```powershell
+.\tools\warrantos-pre-publish-gate.ps1 -DraftPath C:\path\to\draft.txt
+```
+
+Each run appends one JSON line to
+`08_Outputs/publish-gate-shadow.log` with `"mode": "shadow"` and
+`"shadow_status": "observed"`. Let this accumulate over your real
+publishing cadence (a week or two of drafts) and inspect the log. Confirm
+the gate would not produce false `HOLD`/`BLOCK`/`NOT_ASSESSABLE` verdicts
+on legitimate drafts.
+
+**Stage 2: blocking (arm the gate).** Only once the shadow log shows the
+gate behaves correctly, add the `-Block` flag. In blocking mode the
+script exits **non-zero** on a `HOLD`, `BLOCK`, or `NOT_ASSESSABLE`
+verdict, so a caller (a wrapper, a CI step) can refuse to publish:
+
+```powershell
+.\tools\warrantos-pre-publish-gate.ps1 -DraftPath C:\path\to\draft.txt -Block
+```
+
+The `-Block` flag is the single, deliberate switch from observation to
+enforcement. The script never edits your publish pipeline or harness
+configuration; wiring its non-zero exit into a publish step is a separate
+step you control.
+
+> Optional: `warrantos check --sensitivity-check` runs the
+> F-classification sensitivity gate over a draft first and refuses
+> (exit 3) when the draft is classified Sensitive/Protected or
+> Credentials by the starter keyword heuristics. Extend the heuristics in
+> `warrantos/provenance/classification.py` for your own data taxonomy.
+
 ## Where to go next
 
 - **One-page tour of every layer**:

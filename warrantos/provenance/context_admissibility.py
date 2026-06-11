@@ -515,7 +515,27 @@ _PROFILE_RULES = {
 
 
 def scan_prose_boundary(text: str, artefact_role: str = "final") -> BoundaryResult:
-    """Scan reader-facing prose for process-to-prose leakage."""
+    """Scan reader-facing prose for process-to-prose leakage.
+
+    Audit-profile boundary suppression
+    ----------------------------------
+    The ``audit``, ``methodology``, ``consultation_report`` and ``changelog``
+    profiles deliberately suppress the G1 prose-boundary gate: they return
+    ``verdict="pass"`` with no violations regardless of content. These
+    artefacts legitimately narrate process (run logs, method notes,
+    consultation transcripts, change history), so the AI-residue and
+    process-narration rules that protect final prose would generate only
+    false positives here.
+
+    The trade-off is that a draft checked under one of these profiles is NOT
+    screened for AI-assistant scaffold, capability disclaimers, or
+    process-narration leakage. The CLI surfaces this: a PASS under a
+    boundary-suppressing profile annotates the verdict line with the
+    unsupported-claim count and names the suppression, and ``warrantos check
+    --explain-profile`` documents which profiles suppress the gate. Callers
+    that need the boundary gate enforced must use ``final-prose``,
+    ``brief-light`` or ``paper-full``.
+    """
     profile = artefact_role or "final"
     if profile in {"audit", "methodology", "consultation_report", "changelog"}:
         return BoundaryResult(verdict="pass", violations=[])

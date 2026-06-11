@@ -188,14 +188,19 @@ def check_self_grounding(
 # G4 contamination scan (starter pattern list)
 # ---------------------------------------------------------------------------
 
-# Starter list of prompt-injection patterns. This list is DELIBERATELY
-# INCOMPLETE. A production deployment SHALL replace or extend the list
-# with a documented threat model and labelled corpus. The list below is
-# drawn from publicly known prompt-injection literature (Greshake et al.
-# 2023; Liu et al. 2023; Anthropic's prompt-injection guidance) and is
-# intended only as a starter so the gate can fire on the most common
-# patterns rather than silently passing every input.
+# Contamination pattern list. The first block is the generic
+# prompt-injection starter set drawn from publicly known prompt-injection
+# literature (Greshake et al. 2023; Liu et al. 2023; Anthropic's
+# prompt-injection guidance). The second block (v0.9 Phase 3) extends the
+# corpus with POLICY-DOMAIN patterns observed in public-sector document
+# pipelines: legislatively-formatted injections, role-impersonation of a
+# Director-General or Minister, classification-laundering, and
+# output-override headings. The labelled corpus that exercises these lives
+# in eval/corpus/contamination.jsonl. The list is still not exhaustive; a
+# production deployment SHOULD continue to extend it against its own threat
+# model, but it is no longer a bare starter.
 _CONTAMINATION_PATTERNS = (
+    # --- Generic prompt-injection (starter set) ---
     ("ignore_instructions", re.compile(
         r"\b(?:ignore|disregard)\b[^.]{0,40}\b(?:previous|prior|earlier|all)\b[^.]{0,40}\b(?:instructions?|prompt|rules?)\b",
         re.I,
@@ -207,6 +212,37 @@ _CONTAMINATION_PATTERNS = (
     ("override_role", re.compile(r"\b(?:role\s*[:=]\s*system|act\s+as\s+(?:an?\s+)?admin|developer\s+mode)\b", re.I)),
     ("end_of_prompt_marker", re.compile(r"\b(?:END\s+OF\s+PROMPT|END\s+OF\s+INSTRUCTIONS?)\b", re.I)),
     ("repeat_above", re.compile(r"\brepeat\s+(?:the\s+)?(?:above|previous|earlier)\b[^.]{0,40}\b(?:prompt|instructions?|text)\b", re.I)),
+
+    # --- Policy-domain extension (v0.9 Phase 3) ---
+    # Legislatively-formatted injections: a fake statutory clause that
+    # "directs" or "requires" the assistant to do something, dressed up as
+    # a section/subsection so it reads like binding law inside a document.
+    ("legislative_injection", re.compile(
+        r"(?:section|subsection|clause|schedule|part)\s+\d+[a-z]?(?:\([0-9a-z]+\))*\b[^.]{0,80}\b(?:the\s+(?:assistant|model|system|ai)|you)\b[^.]{0,40}\b(?:must|shall|(?:is|are)\s+required\s+to|(?:is|are)\s+directed\s+to)\b",
+        re.I,
+    )),
+    # Role-impersonation of a Director-General or Minister: an instruction
+    # that claims to come from a senior officeholder to borrow authority.
+    ("authority_impersonation", re.compile(
+        r"\b(?:as|on\s+behalf\s+of|by\s+(?:order|direction)\s+of|instructed\s+by)\b[^.]{0,30}\b(?:the\s+)?(?:director[\s-]general|director general|minister|premier|secretary|chief\s+executive)\b",
+        re.I,
+    )),
+    # Classification-laundering: text that asserts a document is downgraded,
+    # declassified, or "now public/official" to slip sensitive content
+    # through, or instructs the reader to treat protected material as public.
+    ("classification_laundering", re.compile(
+        r"\b(?:declassif(?:y|ied)|downgrade(?:d)?|reclassif(?:y|ied)|treat\s+(?:this|it|the\s+above)\s+as)\b[^.]{0,40}\b(?:public|official|unclassified|releasable)\b"
+        r"|\b(?:this\s+(?:document|material|content)\s+is\s+now)\b[^.]{0,20}\b(?:public|unclassified|declassified|releasable)\b",
+        re.I,
+    )),
+    # Output-override headings: a heading or directive that tells the model
+    # what to put in the final output, overriding the real task ("FINAL
+    # ANSWER:", "OUTPUT THE FOLLOWING", "## SYSTEM OVERRIDE").
+    ("output_override_heading", re.compile(
+        r"^\s*#{0,6}\s*(?:system\s+override|output\s+override|final\s+(?:answer|output|instruction)s?|new\s+(?:task|instructions?)|override(?:\s+all)?)\b"
+        r"|\boutput\s+(?:the\s+following|exactly|only)\b",
+        re.I | re.M,
+    )),
 )
 
 
@@ -237,13 +273,17 @@ class ContaminationResult:
     matches
         List of ContaminationMatch rows.
     corpus_completeness
-        Always `starter`. v0.6 ships a starter list only; a production
-        deployment SHALL replace or extend with a documented corpus.
+        `domain-extended` (v0.9 Phase 3): the generic prompt-injection
+        starter set is now extended with policy-domain patterns
+        (legislatively-formatted injections, authority-role impersonation,
+        classification-laundering, output-override headings), exercised by
+        the labelled corpus at eval/corpus/contamination.jsonl. Still not
+        exhaustive; production deployments SHOULD continue to extend it.
     """
 
     verdict: str
     matches: List[ContaminationMatch]
-    corpus_completeness: str = "starter"
+    corpus_completeness: str = "domain-extended"
 
     def to_dict(self) -> Dict[str, object]:
         return {
@@ -251,9 +291,13 @@ class ContaminationResult:
             "matches": [m.to_dict() for m in self.matches],
             "corpus_completeness": self.corpus_completeness,
             "note": (
-                "The contamination pattern list is a starter set. "
-                "Production deployments SHALL replace or extend it "
-                "with a documented threat model and labelled corpus."
+                "The contamination pattern list is domain-extended: a generic "
+                "prompt-injection starter set plus policy-domain patterns "
+                "(legislative-format injection, authority impersonation, "
+                "classification-laundering, output-override headings), exercised "
+                "by eval/corpus/contamination.jsonl. It is not exhaustive; "
+                "production deployments SHOULD continue to extend it against "
+                "their own documented threat model."
             ),
         }
 
@@ -341,11 +385,61 @@ class CalibrationResult:
         }
 
 
+def _calibration_from_stored(stored: Dict) -> CalibrationResult:
+    """Build a CalibrationResult from a stored calibration.json dict.
+
+    The stored artefact is produced by `warrantos calibrate` (see
+    cli.warrantos_cli) and carries the grader label, corpus size,
+    per-class recall, and a coverage estimate. The Brier-style fields
+    on CalibrationResult are populated from the stored summary where
+    available; otherwise they fall back to honest zeros/None.
+
+    A stored calibration is recognised by the presence of a
+    `coverage_estimate` key (the calibrate command always writes it).
+    """
+    total = int(stored.get("corpus_size", 0) or 0)
+    coverage = float(stored.get("coverage_estimate", 0.0) or 0.0)
+    with_confidence = int(round(coverage * total)) if total else 0
+    brier = stored.get("brier")
+    if brier is not None:
+        try:
+            brier = float(brier)
+        except (TypeError, ValueError):
+            brier = None
+    note = stored.get("note") or (
+        "Loaded from a stored calibration.json produced by "
+        "`warrantos calibrate`. Coverage is the honest signal: the offline "
+        "heuristic grader emits no confidence, so coverage is typically 0 "
+        "and per-class recall is the meaningful calibration measure."
+    )
+    return CalibrationResult(
+        total=total,
+        typed=int(stored.get("typed", with_confidence) or with_confidence),
+        with_confidence=with_confidence,
+        coverage=coverage,
+        brier=brier,
+        note=note,
+    )
+
+
 def check_calibration(verdicts) -> CalibrationResult:
     """SPEC-L7-R002 G5: compute a Brier score with explicit coverage.
 
-    Accepts an iterable of verdict dicts (each at minimum carrying a
-    `verdict` field and optionally a `confidence` field). Computes:
+    Accepts EITHER:
+
+    - an iterable of live verdict dicts (each at minimum carrying a
+      `verdict` field and optionally a `confidence` field), in which
+      case the Brier score is computed at runtime as below; OR
+    - a single stored ``calibration.json`` dict (recognised by a
+      `coverage_estimate` key) produced by `warrantos calibrate`, in
+      which case the result is reconstructed from the stored summary
+      (grader, corpus size, per-class recall, coverage estimate).
+
+    The dual input lets a caller either grade live verdict rows or
+    surface a previously-computed corpus calibration without re-running
+    the eval harness.
+
+    For the live-rows path it computes:
 
     - `total`: count of all verdicts.
     - `typed`: count of verdicts in {verified, contradicted}; only
@@ -362,6 +456,11 @@ def check_calibration(verdicts) -> CalibrationResult:
     only when coverage is non-zero. v0.6 returns both so the caller
     can report the gap rather than smooth it away.
     """
+    # Stored calibration.json path: a single dict carrying the
+    # calibrate summary (recognised by the coverage_estimate key).
+    if isinstance(verdicts, dict) and "coverage_estimate" in verdicts:
+        return _calibration_from_stored(verdicts)
+
     rows = list(verdicts) if verdicts else []
     total = len(rows)
 
@@ -396,3 +495,43 @@ def check_calibration(verdicts) -> CalibrationResult:
         brier=brier,
         note=note,
     )
+
+
+def calibration_with_monitoring(
+    verdicts,
+    shadow_log_path=None,
+) -> Dict[str, object]:
+    """G5 calibration enriched with the shadow-log monitoring signal.
+
+    Returns a dict carrying:
+
+    - ``calibration``: the CalibrationResult.to_dict() from
+      check_calibration() over the supplied verdict rows or stored
+      calibration.json (the corpus-calibration measure); and
+    - ``monitoring``: the operational unsupported-claim signal derived
+      from the shadow-observation log (observed rate, trend, sample
+      size) when ``shadow_log_path`` is supplied, otherwise None.
+
+    The two surfaces are kept SEPARATE on purpose. Corpus calibration
+    (Brier / per-class recall against a labelled corpus) and the
+    observed unsupported-claim rate on real artefacts measure different
+    things; conflating them would overstate what the shadow log proves.
+    A missing or empty shadow log yields an honest ``monitoring`` block
+    with ``observed_rows=0`` rather than an error.
+    """
+    calibration = check_calibration(verdicts)
+    monitoring = None
+    if shadow_log_path is not None:
+        # Imported lazily so the gates module has no hard dependency on
+        # the metrics module (and no import cycle at module load).
+        from warrantos.provenance.metrics import (
+            aggregate_shadow_log,
+            calibration_supplement,
+        )
+        monitoring = calibration_supplement(
+            aggregate_shadow_log(shadow_log_path)
+        )
+    return {
+        "calibration": calibration.to_dict(),
+        "monitoring": monitoring,
+    }

@@ -115,6 +115,20 @@ CLAIM_TRIGGERS = [
     ("magnitude",   re.compile(r"\b\d[\d,]*(?:\.\d+)?\s?(?:million|billion|trillion|bn|tn)\b", re.I)),
     ("statute",     re.compile(r"\b(?:s\.?\s?\d+|section\s\d+|Act\s(?:18|19|20)\d{2})\b")),
     ("attribution", re.compile(r"\b(?:according to|found that|reported that|estimated|shows that|study\b|survey\b|data show|statistics show)\b", re.I)),
+    # Decision/obligation language. Closes the alignment bug where salience
+    # _DECISION scores must/shall/require sentences load-bearing (0.55) but
+    # extract never detected them, so they silently PASSed.
+    ("decision",    re.compile(r"\b(?:must|shall|required\s+to|must\s+comply|requires?\b|recommend(?:s|ed)?)\b", re.I)),
+    # Superlative claims ("the largest", "fastest", "first ever").
+    ("superlative", re.compile(r"\b(?:largest|smallest|highest|lowest|fastest|slowest|best|worst|first|only|unprecedented|most|least)\b", re.I)),
+    # Causal claims ("X caused Y", "led to", "as a result of").
+    ("causal",      re.compile(r"\b(?:caused|causes|causing|led\s+to|leads?\s+to|results?\s+in|resulted\s+in|due\s+to|as\s+a\s+result\s+of|because\s+of|driven\s+by|attributable\s+to)\b", re.I)),
+    # Numeric approximations ("around 40", "roughly 1,000", "about 12%").
+    ("numeric_approx", re.compile(r"\b(?:approximately|roughly|around|about|nearly|almost|up\s+to|over|more\s+than|fewer\s+than|less\s+than)\s+\d", re.I)),
+    # Named-body attribution (OECD, ABS, Treasury, ANAO and similar).
+    ("named_body",  re.compile(r"\b(?:OECD|ABS|Treasury|ANAO|APSC|DTA|Productivity\s+Commission|World\s+Bank|IMF|United\s+Nations|UN|Reserve\s+Bank|RBA|Bureau\s+of\s+Statistics)\b")),
+    # Empirical comparison ("more than", "compared to", "twice as", "increase of").
+    ("comparison",  re.compile(r"\b(?:compared\s+(?:to|with)|relative\s+to|twice\s+as|half\s+as|\d+\s+times\s+(?:more|less|higher|lower)|increase\s+of|decrease\s+of|outperform(?:s|ed)?|higher\s+than|lower\s+than)\b", re.I)),
 ]
 
 _SENT_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+|(?:^|\s)[-*]\s+")

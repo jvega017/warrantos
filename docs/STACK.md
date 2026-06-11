@@ -218,8 +218,10 @@ certify, instead of certifying on incomplete information.
 
 Five foundation rows wrap the eight layers:
 
-- **F-policy** (PARTIAL): role taxonomy documented; runtime registry not
-  built.
+- **F-policy** (BUILT): six SPEC-F-S002 actor roles enumerated in the
+  machine-readable registry `provenance.roles` with a runtime
+  `validate_actor_identity()` check; normative SPEC committed at
+  [`SPEC.md`](SPEC.md).
 - **F-classification: Data Classification** (NOT_BUILT): adopter-supplied
   sensitivity taxonomy required.
 - **F-audit: Audit Logging** (BUILT): SQLite cross-run + per-run JSON +

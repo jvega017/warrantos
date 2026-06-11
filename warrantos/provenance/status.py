@@ -54,17 +54,71 @@ class LayerStatus:
 def _module_has(module_path: str, *names: str) -> bool:
     """Return True if every name exists on the named module.
 
+    The canonical namespace for this package is `warrantos.provenance.*`.
+    For backward compatibility the status rows are written with the bare
+    `provenance.*` path, so this helper tries the `warrantos.`-prefixed
+    module first and falls back to the bare path. This keeps the status
+    report accurate whether the install resolves `provenance` to the
+    `warrantos.provenance` namespace or to a legacy top-level alias.
+
     Tolerant: returns False on ImportError or AttributeError so that a
     partially-installed package still produces a useful status report.
     """
+    candidates = (module_path,)
+    if module_path.startswith("provenance."):
+        candidates = ("warrantos." + module_path, module_path)
+    elif module_path == "provenance":
+        candidates = ("warrantos.provenance", module_path)
+
+    for candidate in candidates:
+        try:
+            mod = import_module(candidate)
+        except ImportError:
+            continue
+        if all(hasattr(mod, n) for n in names):
+            return True
+    return False
+
+
+def _role_registry_complete() -> bool:
+    """Return True if the role registry resolves all six SPEC-F-S002 roles.
+
+    Tolerant: any import/attribute failure returns False so a partial
+    install does not crash the status report.
+    """
     try:
-        mod = import_module(module_path)
-    except ImportError:
-        return False
-    for n in names:
-        if not hasattr(mod, n):
+        mod = None
+        for candidate in ("warrantos.provenance.roles", "provenance.roles"):
+            try:
+                mod = import_module(candidate)
+                break
+            except ImportError:
+                continue
+        if mod is None:
             return False
-    return True
+        required = getattr(mod, "REQUIRED_ACTOR_ROLE_IDS", None)
+        actor_roles = getattr(mod, "ACTOR_ROLES", None)
+        if required is None or actor_roles is None:
+            return False
+        # The six canonical roles SHALL be present (SPEC-F-S002).
+        return len(set(required)) == 6 and len(actor_roles) == 6
+    except Exception:
+        return False
+
+
+def _repo_file_exists(relative_path: str) -> bool:
+    """Return True if `relative_path` exists under the repository root.
+
+    The repo root is located relative to this module
+    (warrantos/provenance/status.py -> two parents up is the repo root).
+    Tolerant: returns False on any path error.
+    """
+    try:
+        from pathlib import Path
+        repo_root = Path(__file__).resolve().parents[2]
+        return (repo_root / relative_path).is_file()
+    except Exception:
+        return False
 
 
 def collect_status() -> List[LayerStatus]:
@@ -171,13 +225,26 @@ def collect_status() -> List[LayerStatus]:
         layer_id="L7-G2",
         name="G2 Source & Warrant Check",
         status="BUILT",
-        module="provenance.verify, provenance.grade",
+        module="provenance.verify, provenance.grade, provenance.extract",
         surfaces=[
             "verify_claim()",
-            "HeuristicGrader / LLMGrader / LocalLLMGrader",
+            "HeuristicGrader / LLMGrader / LocalLLMGrader / ClaudeCliGrader",
+            "PROVENANCE_GRADER env override; claude-CLI subscription-over-API auto-select",
             "Salience-weighted load-bearing detection",
+            "11 CLAIM_TRIGGERS (Phase 1): year/percentage/magnitude/statute/"
+            "attribution/decision/superlative/causal/numeric_approx/named_body/comparison",
+            "Per-profile unsupported-fraction HOLD thresholds (consolidate_verdict)",
         ],
-        notes="Three graders: heuristic (default, free), Anthropic LLM (paid), Local LLM (free, OpenAI-compatible).",
+        notes=(
+            "Three graders: heuristic (default, free), Anthropic LLM (paid), "
+            "Local LLM (free, OpenAI-compatible). Phase 1 (2026-06-11) added the "
+            "decision trigger (closing the salience/detection misalignment) plus "
+            "five categories (superlative, causal, numeric-approximation, "
+            "named-body attribution, empirical comparison) with +0.30 salience "
+            "weights for causal/comparison/body-attribution, and per-profile "
+            "unsupported-fraction HOLD thresholds so an audit run cannot return a "
+            "bare PASS with all claims unsupported."
+        ),
     ))
 
     rows.append(LayerStatus(
@@ -196,25 +263,50 @@ def collect_status() -> List[LayerStatus]:
     rows.append(LayerStatus(
         layer_id="L7-G4",
         name="G4 Safety & Contamination",
-        status="STARTER",
-        module="provenance.gates",
+        status="BUILT" if _module_has(
+            "provenance.gates", "check_contamination"
+        ) else "STARTER",
+        module="provenance.gates, eval/corpus/contamination.jsonl",
         surfaces=[
             "check_contamination()",
-            "8 starter prompt-injection patterns",
-            "corpus_completeness='starter' flag in result",
+            "8 generic prompt-injection patterns + 4 policy-domain patterns "
+            "(legislative-format injection, authority impersonation, "
+            "classification-laundering, output-override headings)",
+            "corpus_completeness='domain-extended' flag in result",
+            "Labelled corpus: eval/corpus/contamination.jsonl (24 items)",
         ],
-        notes="Production deployments SHALL replace or extend with a documented threat-model corpus. v1.0 deferral.",
+        notes=(
+            "v0.9 Phase 3 extended the generic starter set with policy-domain "
+            "patterns and a 24-item labelled corpus "
+            "(eval/corpus/contamination.jsonl), flipping corpus_completeness "
+            "from 'starter' to 'domain-extended'. The list is still not "
+            "exhaustive; production deployments SHOULD continue to extend it "
+            "against their own documented threat model."
+        ),
     ))
 
     rows.append(LayerStatus(
         layer_id="L7-G5",
         name="G5 Evaluation & Calibration",
-        status="STARTER",
-        module="provenance.gates",
+        status="BUILT" if _module_has(
+            "provenance.gates", "check_calibration", "_calibration_from_stored"
+        ) else "STARTER",
+        module="provenance.gates, eval/run_eval.py, cli.warrantos_cli",
         surfaces=[
-            "check_calibration() [Brier-with-explicit-coverage]",
+            "check_calibration() [accepts live verdict rows OR a stored calibration.json]",
+            "CLI: warrantos calibrate (runs eval/run_eval.py, writes .warrant/calibration.json)",
+            "calibration.json: grader / corpus size / per-class recall / coverage estimate",
         ],
-        notes="Coverage typically 0 with HeuristicGrader (no confidence emitted). Becomes meaningful with LLM grader.",
+        notes=(
+            "warrantos calibrate runs the grader against the labelled eval "
+            "corpus and writes .warrant/calibration.json (grader, corpus "
+            "size, per-class recall, coverage estimate). check_calibration() "
+            "accepts either live verdict rows (Brier-with-explicit-coverage) "
+            "or the stored calibration.json. Confidence coverage is typically "
+            "0 with the offline HeuristicGrader (no confidence emitted); "
+            "per-class recall is the meaningful measure until an LLM grader "
+            "supplies numeric confidence."
+        ),
     ))
 
     rows.append(LayerStatus(
@@ -233,22 +325,71 @@ def collect_status() -> List[LayerStatus]:
     ))
 
     # ---------- Foundation row ----------
+    # F-policy is BUILT when BOTH gaps that held it at PARTIAL are closed:
+    #   1. a machine-readable role registry exists at runtime
+    #      (provenance.roles with the six SPEC-F-S002 actor roles plus a
+    #      validate_actor_identity() runtime check), AND
+    #   2. the normative SPEC document is committed to the repository
+    #      (docs/SPEC.md).
+    # Both are checked here rather than assumed: the registry is checked by
+    # importing it and confirming the six required role ids resolve; the
+    # SPEC file is checked for presence on disk relative to the repo root.
+    _roles_registry_built = _module_has(
+        "provenance.roles",
+        "ACTOR_ROLES", "REQUIRED_ACTOR_ROLE_IDS", "validate_actor_identity",
+        "registry_to_dict",
+    ) and _role_registry_complete()
+    _spec_committed = _repo_file_exists("docs/SPEC.md")
+    _f_policy_built = _roles_registry_built and _spec_committed
+
     rows.append(LayerStatus(
         layer_id="F-policy",
         name="Foundation: Policy & Role Definitions",
-        status="PARTIAL",
-        module="docs/STACK.md; SPEC IDs in code",
-        surfaces=["6-role taxonomy documented; actor_identity field enforced in CBOM"],
-        notes="Roles are documented and the CBOM actor_identity field carries them. A runtime registry is not built. The normative SPEC document is not yet committed to this repository; SPEC IDs in code and tests are the source of truth at v0.9.0b1.",
+        status="BUILT" if _f_policy_built else "PARTIAL",
+        module="provenance.roles; docs/SPEC.md; docs/STACK.md",
+        surfaces=[
+            "provenance.roles: 6 SPEC-F-S002 actor roles + validate_actor_identity()",
+            "registry_to_dict() schema warrantos-roles/v1",
+            "CBOM actor_identity field carries the six roles",
+            "docs/SPEC.md (normative spec, RFC 2119) committed",
+        ],
+        notes=(
+            "v0.9: machine-readable role registry (provenance.roles) "
+            "enumerates the six SPEC-F-S002 actor roles and validates a "
+            "CBOM actor_identity map at runtime; the normative SPEC "
+            "document is committed at docs/SPEC.md. Both gaps that held "
+            "this row at PARTIAL are closed."
+        ) if _f_policy_built else (
+            "Roles documented and carried by the CBOM actor_identity field, "
+            "but the runtime registry (provenance.roles) and/or the "
+            "committed normative SPEC (docs/SPEC.md) are not both present "
+            "in this install."
+        ),
     ))
 
     rows.append(LayerStatus(
         layer_id="F-classification",
         name="Foundation: Data Classification (sensitivity tiers)",
-        status="NOT_BUILT",
-        module="-",
-        surfaces=[],
-        notes="Requires a domain-specific sensitivity taxonomy from the adopter. v1.0 deferral; cannot be fabricated.",
+        status="BUILT" if _module_has(
+            "provenance.classification",
+            "SensitivityTier", "classify_sensitivity", "gate_sensitivity",
+            "SensitivityBlock", "DEFAULT_TIERS",
+        ) else "NOT_BUILT",
+        module="provenance.classification",
+        surfaces=[
+            "SensitivityTier dataclass + 4-tier DEFAULT_TIERS (Public/Official/Sensitive/Credentials)",
+            "classify_sensitivity() [starter keyword heuristics]",
+            "gate_sensitivity() / SensitivityBlock [fail-closed]",
+            "CLI: warrantos check --sensitivity-check",
+        ],
+        notes=(
+            "4-tier default registry mirrors the reference adopter's data "
+            "gate. Keyword heuristics (Cabinet, ministerial, legal advice, "
+            "Crown Solicitor, HR/PIP/termination, $NNNM/B budget markers, "
+            "credential patterns) are a documented STARTER set; production "
+            "deployments SHALL extend them with a domain taxonomy. Unmatched "
+            "text defaults to Official, never silently Public."
+        ),
     ))
 
     rows.append(LayerStatus(
@@ -286,19 +427,66 @@ def collect_status() -> List[LayerStatus]:
     rows.append(LayerStatus(
         layer_id="F-retention",
         name="Foundation: Retention & Deletion (tombstones)",
-        status="NOT_BUILT",
-        module="-",
-        surfaces=[],
-        notes="INV-011 PROPOSITION. Requires the adopter to specify retention windows. v1.0 deferral.",
+        status="BUILT" if _module_has(
+            "provenance.retention",
+            "set_window", "list_expired", "tombstone_run", "list_tombstones",
+        ) else "NOT_BUILT",
+        module="provenance.retention, schema/provenance.sql",
+        surfaces=[
+            "retention_window_days column on provenance_run",
+            "provenance_tombstone + retention_window append-only tables",
+            "set_window() / list_expired() / tombstone_run() / list_tombstones()",
+            "CLI: warrantos retention set-window|list-expired|tombstone-run|list",
+        ],
+        notes=(
+            "INV-011 implemented as APPEND-ONLY tombstones in v0.9 Phase 3: "
+            "no hard delete. Expiry of a retention window appends a tombstone "
+            "marking the run logically retired while preserving every ledger "
+            "row (INV-004 append-only is never violated). Per-run windows are "
+            "set at run creation (column) or appended later via set_window() "
+            "(latest override wins). Adopters still specify the window."
+        ),
     ))
 
+    # F-compliance is BUILT when the documentation surface is complete:
+    #   1. the normative SPEC document is committed (docs/SPEC.md), AND
+    #   2. a control-mapping document is committed (docs/COMPLIANCE.md) that
+    #      maps the enforced controls to ISO/IEC 42001 and the NIST AI RMF.
+    # BUILT here means the documented-mapping ceiling, NOT certified
+    # conformance. The honest ceiling for this row is "committed SPEC +
+    # documented self-assessment mapping"; accredited certification is
+    # explicitly out of scope (see docs/COMPLIANCE.md §5). Both artefacts are
+    # checked for presence on disk rather than assumed.
+    _compliance_doc = _repo_file_exists("docs/COMPLIANCE.md")
+    _f_compliance_built = _spec_committed and _compliance_doc
     rows.append(LayerStatus(
         layer_id="F-compliance",
         name="Foundation: Compliance & Standards (ISO / NIST / Gov)",
-        status="PARTIAL",
-        module="SPEC IDs in code (SPEC document not yet in repo)",
-        surfaces=["RFC 2119 conformance language; SPEC-ID references in tests and modules"],
-        notes="No automated compliance check; the SPEC IDs in code and tests are the compliance surface. The normative SPEC document is in preparation and will be committed alongside a future release.",
+        status="BUILT" if _f_compliance_built else "PARTIAL",
+        module="docs/SPEC.md, docs/COMPLIANCE.md; SPEC-IDs grep-traceable in code/tests",
+        surfaces=[
+            "docs/SPEC.md (normative spec, RFC 2119) committed",
+            "docs/COMPLIANCE.md: control mapping to ISO/IEC 42001 + NIST AI RMF + AU/QLD gov",
+            "RFC 2119 conformance language; SPEC-ID references grep-traceable (SPEC §8)",
+        ],
+        notes=(
+            "BUILT = documented-mapping ceiling: the normative SPEC "
+            "(docs/SPEC.md) and a self-assessment control mapping "
+            "(docs/COMPLIANCE.md) are both committed, mapping the enforced "
+            "controls (gates G1-G5, override ledger, classification, "
+            "retention/tombstones, Merkle/attestation) to ISO/IEC 42001 and "
+            "NIST AI RMF clauses. This is NOT certified conformance: no "
+            "accredited body has assessed the project, and certification is "
+            "explicitly out of scope (docs/COMPLIANCE.md disclaimer + §5). "
+            "There is still no automated SPEC-ID conformance check; the "
+            "grep-traceable SPEC IDs in code and tests remain the technical "
+            "compliance surface."
+        ) if _f_compliance_built else (
+            "No automated compliance check; the SPEC IDs in code and tests "
+            "are the compliance surface. The normative SPEC (docs/SPEC.md) "
+            "and/or the control-mapping document (docs/COMPLIANCE.md) are not "
+            "both present in this install."
+        ),
     ))
 
     rows.append(LayerStatus(
@@ -314,16 +502,50 @@ def collect_status() -> List[LayerStatus]:
         notes="Most complete of the foundation items.",
     ))
 
+    # F-metrics is BUILT when the shadow-observation log is not just
+    # appended but AGGREGATED at runtime: the metrics module computes a
+    # verdict distribution, an unsupported-claim rate over the window,
+    # and a trend, and can write .warrant/metrics.json. Checked by
+    # importing provenance.metrics and confirming the aggregation
+    # entry points resolve.
+    _metrics_built = _module_has(
+        "provenance.metrics",
+        "aggregate_shadow_log", "write_metrics_json",
+        "ShadowMetrics", "calibration_supplement",
+    )
     rows.append(LayerStatus(
         layer_id="F-metrics",
         name="Foundation: Metrics & Monitoring",
-        status="PARTIAL",
-        module="tools/warrantos-shadow-observe.py",
+        status="BUILT" if _metrics_built else "PARTIAL",
+        module="provenance.metrics, tools/warrantos-shadow-observe.py, cli.warrantos_cli",
         surfaces=[
             "Daily shadow observer (Task Scheduler at 07:00)",
             "publish-gate-shadow.log JSON-line append",
+            "metrics.aggregate_shadow_log() [verdict distribution, "
+            "unsupported-claim rate, improving/worsening/stable trend]",
+            "metrics.write_metrics_json() -> .warrant/metrics.json",
+            "CLI: warrantos metrics [--log --out --no-write --json]",
+            "gates.calibration_with_monitoring() links the G5 corpus "
+            "calibration to the shadow-log monitoring signal",
         ],
-        notes="Shadow log is the closest thing to metrics today. A full metrics pipeline is v1.0+.",
+        notes=(
+            "v0.9.1: the shadow log is now aggregated, not just appended. "
+            "provenance.metrics.aggregate_shadow_log() reads the JSON-lines "
+            "log and computes the verdict distribution, the unsupported-claim "
+            "rate over the observation window, and a simple "
+            "improving/worsening/stable trend (earlier vs later half of the "
+            "observed rows); a missing or empty log yields an honest empty "
+            "aggregate (observed=0, trend=insufficient_data) rather than an "
+            "error. `warrantos metrics` writes .warrant/metrics.json. The G5 "
+            "link is gates.calibration_with_monitoring(), which keeps the "
+            "corpus calibration and the operational shadow-rate as SEPARATE "
+            "surfaces (the shadow rate is a monitoring signal, not a "
+            "Brier-style confidence calibration). Tested in "
+            "tests/test_metrics.py."
+        ) if _metrics_built else (
+            "Shadow log is the closest thing to metrics today. A full "
+            "metrics pipeline is v1.0+."
+        ),
     ))
 
     return rows

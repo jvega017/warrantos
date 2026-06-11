@@ -6,6 +6,28 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-06-11
+
+### Added
+
+- **Claim detection expanded from 5 to 11 triggers** (`provenance.extract`). The detector now fires on six additional categories beyond the original year / percentage / magnitude / statute / attribution set: `decision` (must/shall/required/recommend, closing the salience/detection misalignment where decision-language sentences scored load-bearing but were not detected), `superlative` (largest/first/unprecedented), `causal` (caused/led to/results in/due to), `numeric_approx`, `named_body` (OECD/ABS/Treasury/ANAO/RBA and similar named authorities), and `comparison`. Causal, comparison, and named-body attribution carry +0.30 salience weight.
+- **Per-profile unsupported-claim HOLD thresholds** (Layer 7 G2). A run can no longer return a bare `PASS` while a large fraction of its load-bearing claims are unsupported; each profile carries an unsupported-fraction threshold above which the verdict is downgraded to `HOLD`. The strict `audit` profile is the tightest.
+- **Improved verdict transparency.** The verdict path surfaces why a verdict was reached (the triggering rule, the unsupported fraction, the separation-of-duties flag) rather than emitting a bare state.
+- **`ClaudeCliGrader`** (`provenance.grade.ClaudeCliGrader`, grader id `claude-cli` / `fetch+claude-cli`). A subscription-over-API verification path that shells out to `claude --print`, so a user on a Claude subscription verifies through their plan rather than spending on `ANTHROPIC_API_KEY`. Falls back to the heuristic on any failure; never called from the blocking hook.
+
+### Changed
+
+- **G4 Safety & Contamination is now BUILT** (was STARTER). The generic starter pattern set is extended with policy-domain contamination patterns and a 24-item labelled corpus (`eval/corpus/contamination.jsonl`); `corpus_completeness` flips from `starter` to `domain-extended`. The list is still not exhaustive: production deployments SHOULD continue to extend it against their own documented threat model.
+- **G5 Evaluation & Calibration is now BUILT** (was STARTER). `warrantos calibrate` runs the grader against the labelled eval corpus and writes `.warrant/calibration.json` (grader, corpus size, per-class recall, coverage estimate); `check_calibration()` accepts either live verdict rows (Brier-with-explicit-coverage) or the stored calibration file. Confidence coverage is typically 0 with the offline `HeuristicGrader`; per-class recall is the meaningful measure until an LLM grader supplies numeric confidence.
+- **Foundation: Data Classification is now BUILT** (was NOT_BUILT) (`provenance.classification`). A 4-tier default registry mirrors the reference adopter's data gate; keyword heuristics (Cabinet, ministerial, legal advice, Crown Solicitor, HR/PIP/termination, $NNNM/B budget markers, credential patterns) are a documented STARTER set that production deployments SHALL extend with a domain taxonomy. Unmatched text defaults to Official, never silently Public.
+- **Foundation: Retention & Deletion (tombstones) is now BUILT** (was NOT_BUILT) (`provenance.retention`, `schema/provenance.sql`). INV-011 is implemented as append-only tombstones: no hard delete. Expiry of a retention window appends a tombstone marking the run logically retired while preserving every ledger row (INV-004 append-only is never violated). Per-run windows are set at run creation or appended later via `set_window()` (latest override wins). Adopters still specify the window.
+- **Build state moves from 13 BUILT / 3 PARTIAL / 2 STARTER / 2 NOT_BUILT** at v0.9.1 to **20 BUILT / 0 PARTIAL** at v0.9.2. The final three foundation rows closed: **F-policy** (the normative spec `docs/SPEC.md` plus a machine-readable six-role registry `warrantos/provenance/roles.py`), **F-compliance** (a self-assessment control mapping to ISO/IEC 42001 and the NIST AI RMF in `docs/COMPLIANCE.md` — a documented mapping, explicitly not certified conformance; an automated SPEC-ID conformance check remains future work), and **F-metrics** (shadow-log aggregation via `warrantos/provenance/metrics.py` and the `warrantos metrics` command). Status flips are conditional on the artefacts existing on disk, pinned by guard tests. Adopter-specific configuration (sensitivity tiers, retention windows) remains adopter-supplied by design.
+- **Minimum supported Python lifted to 3.11** (`requires-python = ">=3.11"`). The CI matrix is now 3.11 / 3.12 / 3.13. Python 3.8 through 3.10 are dropped: they are end-of-life or near end-of-life and the code uses 3.11+ features.
+
+### Fixed
+
+- **CI smoke-test fix.** The CI smoke test is corrected to run against the supported Python matrix.
+
 ## [0.9.1] - 2026-06-10
 
 ### Added

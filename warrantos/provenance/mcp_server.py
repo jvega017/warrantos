@@ -309,7 +309,7 @@ def tool_warrant_check(args: Dict[str, Any]) -> Dict[str, Any]:
     single_actor_override = any(
         getattr(o, "single_actor", False) for o in overrides_on_record
     )
-    verdict, reasons = pipeline.consolidate_verdict(
+    verdict, reasons, fired_rule = pipeline.consolidate_verdict(
         boundary,
         claim_rows,
         verifier_rows,
@@ -343,6 +343,7 @@ def tool_warrant_check(args: Dict[str, Any]) -> Dict[str, Any]:
         "profile": profile,
         "verdict": verdict,
         "reasons": reasons,
+        "verdict_rule_fired": fired_rule,
         "context_items": len(classified),
         "by_context_type": type_counts,
         "claims_detected": len(claim_rows),
