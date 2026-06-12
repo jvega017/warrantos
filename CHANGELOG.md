@@ -6,6 +6,23 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.9.5] - 2026-06-12
+
+A feature and hygiene patch over 0.9.4. No change to the build state (still **20 BUILT / 0 PARTIAL**).
+
+### Added
+
+- **`warrantos init`.** Scaffolds starter `context.json` and `actor.json` templates so a first-time user does not have to reverse-engineer the actor-identity six-role schema. The writer and reviewer identities are deliberately different so the default scaffold does not trip the separation-of-duties rule, and the command prints the exact `check` invocation to run next. Existing files are never overwritten without `--force`. Verified end-to-end: the scaffolded files are accepted by `warrantos check`.
+
+### Changed
+
+- **CI now runs on Windows and macOS, not just Linux.** The `test` job is a 3-OS x 3-Python matrix. The 0.9.3 `cp1252` unicode crash shipped because CI only ran on Ubuntu and never exercised the Windows console path; that gap is closed.
+- **GitHub Actions opted into the Node 24 runtime** via `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` ahead of GitHub's 2026-06-16 forced migration. The security-critical action SHA-pins are preserved; only the JS runtime they execute under changes.
+
+### Fixed
+
+- **Removed a stray empty `50)` file** accidentally committed to the repository root.
+
 ## [0.9.4] - 2026-06-12
 
 A patch over 0.9.3, and the first release published to PyPI since 0.9.2: 0.9.3 was tagged but never published. No change to the build state (still **20 BUILT / 0 PARTIAL**); these are pre-publish correctness and packaging fixes folded in before the package reached PyPI.

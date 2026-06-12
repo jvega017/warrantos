@@ -153,6 +153,27 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    init_p = sub.add_parser(
+        "init",
+        help="Scaffold context.json and actor.json templates to start from.",
+        description=(
+            "Write starter context.json and actor.json files into a directory "
+            "so a first-time user does not have to reverse-engineer the "
+            "actor-identity six-role schema. Existing files are never "
+            "overwritten unless --force is given."
+        ),
+    )
+    init_p.add_argument(
+        "--dir",
+        default=".",
+        help="Directory to write the templates into (default: current directory).",
+    )
+    init_p.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing context.json / actor.json.",
+    )
+
     status_parser = sub.add_parser(
         "status",
         help="Print the per-layer WarrantOS conformance status.",
@@ -1488,6 +1509,78 @@ def _cmd_retention(args) -> int:
     return 2
 
 
+# Starter templates for `warrantos init`. The actor map is the canonical
+# six-role registry; writer and reviewer are deliberately different identities
+# so the default scaffold does not trip the separation-of-duties rule.
+_INIT_ACTOR_TEMPLATE = {
+    "context_classifier": "agent:your-classifier",
+    "insight_compiler": "human:your.name",
+    "source_curator": "human:your.name",
+    "clean_room_writer": "model:claude-opus-4-8",
+    "reviewer_qa": "human:your.reviewer",
+    "auditor": "human:your.auditor",
+}
+
+_INIT_CONTEXT_TEMPLATE = [
+    {
+        "id": "ctx_001",
+        "text": (
+            "Replace this with a piece of source material, feedback, or "
+            "instruction that informed the draft."
+        ),
+    }
+]
+
+
+def _cmd_init(args) -> int:
+    """Scaffold context.json and actor.json so a first run has its inputs."""
+    target = Path(getattr(args, "dir", ".") or ".")
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        sys.stderr.write("warrantos init: cannot create %s: %s\n" % (target, exc))
+        return 2
+
+    force = bool(getattr(args, "force", False))
+    plan = [
+        ("actor.json", _INIT_ACTOR_TEMPLATE),
+        ("context.json", _INIT_CONTEXT_TEMPLATE),
+    ]
+    written = []
+    skipped = []
+    for name, payload in plan:
+        dest = target / name
+        if dest.exists() and not force:
+            skipped.append(name)
+            continue
+        dest.write_text(
+            json.dumps(payload, indent=2) + "\n", encoding="utf-8"
+        )
+        written.append(name)
+
+    for name in written:
+        sys.stdout.write("created %s\n" % (target / name))
+    for name in skipped:
+        sys.stdout.write(
+            "skipped %s (already exists; pass --force to overwrite)\n"
+            % (target / name)
+        )
+
+    sys.stdout.write(
+        "\nactor.json maps the six provenance roles to identities. Use the\n"
+        "human: / model: / agent: prefixes. Keep clean_room_writer and\n"
+        "reviewer_qa as different identities: the separation-of-duties rule\n"
+        "downgrades a final-prose verdict to HOLD when one actor is both.\n"
+        "\nNext: write your draft, then run\n"
+        "  warrantos check YOUR_DRAFT.md \\\n"
+        "    --context %s \\\n"
+        "    --actor-identity %s --profile final-prose\n"
+        % (target / "context.json", target / "actor.json")
+    )
+    # Treat an all-skipped run as a soft no-op success; nothing was harmed.
+    return 0
+
+
 def _cmd_demo(args) -> int:
     """Run the bundled honest demo from package data. Zero setup required.
 
@@ -1557,6 +1650,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         else:
             sys.stdout.write(render_text(rows) + "\n")
         return 0
+
+    if args.command == "init":
+        return _cmd_init(args)
 
     if args.command == "demo":
         return _cmd_demo(args)
