@@ -15,6 +15,12 @@ on:
     tags:
       - "v*"
 
+env:
+  # Opt the SHA-pinned Node20 actions into the Node24 runtime now (GitHub's
+  # documented opt-in for the 2026-06-16 forced migration). Keeps the security
+  # SHA-pins intact; only the JS runtime they execute under changes.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   build:
     runs-on: ubuntu-latest

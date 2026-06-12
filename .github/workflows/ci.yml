@@ -7,6 +7,13 @@ on:
 permissions:
   contents: read
 
+env:
+  # Opt the SHA-pinned Node20 actions into the Node24 runtime now (GitHub's
+  # documented opt-in for the 2026-06-16 forced migration). This clears the
+  # Node20 deprecation WITHOUT unpinning the security-critical action SHAs:
+  # the pins stay; only the JS runtime they execute under changes.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   test:
     runs-on: ${{ matrix.os }}
