@@ -1,4 +1,6 @@
-# claude-provenance
+# WarrantOS
+
+*`claude-provenance` on GitHub and as the legacy Claude Code plugin; `warrantos` on PyPI and the CLI.*
 
 [![ci](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml)
 [![layers: 20B / 0P](https://img.shields.io/badge/layers-20B%20%2F%200P-brightgreen)](docs/STATUS.md)
@@ -44,14 +46,29 @@ Install from PyPI:
 pip install warrantos          # MCP server extra: pip install "warrantos[mcp]"
 ```
 
-To run the bundled demo below, use a source checkout (it ships the examples):
+See it work immediately, no setup (the demo fixtures ship in the package):
+
+```bash
+warrantos demo                 # bundled honest demo -> BLOCK verdict
+```
+
+Start on your own document:
+
+```bash
+warrantos init                 # scaffolds context.json + actor.json templates
+warrantos check YOUR_DRAFT.md \
+  --context context.json \
+  --actor-identity actor.json --profile final-prose
+```
+
+To inspect the inputs or run the fuller quickstart example, use a source checkout (it ships the `examples/` directory):
 
 ```bash
 git clone https://github.com/jvega017/claude-provenance.git
 cd claude-provenance
 python -m pip install -e ".[mcp]"
 
-# Run the bundled demo: writes per-run artefacts under .warrant/runs/
+# Per-run artefacts are written under .warrant/runs/
 warrantos check examples/quickstart-demo/draft.md \
   --context examples/quickstart-demo/context.json \
   --actor-identity examples/quickstart-demo/actor.json \
@@ -142,7 +159,7 @@ Full detail in [`docs/VERIFICATION.md`](docs/VERIFICATION.md). The envelope is p
 
 ## Why this exists
 
-This plugin is an operational companion to a working paper, *From Citation to
+This tool is an operational companion to a working paper, *From Citation to
 Epistemic Governance* (Prometheus Policy Lab, in preparation). It takes the
 paper's problem framing and burden-of-proof stance, not its formal apparatus:
 the provenance tuple, the five-valued confidence scale, and the warrant-decay
