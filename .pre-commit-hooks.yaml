@@ -1,0 +1,22 @@
+# Hooks exposed to pre-commit consumers. Add this repository to your
+# .pre-commit-config.yaml (see docs/DISTRIBUTION.md for the snippet).
+- id: warrantos-slop
+  name: warrantos slop (AI scaffold-residue gate)
+  description: >-
+    Fail the commit when staged Markdown carries AI scaffold or
+    conversational residue. --fail-over 0 means any residue fails.
+  entry: warrantos slop --fail-over 0
+  language: python
+  types: [markdown]
+  pass_filenames: true
+
+- id: warrantos-check
+  name: warrantos check (full warrant pipeline, opt-in)
+  description: >-
+    Run the full WarrantOS check pipeline with --ci over Markdown files.
+    Manual stage so it is opt-in; run with
+    `pre-commit run --hook-stage manual warrantos-check --files DRAFT.md`.
+  entry: warrantos check --ci
+  language: python
+  files: \.md$
+  stages: [manual]

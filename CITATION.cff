@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use WarrantOS in your work, please cite it using this metadata."
+title: "WarrantOS"
+type: software
+authors:
+  - family-names: "Vega"
+    given-names: "Juan"
+license: MIT
+repository-code: "https://github.com/jvega017/claude-provenance"
+url: "https://github.com/jvega017/claude-provenance"
+version: "0.10.0"
+# Date of the last public release (v0.9.5, published to PyPI 2026-06-12).
+date-released: "2026-06-12"
+keywords:
+  - provenance
+  - governance
+  - ai-safety
+  - citation
+  - warrantos
+preferred-citation:
+  type: unpublished
+  title: "From Citation to Epistemic Governance"
+  authors:
+    - family-names: "Vega"
+      given-names: "Juan"
+  notes: >-
+    Working paper, Prometheus Policy Lab, in preparation. WarrantOS
+    operationalises the paper's problem framing: the gap between citation
+    as attribution and citation as evidence. No DOI or venue yet; cite the
+    software release above until the paper is available.
