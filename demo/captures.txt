@@ -1,0 +1,48 @@
+$ python -m warrantos.cli.warrantos_cli demo
+WarrantOS honest demo
+---------------------
+Checking a synthetic AI-style draft that deliberately contains
+unsupported factual claims and conversational scaffold residue.
+Expect a BLOCK verdict.
+
+warrantos: output directory resolved to: C:\Users\jvega\AppData\Local\Temp\warrantos-demo-he5a954g\.warrant\runs\run_c6421e797c88
+warrantos check
+  run id:        run_c6421e797c88
+  profile:       final-prose
+  draft chars:   1579
+  context items: 1
+  by context_type:
+    synthesised_judgement  1
+  claims detected: 6
+  claims supported: 0
+  claims unsupported: 6
+  boundary: blocked (7 violations)
+  overrides on record: 0
+
+VERDICT: BLOCK
+  - BLOCK: boundary violation [assistant_opener severity=high] line 9: Certainly!
+  - BLOCK: boundary violation [delivery_framing severity=medium] line 9: Here is the revised
+  - BLOCK: boundary violation [request_acknowledgement severity=medium] line 9: as requested
+  - BLOCK: boundary violation [hedge_provenance severity=medium] line 15: Based on the information provided
+  - BLOCK: boundary violation [scaffold_placeholder severity=high] line 17: [TODO: add the figures from the evaluation once the team sen
+  - BLOCK: boundary violation [assistant_closer severity=high] line 19: I hope this helps
+  - BLOCK: boundary violation [assistant_closer severity=high] line 19: Let me know if
+
+artefacts written to: C:\Users\jvega\AppData\Local\Temp\warrantos-demo-he5a954g\.warrant\runs\run_c6421e797c88
+
+$ python -m warrantos.cli.warrantos_cli slop README.md docs
+SLOP SCORE: 2.7/10  (7 finding(s) across 19 file(s) scanned)
+
+path                    line  category          match
+-----------------------------------------------------
+docs/FULL-OVERVIEW.md      9  identity leak     As an AI
+docs/FULL-OVERVIEW.md      9  identity leak     I cannot verify
+docs/FULL-OVERVIEW.md      9  sign-off residue  I hope this helps
+docs/FULL-OVERVIEW.md      9  sign-off residue  let me know if
+docs/FULL-OVERVIEW.md      9  scaffold          Here's the revised
+docs/FULL-OVERVIEW.md      9  chat bleed        based on the information provided
+docs/FULL-OVERVIEW.md      9  placeholder       [TODO: ...]
+
+$ python -m warrantos.cli.warrantos_cli slop --badge README.md
+https://img.shields.io/badge/slop-free-brightgreen
+
