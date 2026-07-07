@@ -1,0 +1,64 @@
+name: Feature request
+description: Propose a new gate, layer feature, or wedge for warrantos.
+title: "[feature] "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        See CONTRIBUTING.md before filing: name the SPEC ID this addresses (or
+        the new one you are proposing), and read docs/STATUS.md so the request
+        is scoped against what is actually BUILT today.
+
+  - type: dropdown
+    id: wedge
+    attributes:
+      label: Which wedge does this serve?
+      description: WarrantOS has three primary use surfaces. Pick the closest fit so the request routes to the right maintainer context.
+      options:
+        - Docs linting (warrantos slop / scaffold-residue detection)
+        - Agent gating (Claude Code hooks, MCP server, Stop-hook verification)
+        - Governance / audit trail (check, attest, verify-external, CBOM, compliance mapping)
+        - Distribution (Action, pre-commit, plugin, packaging)
+        - Other (state below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the gap. If it maps to an existing SPEC-* or INV-* identifier, or to a NOT_BUILT/STARTER row in docs/STATUS.md, name it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Concrete example
+      description: A real or realistic command, document snippet, or workflow that shows the feature working end to end. Abstract descriptions without an example will be asked to add one before triage.
+      render: shell
+      placeholder: |
+        warrantos check final.md --profile academic-citation
+        # expects numeric [12] citations to resolve against a bibliography, unlike
+        # today's inline-URL / [CITE NEEDED] / (Author, Year) detection
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. Workarounds you have already tried, or why an existing flag/profile does not cover this.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I read docs/STATUS.md and this is not already BUILT.
+          required: true
+        - label: I understand the two NOT_BUILT foundation rows (Data Classification, Retention/Tombstones) need domain input from an adopter, not code, and I have proposed a taxonomy if this touches either.
+          required: false
