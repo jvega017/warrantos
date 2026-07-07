@@ -1,0 +1,76 @@
+site_name: WarrantOS
+site_description: >-
+  WarrantOS: a governance harness for AI-assisted writing that ships clean
+  prose and a separate auditable provenance ledger.
+site_url: https://jvega017.github.io/claude-provenance/
+repo_name: jvega017/claude-provenance
+repo_url: https://github.com/jvega017/claude-provenance
+edit_uri: edit/main/docs/
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    # First entry is the default on load: dark (slate) by default, with a
+    # toggle to switch to light. Deliberately not media-query-driven so the
+    # site always opens dark regardless of OS preference.
+    - scheme: slate
+      primary: black
+      accent: orange
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: default
+      primary: black
+      accent: orange
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.top
+    - navigation.footer
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+
+nav:
+  - Home: index.md
+  - Quickstart: QUICKSTART.md
+  - Overview: OVERVIEW.md
+  - Specification: SPEC.md
+  - Status: STATUS.md
+  - Verification: VERIFICATION.md
+  - Limitations: LIMITATIONS.md
+  - Compliance: COMPLIANCE.md
+  - Distribution: DISTRIBUTION.md
+  - Plugin: PLUGIN.md
+  - Reference:
+      - Context admissibility: CONTEXT-ADMISSIBILITY.md
+      - Cost model: COST.md
+      - Full overview (pre-0.10 README): FULL-OVERVIEW.md
+      - Improvement roadmap: IMPROVEMENT-ROADMAP-2026-06-11.md
+      - MCP config: MCP-CONFIG.md
+      - Multi-agent review: MULTI-AGENT-REVIEW.md
+      - Verifying without an API key: NO-API-KEY.md
+      - The provenance loop: PROVENANCE-LOOP.md
+      - Stack: STACK.md
+
+copyright: >-
+  MIT licensed. Built by Juan Vega, Prometheus Policy Lab, in a personal
+  capacity. Not associated with, funded by, or endorsed by any employer or
+  government.
