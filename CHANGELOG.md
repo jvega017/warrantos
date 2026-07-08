@@ -12,6 +12,8 @@ The distribution wave. No change to the build state (still **20 BUILT / 0 PARTIA
 
 ### Added
 
+- **`warrantos tells`.** Opinionated AI-writing-style scanner, the sibling of `slop`: contrastive negation ("not X, but Y" and its variants), hedge stacking (two or more hedges in one sentence), em-dash and spaced en-dash punctuation, a high-precision AI filler lexicon, and formulaic paragraph-opener drumbeats (reported from the second occurrence). Same engine, flags, score formula and exit contract as `slop`; documented as house style, never authorship proof (docs/TELLS.md).
+- **Hardened scaffold-bleed detection.** The canonical residue list gains four families: delivery meta-commentary ("Below is a", "Here's a breakdown"), sycophantic agreement ("You're absolutely right", "Great question"), offers to continue ("Feel free to", "Would you like me to"), and edit narration ("I've updated the"). Both the G1 boundary gate and `slop` consume the same list, so both surfaces gain the coverage at once.
 - **`warrantos slop`.** Zero-config AI scaffold-residue scanner for Markdown, reStructuredText and plain-text trees: per-finding file, line, matched pattern and category (chat bleed, identity leak, sign-off residue, scaffold, placeholder), a density-based SLOP SCORE from 0.0 to 10.0, `--json`, `--badge` (shields.io URL) and an opt-in `--fail-over THRESHOLD` CI exit code. Precision-tuned: only near-unambiguous residue patterns fire, and every finding names the pattern that matched.
 - **Composite GitHub Action (`action.yml`)** running `slop`, `check --ci`, or both over a repository, with SHA-pinned steps.
 - **pre-commit hooks (`.pre-commit-hooks.yaml`)**: `warrantos-slop` on Markdown files and an opt-in manual-stage `warrantos-check`.

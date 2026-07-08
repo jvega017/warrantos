@@ -58,6 +58,7 @@ nav:
   - Limitations: LIMITATIONS.md
   - Compliance: COMPLIANCE.md
   - Distribution: DISTRIBUTION.md
+  - Tells (style scanner): TELLS.md
   - Plugin: PLUGIN.md
   - Reference:
       - Context admissibility: CONTEXT-ADMISSIBILITY.md

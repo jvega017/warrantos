@@ -38,11 +38,11 @@ and `docs/SPEC.md` win.
 
 Coverage legend:
 
-- **Covered** — an enforced WarrantOS control directly produces evidence for
+- **Covered**: an enforced WarrantOS control directly produces evidence for
   the named framework outcome, scoped to the drafting/provenance workflow.
-- **Partial** — a control exists but is discipline-only, starter-grade, or
+- **Partial**: a control exists but is discipline-only, starter-grade, or
   covers only part of the outcome; the gap is named.
-- **Out of scope** — the framework outcome is an organisational or lifecycle
+- **Out of scope**: the framework outcome is an organisational or lifecycle
   responsibility WarrantOS does not address; the adopter owns it.
 
 ---
@@ -84,16 +84,16 @@ responsibility and are marked out of scope.
 
 | ISO/IEC 42001 area (clause / Annex A theme) | WarrantOS control | Coverage | Note |
 |---|---|---|---|
-| Clauses 4-10 (AIMS: context, leadership, planning, support, operation, evaluation, improvement) | — | Out of scope | These are organisational management-system requirements; WarrantOS provides component evidence only, not the management system. |
-| A.6 AI system lifecycle — verification & validation of outputs | G1-G5 gates; `consolidate_verdict()` | Covered | Each publish-boundary run is verified against output-integrity criteria and resolves to an explicit verdict. |
-| A.6 lifecycle — operation & monitoring | F-audit (SQLite ledger + per-run JSON + shadow log) | Partial | Per-run and cross-run audit exists; aggregated metrics/trend monitoring (F-metrics) is not built. |
-| A.7 Data for AI systems — data quality / provenance of inputs | Context classification (L1), admissibility (L4), provenance ledger (L2) | Covered | Inputs are classified, admissibility-gated, and recorded as append-only ledger rows. |
-| A.7 data — data handling / sensitivity controls | `classification.gate_sensitivity()` (4-tier, fail-closed) | Partial | Tier gate is enforced; the keyword heuristics are a documented STARTER set requiring a domain taxonomy. |
-| A.8 Information for interested parties — transparency of AI decisions | CBOM (`warrantos-cbom/v1`), `render_override_footer()` | Covered | CBOM records inputs, transforms, claims, and overrides; reader-facing footer surfaces overrides. |
-| A.9 Use of the AI system — human oversight / authority | Override ledger (L8): `record_override()`, `enforce_single_actor_rule()` | Covered | Human decisions are recorded with structured rationale and a separation-of-duties flag. |
-| A.10 Third-party / supplier considerations — integrity of records | Merkle root, attestation, warrant-bundle verification (F-integrity) | Partial | Tamper-evident integrity and external verification exist; Ed25519 signing is an optional extra and scheduled rotation is not built. |
+| Clauses 4-10 (AIMS: context, leadership, planning, support, operation, evaluation, improvement) | none | Out of scope | These are organisational management-system requirements; WarrantOS provides component evidence only, not the management system. |
+| A.6 AI system lifecycle: verification & validation of outputs | G1-G5 gates; `consolidate_verdict()` | Covered | Each publish-boundary run is verified against output-integrity criteria and resolves to an explicit verdict. |
+| A.6 lifecycle: operation & monitoring | F-audit (SQLite ledger + per-run JSON + shadow log) | Partial | Per-run and cross-run audit exists; aggregated metrics/trend monitoring (F-metrics) is not built. |
+| A.7 Data for AI systems: data quality / provenance of inputs | Context classification (L1), admissibility (L4), provenance ledger (L2) | Covered | Inputs are classified, admissibility-gated, and recorded as append-only ledger rows. |
+| A.7 data: data handling / sensitivity controls | `classification.gate_sensitivity()` (4-tier, fail-closed) | Partial | Tier gate is enforced; the keyword heuristics are a documented STARTER set requiring a domain taxonomy. |
+| A.8 Information for interested parties: transparency of AI decisions | CBOM (`warrantos-cbom/v1`), `render_override_footer()` | Covered | CBOM records inputs, transforms, claims, and overrides; reader-facing footer surfaces overrides. |
+| A.9 Use of the AI system: human oversight / authority | Override ledger (L8): `record_override()`, `enforce_single_actor_rule()` | Covered | Human decisions are recorded with structured rationale and a separation-of-duties flag. |
+| A.10 Third-party / supplier considerations: integrity of records | Merkle root, attestation, warrant-bundle verification (F-integrity) | Partial | Tamper-evident integrity and external verification exist; Ed25519 signing is an optional extra and scheduled rotation is not built. |
 | Records management / retention | Retention windows + tombstones (INV-011) | Partial | Append-only retention/retirement exists; the adopter still specifies the window and any disposal policy. |
-| Risk treatment / impact assessment (A.5) | — | Out of scope | WarrantOS does not perform AI impact or risk assessment; the adopter's AIMS owns this. |
+| Risk treatment / impact assessment (A.5) | none | Out of scope | WarrantOS does not perform AI impact or risk assessment; the adopter's AIMS owns this. |
 
 ---
 
@@ -107,18 +107,18 @@ except where a concrete WarrantOS artefact provides evidence.
 
 | AI RMF function / category | WarrantOS control | Coverage | Note |
 |---|---|---|---|
-| GOVERN 1 — policies, processes, accountability | `docs/SPEC.md` (normative, RFC 2119); `roles` taxonomy | Partial | A normative spec and a six-role actor taxonomy exist; organisational accountability structures are out of scope. |
-| GOVERN — roles & responsibilities | `roles.ACTOR_ROLES`, `validate_actor_identity()`; CBOM `actor_identity` | Covered | Six machine-readable roles; runtime validation; carried per run in the CBOM. |
-| GOVERN — risk management culture/oversight | — | Out of scope | Organisational responsibility. |
-| MAP 1-5 — context, categorisation of inputs | L1 context classification (11 classes); L4 admissibility | Covered | Inputs are categorised and admissibility-gated before they reach the writer. |
-| MAP — impact characterisation | — | Out of scope | WarrantOS does not characterise downstream AI impact. |
-| MEASURE 2 — evaluation for trustworthiness | G2 source/warrant, G5 calibration (`check_calibration()`, `warrantos calibrate`) | Covered | Claims are verified against admitted sources; calibration reports Brier-with-coverage and per-class recall against a labelled corpus. |
-| MEASURE 2 — safety / security / resilience | G4 contamination (`check_contamination()`) | Partial | Prompt-injection / impersonation / classification-laundering patterns are blocked; the corpus is domain-extended but not exhaustive. |
-| MEASURE — bias / fairness | — | Out of scope | Not addressed; this is a fact-support and integrity tool, not a fairness evaluator. |
-| MEASURE — accountability & transparency | CBOM; `render_override_footer()`; per-run JSON artefacts | Covered | Every run emits a traceable bill of materials and a reader-facing override footer. |
-| MANAGE 1 — risk response / human oversight | Override ledger (L8): structured rationale + SoD flag | Covered | Risk acceptance is an append-only ledger row requiring `risk_accepted` and `compensating_control`. |
-| MANAGE 4 — documentation, monitoring, recovery | F-audit; retention/tombstones (INV-011); Merkle/attestation | Partial | Tamper-evident records and append-only retention exist; aggregated monitoring (F-metrics) and recovery procedures are out of scope / not built. |
-| MANAGE — self-grounding / model-independence risk | G3 (`check_self_grounding()`, INV-006) | Partial | Same-family writer/verifier is flagged (informational), not blocked, per SPEC-L7-N003. |
+| GOVERN 1: policies, processes, accountability | `docs/SPEC.md` (normative, RFC 2119); `roles` taxonomy | Partial | A normative spec and a six-role actor taxonomy exist; organisational accountability structures are out of scope. |
+| GOVERN: roles & responsibilities | `roles.ACTOR_ROLES`, `validate_actor_identity()`; CBOM `actor_identity` | Covered | Six machine-readable roles; runtime validation; carried per run in the CBOM. |
+| GOVERN: risk management culture/oversight | none | Out of scope | Organisational responsibility. |
+| MAP 1-5: context, categorisation of inputs | L1 context classification (11 classes); L4 admissibility | Covered | Inputs are categorised and admissibility-gated before they reach the writer. |
+| MAP: impact characterisation | none | Out of scope | WarrantOS does not characterise downstream AI impact. |
+| MEASURE 2: evaluation for trustworthiness | G2 source/warrant, G5 calibration (`check_calibration()`, `warrantos calibrate`) | Covered | Claims are verified against admitted sources; calibration reports Brier-with-coverage and per-class recall against a labelled corpus. |
+| MEASURE 2: safety / security / resilience | G4 contamination (`check_contamination()`) | Partial | Prompt-injection / impersonation / classification-laundering patterns are blocked; the corpus is domain-extended but not exhaustive. |
+| MEASURE: bias / fairness | none | Out of scope | Not addressed; this is a fact-support and integrity tool, not a fairness evaluator. |
+| MEASURE: accountability & transparency | CBOM; `render_override_footer()`; per-run JSON artefacts | Covered | Every run emits a traceable bill of materials and a reader-facing override footer. |
+| MANAGE 1: risk response / human oversight | Override ledger (L8): structured rationale + SoD flag | Covered | Risk acceptance is an append-only ledger row requiring `risk_accepted` and `compensating_control`. |
+| MANAGE 4: documentation, monitoring, recovery | F-audit; retention/tombstones (INV-011); Merkle/attestation | Partial | Tamper-evident records and append-only retention exist; aggregated monitoring (F-metrics) and recovery procedures are out of scope / not built. |
+| MANAGE: self-grounding / model-independence risk | G3 (`check_self_grounding()`, INV-006) | Partial | Same-family writer/verifier is flagged (informational), not blocked, per SPEC-L7-N003. |
 
 ---
 
@@ -134,7 +134,7 @@ personal capacity and is not a Queensland Government product.
   separation-of-duties (accountability and human oversight), and append-only
   audit + retention (record-keeping) provide concrete control evidence for the
   drafting workflow they govern. They do not satisfy the policies, which apply
-  at the agency and use-case level. *[CITE NEEDED — adopters should cite the
+  at the agency and use-case level. *[CITE NEEDED: adopters should cite the
   specific current AU/QLD policy version applicable to their use case; this
   document does not assert clause-level conformance.]*
 - **Queensland information-handling and classification.** The
@@ -162,8 +162,8 @@ The honest ceiling for the F-compliance foundation row is a **committed
 normative specification plus this documented control mapping**, both
 grep-traceable to enforced code. That is what is in scope and what is built.
 
-Anything beyond that — accredited certification to ISO/IEC 42001, a third-party
-NIST AI RMF profile assessment, or a government assurance sign-off — is
+Anything beyond that: accredited certification to ISO/IEC 42001, a third-party
+NIST AI RMF profile assessment, or a government assurance sign-off: is
 explicitly **not** claimed and would require an external assessor and an
 organisational management system that WarrantOS, as a single-purpose technical
 library, does not provide. Per the project roadmap: a mapping table is

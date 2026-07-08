@@ -410,6 +410,65 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
 
+    # --- tells: opinionated AI-writing-style scanner (sibling of slop) ---
+    tells_p = sub.add_parser(
+        "tells",
+        help="Scan docs for AI-writing style tells and print a TELL SCORE.",
+        description=(
+            "Opinionated scanner for prose that reads as machine-written "
+            "even once chat residue is gone: contrastive negation, hedge "
+            "stacking, em/en-dash punctuation, AI filler phrases, and a "
+            "drumbeat of formulaic paragraph-openers. Where `warrantos "
+            "slop` is objective (near-unambiguous chat bleed), `tells` is "
+            "house style: every rule is a judgement call, and the score is "
+            "a prompt for review, never proof of authorship. Recursively "
+            "scans the given paths (default: the current directory), "
+            "skipping .git, node_modules, dist, build, .venv and "
+            "__pycache__. Each finding reports its category and rule id "
+            "and the command prints a density-based TELL SCORE from 0.0 "
+            "to 10.0, the same formula as SLOP SCORE. Exits 0 regardless "
+            "of findings unless --fail-over is given."
+        ),
+    )
+    tells_p.add_argument(
+        "paths",
+        nargs="*",
+        default=[],
+        help="Files or directories to scan (default: current directory).",
+    )
+    tells_p.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the scan report as JSON on stdout.",
+    )
+    tells_p.add_argument(
+        "--badge",
+        action="store_true",
+        help=(
+            "Print a shields.io badge URL only (green 'tells clean' at "
+            "zero findings, red score badge otherwise)."
+        ),
+    )
+    tells_p.add_argument(
+        "--fail-over",
+        type=float,
+        default=None,
+        metavar="THRESHOLD",
+        help=(
+            "Exit 1 when the TELL SCORE exceeds THRESHOLD (CI opt-in; "
+            "default behaviour is exit 0 regardless of findings)."
+        ),
+    )
+    tells_p.add_argument(
+        "--include-fences",
+        action="store_true",
+        help=(
+            "Also scan lines inside fenced code blocks. By default fenced "
+            "blocks are skipped: they usually quote command output or code "
+            "where the flagged phrasing is a deliberate example."
+        ),
+    )
+
     # --- attest: bundle a checked run into a portable .warrant artefact ---
     attest = sub.add_parser(
         "attest",
@@ -1718,6 +1777,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.command == "slop":
         from warrantos.provenance.slop import run_slop
         return run_slop(
+            args.paths,
+            as_json=args.json,
+            badge=args.badge,
+            fail_over=args.fail_over,
+            include_fences=args.include_fences,
+        )
+
+    if args.command == "tells":
+        from warrantos.provenance.tells import run_tells
+        return run_tells(
             args.paths,
             as_json=args.json,
             badge=args.badge,
