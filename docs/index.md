@@ -32,4 +32,4 @@ The claim detector is a heuristic and will produce false positives and false neg
 - [Distribution](DISTRIBUTION.md): install surfaces and packaging
 - Reference section in the sidebar: deeper design notes, the roadmap, and the multi-agent review record
 
-Source, issues, and releases: [github.com/jvega017/claude-provenance](https://github.com/jvega017/claude-provenance)
+Source, issues, and releases: [github.com/jvega017/warrantos](https://github.com/jvega017/warrantos)

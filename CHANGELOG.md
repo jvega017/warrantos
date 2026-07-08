@@ -1,12 +1,12 @@
 # Changelog
 
-All notable changes to `claude-provenance` are recorded here. The
+All notable changes to WarrantOS (repository formerly named `claude-provenance`) are recorded here. The
 project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and Semantic Versioning.
 
 ## [Unreleased]
 
-## [0.10.0] - unreleased (tag pending)
+## [0.10.0] - 2026-07-08
 
 The distribution wave. No change to the build state (still **20 BUILT / 0 PARTIAL**).
 

@@ -8,7 +8,7 @@ inside any Claude session.
 `claude-provenance` is not yet on PyPI. Install from source until the first published release:
 
 ```bash
-git clone https://github.com/jvega017/claude-provenance.git
+git clone https://github.com/jvega017/warrantos.git
 cd claude-provenance
 python -m pip install -e ".[mcp]"
 ```

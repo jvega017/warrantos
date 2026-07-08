@@ -62,11 +62,11 @@ attestation = ["cryptography>=41.0"]
 dev = []
 
 [project.urls]
-Homepage = "https://github.com/jvega017/claude-provenance"
-Repository = "https://github.com/jvega017/claude-provenance"
-Issues = "https://github.com/jvega017/claude-provenance/issues"
-Changelog = "https://github.com/jvega017/claude-provenance/blob/main/CHANGELOG.md"
-Documentation = "https://github.com/jvega017/claude-provenance/blob/main/docs/OVERVIEW.md"
+Homepage = "https://github.com/jvega017/warrantos"
+Repository = "https://github.com/jvega017/warrantos"
+Issues = "https://github.com/jvega017/warrantos/issues"
+Changelog = "https://github.com/jvega017/warrantos/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/jvega017/warrantos/blob/main/docs/OVERVIEW.md"
 
 [project.scripts]
 # Single-command entry points so users can run the tool without

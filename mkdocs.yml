@@ -2,9 +2,9 @@ site_name: WarrantOS
 site_description: >-
   WarrantOS: a governance harness for AI-assisted writing that ships clean
   prose and a separate auditable provenance ledger.
-site_url: https://jvega017.github.io/claude-provenance/
-repo_name: jvega017/claude-provenance
-repo_url: https://github.com/jvega017/claude-provenance
+site_url: https://jvega017.github.io/warrantos/
+repo_name: jvega017/warrantos
+repo_url: https://github.com/jvega017/warrantos
 edit_uri: edit/main/docs/
 docs_dir: docs
 

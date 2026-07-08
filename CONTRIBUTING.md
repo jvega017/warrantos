@@ -11,7 +11,7 @@ Thanks for the interest. This project ships honest governance machinery; contrib
 ## Local development
 
 ```bash
-git clone https://github.com/jvega017/claude-provenance.git
+git clone https://github.com/jvega017/warrantos.git
 cd claude-provenance
 python -m pip install -e ".[mcp]"
 ```
