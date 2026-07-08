@@ -49,7 +49,6 @@ from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 from urllib.parse import quote
 
 from warrantos.provenance.slop import (
-    MATCH_TRUNCATE,
     _SHIELDS_BASE,
     _display_path,
     _FENCE_RE,

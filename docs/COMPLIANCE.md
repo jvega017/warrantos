@@ -162,8 +162,8 @@ The honest ceiling for the F-compliance foundation row is a **committed
 normative specification plus this documented control mapping**, both
 grep-traceable to enforced code. That is what is in scope and what is built.
 
-Anything beyond that: accredited certification to ISO/IEC 42001, a third-party
-NIST AI RMF profile assessment, or a government assurance sign-off: is
+Anything beyond that (accredited certification to ISO/IEC 42001, a third-party
+NIST AI RMF profile assessment, or a government assurance sign-off) is
 explicitly **not** claimed and would require an external assessor and an
 organisational management system that WarrantOS, as a single-purpose technical
 library, does not provide. Per the project roadmap: a mapping table is

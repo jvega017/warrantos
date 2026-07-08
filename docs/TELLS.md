@@ -115,9 +115,9 @@ left alone: the spacing is what marks the dash as punctuation rather than
 a range separator.
 
 ```
-The scheme failed - not because of design, but delivery.       (em dash fires)
-The review ran 2020 - 2021 across three agencies.               (spaced en dash fires)
-The review ran 2020-2021 across three agencies.                 (no spaces, does not fire)
+The scheme failed — not because of design, but delivery.       (em dash fires)
+The review ran 2020 – 2021 across three agencies.              (spaced en dash fires)
+The review ran 2020–2021 across three agencies.                (no spaces, does not fire)
 ```
 
 This project's own documentation treats "no em dashes" as house law (see
