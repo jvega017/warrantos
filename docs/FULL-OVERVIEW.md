@@ -6,7 +6,17 @@
 
 WarrantOS does not detect truth, and it does not try to. It enforces that every claim in an AI-assisted document carries a warrant: a source, an explicit `[CITE NEEDED]`, or a `BLOCK` on the record. A four-state verdict (`PASS` / `HOLD` / `BLOCK` / `NOT_ASSESSABLE`) gates the output before it ships in `enforce` mode (the default `report` mode logs every miss without blocking), and every miss is written to an append-only ledger, tamper-evident against a previously distributed checkpoint, that you can hand an auditor.
 
-It also catches the other way an AI document betrays itself: **internal scaffold and conversational residue that bleeds from the chat into the final artefact**. "Certainly! Here's the revised version", "As an AI language model, I cannot verify", "based on the information provided", "I hope this helps, let me know if you would like me to expand", a stray `[TODO: ...]` placeholder. A clean artefact carries its evidence and none of the machinery that produced it. WarrantOS blocks the machinery from shipping.
+It also catches the other way an AI document betrays itself: **internal scaffold and conversational residue that bleeds from the chat into the final artefact**. For example (quoted patterns fenced so the default self-scan skips them):
+
+```text
+Certainly! Here's the revised version
+As an AI language model, I cannot verify
+based on the information provided
+I hope this helps, let me know if you would like me to expand
+[TODO: ...]
+```
+
+A clean artefact carries its evidence and none of the machinery that produced it. WarrantOS blocks the machinery from shipping.
 
 It governs the artefact, not the model. It runs at the writer's desk, on one document, before it ships, with zero infrastructure: stdlib-only, MIT, no API, no account. Governance platforms watch the system after the fact; WarrantOS gates the output before the fact.
 

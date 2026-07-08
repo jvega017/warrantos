@@ -55,6 +55,7 @@ repos:
     hooks:
       - id: warrantos-slop         # blocks scaffold residue in staged Markdown
       - id: warrantos-check        # full pipeline; manual stage, opt-in
+      - id: warrantos-tells        # style tells; manual stage, opt-in
 ```
 
 Note: the `v0.10.0` pins above resolve once the v0.10.0 tag is
