@@ -58,7 +58,7 @@ vocabularies are not conflated.
 
 Invariants are properties that SHALL hold across all runs.
 
-### INV-004 — Ledger append-only
+### INV-004: Ledger append-only
 
 The ledger tables SHALL be append-only at the storage layer. No row in
 an append-only table SHALL be updated or deleted. Enforcement is via
@@ -71,21 +71,21 @@ tables are: `human_override`, `context_transform`, `provenance_run`,
 retirement of a run is by appended tombstone, never by delete (see
 INV-011).
 
-### INV-006 — No self-grounding promotion
+### INV-006: No self-grounding promotion
 
 A claim SHALL NOT be promoted to `verified` on the strength of a verifier
 that shares the writer's model identity. When `writer_model` equals
 `verifier_model`, `gates.check_self_grounding()` SHALL return the
 `requires_external_grounding` verdict.
 
-### INV-007 — CBOM schema stability
+### INV-007: CBOM schema stability
 
 The CBOM schema name SHALL remain `warrantos-cbom/v1`. Schema changes
 SHALL be additive only (new optional fields with empty defaults); a
 change that would break a v0.1 reader SHALL NOT be made under this schema
 name.
 
-### INV-011 — Retention by append-only tombstone
+### INV-011: Retention by append-only tombstone
 
 Retiring a run on retention-window expiry SHALL append a tombstone row
 and SHALL NOT hard-delete any ledger row. Implemented in `retention.py`
@@ -93,7 +93,7 @@ and SHALL NOT hard-delete any ledger row. Implemented in `retention.py`
 
 ## 4. Layer requirements
 
-### Layer 1 — Context Classification
+### Layer 1: Context Classification
 
 **SPEC-L1-S005** (review-role gating): A `review_finding`-shaped input
 originating from an agent in the documented review-role registry
@@ -110,7 +110,7 @@ exercised against a labelled corpus. The reference implementation ships
 such a corpus test (`tests/test_classifier_corpus.py`); the rule set is
 inspectable and intentionally not a learned model.
 
-### Layer 2 — Provenance Ledger
+### Layer 2: Provenance Ledger
 
 **SPEC-L2-S002** (append-only ledger rows): Every classified context
 item, transform, and human override SHALL be persisted as an append-only
@@ -119,7 +119,7 @@ enforced by the same SQLite triggers. The override-ledger write path
 (`overrides.record_override()`) SHALL refuse a row that violates the
 structured-rationale rule (see SPEC-L8-S004).
 
-### Layer 3 — Applied Insight Compiler
+### Layer 3: Applied Insight Compiler
 
 **SPEC-L3-N001** (transform persistence): Every transformation of process
 material into a derived requirement SHALL write a ledger row recording
@@ -127,7 +127,7 @@ the transform (`ledger_write.persist_context_transform()`). Raw process
 text SHALL NOT reach Layer 5; only the derived requirement reaches the
 writer pack.
 
-### Layer 4 — Context Admissibility
+### Layer 4: Context Admissibility
 
 **SPEC-L4-S001** (writer admissibility): An item whose admissibility
 flags exclude `clean_room_writer` SHALL NOT appear in the writer pack.
@@ -141,7 +141,7 @@ reported on the pack.
 `synthesised_judgement` item SHALL be admitted to the writer pack only as
 a derived requirement, never verbatim (`writer_pack.compile_writer_pack()`).
 
-### Layer 5 — Clean-Room Writer Pack
+### Layer 5: Clean-Room Writer Pack
 
 The writer pack SHALL contain exactly five sections (Clean Brief,
 Approved Sources, Style Rules, Acceptance Tests, Banned Residue List) and
@@ -151,7 +151,7 @@ drafts, tool traces, or process notes. Schema is
 `WriterPack` dataclass; the exclusion of raw process material is enforced
 by SPEC-L4-S001 at the entry point.)
 
-### Layer 6 — Clean-Room Generation
+### Layer 6: Clean-Room Generation
 
 WarrantOS SHALL NOT call any LLM itself; the caller invokes their writer
 model through the returned `InvocationPlan`.
@@ -165,7 +165,7 @@ pack to the writer entry point.
 separate process so out-of-band context cannot leak through shared
 in-process state.
 
-### Layer 7 — Output Integrity Gates
+### Layer 7: Output Integrity Gates
 
 **SPEC-L7-G1 / SPEC-L7-S004** (prose boundary): `scan_prose_boundary()`
 SHALL flag process-to-prose leakage and AI-scaffold residue under a named
@@ -198,7 +198,7 @@ is zero, rather than smoothing the gap away. The offline heuristic grader
 emits no confidence, so coverage is typically 0 and per-class recall is
 the meaningful measure until an LLM grader supplies numeric confidence.
 
-### Layer 8 — Human Review and Decision Authority
+### Layer 8: Human Review and Decision Authority
 
 **SPEC-L8-S002** (overrides as ledger rows): Every human override SHALL
 be recorded as an append-only `human_override` ledger row, not as free

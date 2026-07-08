@@ -20,3 +20,14 @@
   language: python
   files: \.md$
   stages: [manual]
+
+- id: warrantos-tells
+  name: warrantos tells (AI-writing style, opinionated)
+  description: >-
+    Flags prose that reads machine-written (contrastive negation, hedge
+    stacking, filler). House style, so opt-in via the manual stage:
+    `pre-commit run --hook-stage manual warrantos-tells --files DRAFT.md`.
+  entry: warrantos tells --fail-over 0
+  language: python
+  types: [markdown]
+  stages: [manual]

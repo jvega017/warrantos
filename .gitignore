@@ -17,3 +17,4 @@ dist/
 _scaffold/
 _webverify/
 test_output.txt
+.wrangler/

@@ -79,6 +79,10 @@ CATEGORY_BY_RULE: Dict[str, str] = {
     "delivery_framing": CATEGORY_SCAFFOLD,
     "request_acknowledgement": CATEGORY_SCAFFOLD,
     "scaffold_placeholder": CATEGORY_PLACEHOLDER,
+    "delivery_meta_commentary": CATEGORY_SCAFFOLD,
+    "sycophantic_agreement": CATEGORY_CHAT_BLEED,
+    "offer_to_continue": CATEGORY_SIGN_OFF,
+    "chat_form_edit_narration": CATEGORY_SIGN_OFF,
 }
 
 # A rule added upstream without a category mapping still surfaces rather
@@ -185,9 +189,13 @@ def _display_path(file_path: Path, root: Path) -> str:
     resolved = file_path.resolve()
     for base in (Path.cwd(), root):
         try:
-            return resolved.relative_to(base.resolve()).as_posix()
+            rel = resolved.relative_to(base.resolve())
         except ValueError:
             continue
+        # An explicit file argument is its own root; relative_to then yields
+        # "." which is useless as a display path, so fall through.
+        if rel.as_posix() != ".":
+            return rel.as_posix()
     return resolved.as_posix()
 
 

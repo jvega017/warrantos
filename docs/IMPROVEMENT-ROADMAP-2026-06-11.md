@@ -1,4 +1,4 @@
-# WarrantOS improvement roadmap — v0.9.1 to a trustworthy v1.0
+# WarrantOS improvement roadmap: v0.9.1 to a trustworthy v1.0
 
 Prepared 2026-06-11. Grounded in the two structured analyses (incomplete layers; claim/verdict pipeline) and the limits flagged in live testing on Juan's machine.
 
@@ -12,7 +12,7 @@ WarrantOS v0.9.1 is installed editable with 605 tests green. Twelve layers repor
 
 ## Phased roadmap
 
-### Phase 1 — restore trust in the verdict (1-2 sessions)
+### Phase 1: restore trust in the verdict (1-2 sessions)
 
 These four changes address the two flagged limits that most undermine trust: detection recall and verdict semantics.
 
@@ -24,7 +24,7 @@ These four changes address the two flagged limits that most undermine trust: det
 
 4. **Add five further trigger categories.** Moderate, high impact. Superlative, causal, numeric-approximation, named-body attribution (OECD, ABS, Treasury, ANAO and so on) and empirical comparison, mirrored across both detection files, with salience weights (+0.30 for causal, comparison and body attribution so they become HOLD-eligible when unsupported). Extend `eval/corpus/seed.jsonl` with labelled examples per trigger type. Cumulative recall estimate: +30-40 points. Files: `warrantos/provenance/extract.py`, `warrantos/hooks/provenance_check.py`, `warrantos/provenance/salience.py`, `tests/test_verify.py`, `tests/test_warrantos_cli.py`, `eval/corpus/seed.jsonl`.
 
-### Phase 2 — wire the gate and close the v1.0-blocking layers (1-2 weeks)
+### Phase 2: wire the gate and close the v1.0-blocking layers (1-2 weeks)
 
 5. **Register the hooks and build the gate wrapper.** Moderate, high impact. Register `claude_code_verify_hook.py` under `hooks.Stop` (blocking) and `provenance_check.py` under `hooks.PostToolUse` for Write/Edit on .md/.docx in `~/.claude/settings.json`. Build `tools/warrantos-gate.ps1`: run `warrantos check` on the draft, exit non-zero on non-PASS. Files: `~/.claude/settings.json`, `tools/warrantos-gate.ps1` (new).
 
@@ -36,7 +36,7 @@ These four changes address the two flagged limits that most undermine trust: det
 
 9. **Add the [CITE NEEDED] tagging pass.** Moderate, medium impact. Read-only annotation of unsupported load-bearing claims in run artefacts, surfaced as a "suggested tags" section; extend the hook to treat [INFERRED] and [SPECULATIVE] as equivalent tags so labelled inferences stop generating false positives. This wires WarrantOS directly into the fact|inference|recommendation|speculation discipline. Files: `warrantos/cli/warrantos_cli.py`, `warrantos/hooks/provenance_check.py`, `warrantos/provenance/extract.py`.
 
-### Phase 3 — depth and durability (2-4 weeks, lower urgency)
+### Phase 3: depth and durability (2-4 weeks, lower urgency)
 
 10. **ClaudeCliGrader.** Substantial, medium impact. New grader class in `warrantos/provenance/grade.py` modelled on CodexGrader, invoking `claude --print` as a subprocess; selected by `get_grader()` when `claude` is on PATH and no API key or local URL is set. Enables contradicted verdicts on the Max subscription without API spend, per the subscription-over-API rule. Add `PROVENANCE_GRADER` env override. Files: `warrantos/provenance/grade.py`, `tests/test_grade.py`.
 

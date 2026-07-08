@@ -57,6 +57,14 @@ warrantos slop --fail-over 0 docs/     # CI mode: non-zero exit above the thresh
 
 Catches the tells that an AI draft shipped unedited: assistant openers and sign-offs, identity disclaimers, delivery framing, stray TODO placeholders, and factual sentences with no source in reach. The full pattern list lives in one place, [`context_admissibility`](warrantos/provenance/context_admissibility.py), so a `slop` finding and a `check` violation are always explained by the same rule. Fenced code blocks are skipped by default because they usually quote deliberate examples; scan them with `--include-fences`.
 
+Then go one layer deeper with `warrantos tells`, the opinionated sibling: it flags prose that is residue-free but still reads machine-written (contrastive negation of the "not X, but Y" family, stacked hedges, em-dash punctuation, AI filler phrases, a drumbeat of formulaic paragraph-openers). House style is a judgement call, so `tells` lives in its own command and its own score; the philosophy and limits are in [`docs/TELLS.md`](docs/TELLS.md).
+
+```
+warrantos tells docs/                  # TELL SCORE plus per-finding pattern and category
+```
+
+This repository holds itself to both: the docs scan slop-free and tells-clean.
+
 ## Gate your agent
 
 ```bash

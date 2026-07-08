@@ -491,6 +491,47 @@ _AI_RESIDUE_RULES = [
     ("scaffold_placeholder", re.compile(
         r"\[(?:TODO|INSERT|PLACEHOLDER|ADD|FIXME|XXX|YOUR [A-Z ]+|\.\.\.)\b[^\]]*\]"
         r"|\bTKTK\b|\blorem ipsum\b|\[\.\.\.\]", re.I), "high"),
+    # Sentence-start delivery meta-commentary not already covered by
+    # delivery_framing (which requires "revised|updated|final|requested"
+    # after "here is the/a/an/your" or "below is the/a/your"). The negative
+    # lookahead on "below is a" avoids double-firing with delivery_framing
+    # on the same phrase; "here is the complete" and the two other phrases
+    # are outside delivery_framing's adjective list.
+    ("delivery_meta_commentary", re.compile(
+        r"(?im)^\s*(?:below is a(?! (?:revised|updated|final|requested)\b)"
+        r"|here'?s a breakdown\b"
+        r"|here is the complete\b"
+        r"|the following (?:code|document|section) (?:provides|shows)\b)"
+    ), "medium"),
+    # Sycophantic-agreement opener, the "You're absolutely right" tell.
+    # Anchored to sentence start with trailing punctuation (mirrors
+    # assistant_opener) so it does not fire on a quoted or reported remark
+    # embedded mid-sentence, e.g. "The minister said you're absolutely
+    # right about the projections."
+    ("sycophantic_agreement", re.compile(
+        r"(?im)^\s*you'?re absolutely right\b[,.:!]"
+    ), "high"),
+    # Offer-to-continue phrases not already covered by assistant_closer
+    # (which scopes "feel free to" and "would you like me to" narrowly).
+    # "don't hesitate to" is scoped to the same three continuation verbs as
+    # assistant_closer's "feel free to" for the same reason: bare "don't
+    # hesitate to contact us" is a standard formal-correspondence closing,
+    # not an AI tell. "if you'd like, I can" is left unscoped because the
+    # comma + first-person "I can" construction is distinctively
+    # conversational and rare in formal prose.
+    ("offer_to_continue", re.compile(
+        r"\bdon'?t hesitate to (?:ask|reach out|let me)\b"
+        r"|\bif you'?d like,? I can\b", re.I
+    ), "high"),
+    # Sentence-start edit narration ("I've updated ...", "I have added the
+    # ...") for the slop scanner's markdown-only coverage. _BASE_LEAKAGE_
+    # RULES already has an unanchored implementation_narration rule, but
+    # that list is not consumed by warrantos slop (only _AI_RESIDUE_RULES
+    # is), so the residue family needs its own anchored entry here.
+    ("chat_form_edit_narration", re.compile(
+        r"(?im)^\s*(?:I'?ve (?:updated|revised|added|removed)\b"
+        r"|I have (?:updated|revised|added) the\b)"
+    ), "medium"),
 ]
 
 _PROFILE_RULES = {
