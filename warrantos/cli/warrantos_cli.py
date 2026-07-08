@@ -205,9 +205,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     check.add_argument(
         "draft",
-        nargs="?",
+        nargs="*",
         default=None,
-        help="Path to the draft Markdown file. Optional only with --explain-profile.",
+        help=(
+            "Path(s) to draft Markdown file(s). Each draft gets its own run. "
+            "Optional only with --explain-profile."
+        ),
     )
     check.add_argument(
         "--context",
@@ -349,6 +352,61 @@ def build_parser() -> argparse.ArgumentParser:
             "Only verify claims at or above this salience score. "
             "Default 0.0 = verify every detected claim. Pass 0.5 to "
             "match the documented LOAD_BEARING_THRESHOLD."
+        ),
+    )
+
+    # --- slop: zero-configuration AI scaffold-residue scanner ---
+    slop_p = sub.add_parser(
+        "slop",
+        help="Scan docs for AI scaffold residue and print a SLOP SCORE.",
+        description=(
+            "Zero-configuration scanner for AI-assistant scaffold residue in "
+            "documentation (.md, .rst, .txt). Recursively scans the given "
+            "paths (default: the current directory), skipping .git, "
+            "node_modules, dist, build, .venv and __pycache__. Each finding "
+            "reports its category (chat bleed, identity leak, sign-off "
+            "residue, scaffold, placeholder) and the command prints a "
+            "density-based SLOP SCORE from 0.0 to 10.0. Uses the same "
+            "canonical pattern list as the Layer 7 G1 prose-boundary gate. "
+            "Exits 0 regardless of findings unless --fail-over is given."
+        ),
+    )
+    slop_p.add_argument(
+        "paths",
+        nargs="*",
+        default=[],
+        help="Files or directories to scan (default: current directory).",
+    )
+    slop_p.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the scan report as JSON on stdout.",
+    )
+    slop_p.add_argument(
+        "--badge",
+        action="store_true",
+        help=(
+            "Print a shields.io badge URL only (green 'slop free' at zero "
+            "findings, red score badge otherwise)."
+        ),
+    )
+    slop_p.add_argument(
+        "--fail-over",
+        type=float,
+        default=None,
+        metavar="THRESHOLD",
+        help=(
+            "Exit 1 when the SLOP SCORE exceeds THRESHOLD (CI opt-in; "
+            "default behaviour is exit 0 regardless of findings)."
+        ),
+    )
+    slop_p.add_argument(
+        "--include-fences",
+        action="store_true",
+        help=(
+            "Also scan lines inside fenced code blocks. By default fenced "
+            "blocks are skipped: they usually quote command output or code "
+            "where residue strings are deliberate examples."
         ),
     )
 
@@ -1657,6 +1715,16 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.command == "demo":
         return _cmd_demo(args)
 
+    if args.command == "slop":
+        from warrantos.provenance.slop import run_slop
+        return run_slop(
+            args.paths,
+            as_json=args.json,
+            badge=args.badge,
+            fail_over=args.fail_over,
+            include_fences=args.include_fences,
+        )
+
     if args.command == "attest":
         return _cmd_attest(args)
 
@@ -1680,13 +1748,32 @@ def main(argv: Optional[List[str]] = None) -> int:
         sys.stdout.write(explain_profiles() + "\n")
         return 0
 
-    if not args.draft:
+    # Accept a bare string for backwards compatibility with callers that
+    # construct an argparse.Namespace by hand (tests, wrappers).
+    drafts = [args.draft] if isinstance(args.draft, str) else (args.draft or [])
+
+    if not drafts:
         sys.stderr.write(
-            "warrantos check: the draft argument is required "
+            "warrantos check: at least one draft argument is required "
             "(it is optional only with --explain-profile)\n"
         )
         return 2
 
+    if len(drafts) > 1 and args.run_id:
+        sys.stderr.write(
+            "warrantos check: --run-id cannot be combined with more than "
+            "one draft; each draft gets its own generated run\n"
+        )
+        return 2
+
+    worst = 0
+    for _draft_path in drafts:
+        worst = max(worst, _cmd_check_single(args, _draft_path))
+    return worst
+
+
+def _cmd_check_single(args, draft_path):
+    """Run the check pipeline over one draft. Returns the process exit code."""
     run_id = args.run_id or "run_" + uuid.uuid4().hex[:12]
 
     # B5 path containment: run_id must match the safe-character pattern.
@@ -1720,9 +1807,9 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # --- Inputs ---
     try:
-        draft = load_draft(args.draft)
+        draft = load_draft(draft_path)
     except FileNotFoundError:
-        sys.stderr.write("warrantos: draft file not found: %s\n" % args.draft)
+        sys.stderr.write("warrantos: draft file not found: %s\n" % draft_path)
         return 2
 
     # --- F-classification sensitivity gate (optional, fail-closed) ---
@@ -1799,7 +1886,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     cbom = build_cbom(
         context_inputs=context_inputs,
         claims=claim_records,
-        artefact_id=Path(args.draft).name,
+        artefact_id=Path(draft_path).name,
         actor_identity=actor_identity,
         classification_overrides=[],  # Day 5 does not emit overrides itself.
         override_ledger_refs=[str(o.id) for o in overrides_on_record],

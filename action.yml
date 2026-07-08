@@ -1,0 +1,75 @@
+name: "WarrantOS"
+description: >-
+  Gate AI-assisted documents in CI: block scaffold and conversational residue
+  (warrantos slop) and run the full warrant pipeline (warrantos check --ci).
+author: "Juan Vega"
+
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  paths:
+    description: >-
+      Space-separated files or directories to scan. Directories are walked
+      for Markdown files in check mode; slop mode passes them through as-is.
+    required: false
+    default: "."
+  profile:
+    description: >-
+      Layer 7 G1 boundary profile for check mode (final-prose, brief-light,
+      paper-full, prompt-template, audit, methodology, consultation_report,
+      changelog).
+    required: false
+    default: "brief-light"
+  mode:
+    description: >-
+      Which gate to run: "slop" (scaffold-residue scan), "check" (full
+      pipeline with --ci), or "both".
+    required: false
+    default: "slop"
+  fail-over:
+    description: >-
+      Slop-score threshold passed to `warrantos slop --fail-over`. The step
+      fails when the score exceeds this value. Default 0: any residue fails.
+    required: false
+    default: "0"
+  python-version:
+    description: "Python version to set up (3.11 to 3.13 are supported)."
+    required: false
+    default: "3.12"
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install WarrantOS from PyPI
+      shell: bash
+      run: python -m pip install --upgrade pip warrantos
+
+    - name: Run the slop gate (scaffold and conversational residue)
+      if: ${{ inputs.mode == 'slop' || inputs.mode == 'both' }}
+      shell: bash
+      run: warrantos slop ${{ inputs.paths }} --fail-over "${{ inputs.fail-over }}"
+
+    - name: Run the full check pipeline (--ci exits non-zero on HOLD/BLOCK/NOT_ASSESSABLE)
+      if: ${{ inputs.mode == 'check' || inputs.mode == 'both' }}
+      shell: bash
+      run: |
+        set -uo pipefail
+        status=0
+        for p in ${{ inputs.paths }}; do
+          if [ -d "$p" ]; then
+            while IFS= read -r -d '' f; do
+              echo "::group::warrantos check $f"
+              warrantos check "$f" --profile "${{ inputs.profile }}" --ci || status=1
+              echo "::endgroup::"
+            done < <(find "$p" -type f -name '*.md' -not -path '*/.*' -print0)
+          else
+            warrantos check "$p" --profile "${{ inputs.profile }}" --ci || status=1
+          fi
+        done
+        exit "$status"

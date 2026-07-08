@@ -1,0 +1,88 @@
+name: Bug report
+description: Something in warrantos does not behave as documented.
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this. WarrantOS is stdlib-only and
+        runs entirely offline in the default path, so most bugs are reproducible
+        from the command alone: please fill in every field below rather than
+        linking a private draft.
+
+  - type: input
+    id: version
+    attributes:
+      label: warrantos --version
+      description: Output of `warrantos --version` (or `pip show warrantos`).
+      placeholder: "warrantos 0.10.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - Other (state in description)
+    validations:
+      required: true
+
+  - type: input
+    id: python-version
+    attributes:
+      label: Python version
+      description: Output of `python --version`. WarrantOS supports 3.11-3.13.
+      placeholder: "Python 3.12.4"
+    validations:
+      required: true
+
+  - type: textarea
+    id: command
+    attributes:
+      label: Exact command
+      description: The full command you ran, including flags. Redact file paths or content that are sensitive; a minimal reproducing draft is more useful than a real one.
+      render: shell
+      placeholder: |
+        warrantos check final.md --context context.json --actor-identity actor.json --profile final-prose
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What you expected the command to do or print.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happened. Paste the full output or traceback, not a summary.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Optional. Relevant `context.json` / `actor.json` shape, profile used, or whether this reproduces with `warrantos demo`.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I checked docs/LIMITATIONS.md to confirm this is not a documented limitation.
+          required: true
+        - label: I am not reporting a security vulnerability (see SECURITY.md for that process).
+          required: true

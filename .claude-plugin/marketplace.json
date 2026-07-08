@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "WarrantOS / claude-provenance: an in-session citation-provenance gate for AI-assisted writing. Every factual claim needs a source or an explicit [CITE NEEDED], logged to a portable ledger.",
-    "version": "0.9.5"
+    "version": "0.10.0"
   },
   "plugins": [
     {
       "name": "claude-provenance",
       "description": "Legacy v0.3 in-session citation Stop hook and slash commands (/provenance-report, /provenance-verify). The full WarrantOS pipeline (CLI, MCP server, four-state verdict, attestation) installs separately from PyPI as `warrantos`.",
-      "version": "0.9.5",
+      "version": "0.10.0",
       "author": {
         "name": "Juan Vega",
         "url": "https://prometheuspolicylab.com"

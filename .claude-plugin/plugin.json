@@ -1,7 +1,7 @@
 {
-  "name": "claude-provenance",
-  "version": "0.9.5",
-  "description": "Claude Code plugin: the legacy v0.3 in-session citation Stop hook and slash commands. Every factual claim needs a source or an explicit [CITE NEEDED], logged to a portable ledger. The full WarrantOS pipeline (CLI, MCP server, four-state verdict, attestation) installs separately from PyPI as `warrantos`; wiring the WarrantOS surfaces into the plugin is a later item.",
+  "name": "warrantos",
+  "description": "Every claim ships with a source, a [CITE NEEDED], or a logged BLOCK. WarrantOS gates AI-assisted writing before it ships and logs every miss to a portable ledger.",
+  "version": "0.10.0",
   "author": {
     "name": "Juan Vega",
     "url": "https://prometheuspolicylab.com"
@@ -19,6 +19,28 @@
     "citations",
     "epistemics"
   ],
-  "hooks": "./warrantos/hooks/hooks.json",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/warrantos/hooks/provenance_check.py\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PLUGIN_ROOT}/warrantos/hooks/claude_code_verify_hook.py\""
+          }
+        ]
+      }
+    ]
+  },
   "commands": "./commands"
 }

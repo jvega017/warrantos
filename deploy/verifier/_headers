@@ -1,0 +1,19 @@
+# Cloudflare Pages response headers for the WarrantOS browser verifier.
+# https://developers.cloudflare.com/pages/configuration/headers/
+#
+# The page is a single static file with no external requests: it verifies
+# a dropped .warrant bundle entirely client-side (see web/README.md). The
+# CSP below mirrors the <meta http-equiv="Content-Security-Policy"> already
+# inlined in index.html (default-src 'none'; script-src 'unsafe-inline';
+# style-src 'unsafe-inline'; img-src data:) so the two policies agree, plus
+# base-uri, form-action and frame-ancestors, which only take effect as an
+# HTTP header and cannot be set via a <meta> tag.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+
+/index.html
+  Cache-Control: no-cache
+  Content-Security-Policy: default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'

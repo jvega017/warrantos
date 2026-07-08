@@ -6,6 +6,24 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.10.0] - unreleased (tag pending)
+
+The distribution wave. No change to the build state (still **20 BUILT / 0 PARTIAL**).
+
+### Added
+
+- **`warrantos slop`.** Zero-config AI scaffold-residue scanner for Markdown, reStructuredText and plain-text trees: per-finding file, line, matched pattern and category (chat bleed, identity leak, sign-off residue, scaffold, placeholder), a density-based SLOP SCORE from 0.0 to 10.0, `--json`, `--badge` (shields.io URL) and an opt-in `--fail-over THRESHOLD` CI exit code. Precision-tuned: only near-unambiguous residue patterns fire, and every finding names the pattern that matched.
+- **Composite GitHub Action (`action.yml`)** running `slop`, `check --ci`, or both over a repository, with SHA-pinned steps.
+- **pre-commit hooks (`.pre-commit-hooks.yaml`)**: `warrantos-slop` on Markdown files and an opt-in manual-stage `warrantos-check`.
+- **Claude Code plugin packaging**: `.claude-plugin/plugin.json` updated to the current schema, a `/warrant` slash command, and `docs/PLUGIN.md`.
+- **`CITATION.cff`** so the repository is citeable and linked to the working paper (in preparation).
+- **`docs/DISTRIBUTION.md`** with copy-paste snippets for every distribution surface.
+
+### Changed
+
+- **README rewritten to the 10-second contract**: real trimmed `warrantos demo` output up top, install one-liners, three usage wedges, and the full previous body preserved in `docs/FULL-OVERVIEW.md`.
+- **`warrantos check` now accepts multiple drafts** (`warrantos check a.md b.md`); each draft gets its own run and the process exit code is the worst across drafts. Fixes the pre-commit multi-file invocation, which previously died with an argparse usage error.
+
 ## [0.9.5] - 2026-06-12
 
 A feature and hygiene patch over 0.9.4. No change to the build state (still **20 BUILT / 0 PARTIAL**).
