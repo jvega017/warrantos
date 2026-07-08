@@ -18,3 +18,4 @@ _scaffold/
 _webverify/
 test_output.txt
 .wrangler/
+dist-verify/
