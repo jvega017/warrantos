@@ -44,6 +44,55 @@ class TestBoundaryProfiles(unittest.TestCase):
         ):
             self.assertIn(expected, caught, "missed AI residue rule: %s" % expected)
 
+    def test_final_prose_catches_extended_residue_families(self):
+        # Wave 2 hardening: delivery meta-commentary, sycophantic agreement,
+        # offer-to-continue, and chat-form edit narration, each anchored so
+        # they cannot fire on ordinary prose (see the near-miss test below).
+        text = "\n".join([
+            "Below is a summary of the quarterly figures.",
+            "Here's a breakdown of the costs by category.",
+            "Here is the complete list of recommendations.",
+            "The following section provides the methodology.",
+            "You're absolutely right, the projections need revision.",
+            "Don't hesitate to ask if further detail is required.",
+            "If you'd like, I can prepare a revised costing table.",
+            "I've updated the analysis to reflect the new figures.",
+            "I have added the missing citations to the reference list.",
+        ])
+        result = check_boundary(text, profile="final-prose")
+        self.assertEqual(result.verdict, "blocked")
+        caught = {v.rule_id for v in result.violations}
+        for expected in (
+            "delivery_meta_commentary", "sycophantic_agreement",
+            "offer_to_continue", "chat_form_edit_narration",
+        ):
+            self.assertIn(expected, caught, "missed AI residue rule: %s" % expected)
+
+    def test_extended_residue_families_do_not_fire_on_ordinary_prose(self):
+        # Each near-miss below is realistic, legitimately-written prose that
+        # shares vocabulary with a new rule but not its anchored context.
+        near_misses = [
+            "The report below is a summary of the quarterly figures.",
+            "Below is a revised summary of the changes.",
+            "The minister said you're absolutely right about the projections.",
+            "Please don't hesitate to contact the department for further "
+            "information.",
+            "If you would like more information, visit the website.",
+            "I've lived in Brisbane for ten years.",
+            "I have a revised proposal for the committee.",
+        ]
+        for text in near_misses:
+            result = check_boundary(text, profile="final-prose")
+            caught = {v.rule_id for v in result.violations}
+            for unexpected in (
+                "delivery_meta_commentary", "sycophantic_agreement",
+                "offer_to_continue", "chat_form_edit_narration",
+            ):
+                self.assertNotIn(
+                    unexpected, caught,
+                    "false positive: %r matched %s" % (text, unexpected),
+                )
+
     def test_clean_final_prose_has_no_ai_residue_false_positives(self):
         # A genuine policy paragraph must not trip the residue rules.
         text = (
