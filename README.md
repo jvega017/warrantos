@@ -4,7 +4,7 @@ Every factual claim in an AI-assisted document ships with a source, a `[CITE NEE
 
 *`claude-provenance` on GitHub and as the legacy Claude Code plugin; `warrantos` on PyPI and the CLI.*
 
-[![ci](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/claude-provenance/actions/workflows/ci.yml)
+[![ci](https://github.com/jvega017/warrantos/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/warrantos/actions/workflows/ci.yml)
 [![layers: 20B / 0P](https://img.shields.io/badge/layers-20B%20%2F%200P-brightgreen)](docs/STATUS.md)
 ![version: 0.10.0](https://img.shields.io/badge/version-0.10.0-orange)
 ![python: 3.11--3.13](https://img.shields.io/badge/python-3.11--3.13-blue)

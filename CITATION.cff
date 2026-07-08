@@ -6,11 +6,11 @@ authors:
   - family-names: "Vega"
     given-names: "Juan"
 license: MIT
-repository-code: "https://github.com/jvega017/claude-provenance"
-url: "https://github.com/jvega017/claude-provenance"
+repository-code: "https://github.com/jvega017/warrantos"
+url: "https://github.com/jvega017/warrantos"
 version: "0.10.0"
-# Date of the last public release (v0.9.5, published to PyPI 2026-06-12).
-date-released: "2026-06-12"
+# Date of the v0.10.0 release.
+date-released: "2026-07-08"
 keywords:
   - provenance
   - governance

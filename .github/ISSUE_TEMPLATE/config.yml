@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Questions and discussion
-    url: https://github.com/jvega017/claude-provenance/discussions
+    url: https://github.com/jvega017/warrantos/discussions
     about: Usage questions, profile-selection help, and general discussion belong in Discussions, not an issue. Bug reports and feature requests use the forms above.
   - name: Security vulnerability
-    url: https://github.com/jvega017/claude-provenance/security/policy
+    url: https://github.com/jvega017/warrantos/security/policy
     about: Do not file a public issue for a security vulnerability. See SECURITY.md for the responsible-disclosure process.

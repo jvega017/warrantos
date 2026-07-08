@@ -7,7 +7,7 @@ Five minutes from a fresh clone to a working verdict.
 `claude-provenance` is not yet on PyPI. Install from source until the first published release lands:
 
 ```bash
-git clone https://github.com/jvega017/claude-provenance.git
+git clone https://github.com/jvega017/warrantos.git
 cd claude-provenance
 python -m pip install -e ".[mcp]"
 ```
@@ -173,7 +173,7 @@ step you control.
 
 ## Reporting issues
 
-[`https://github.com/jvega017/claude-provenance/issues`](https://github.com/jvega017/claude-provenance/issues)
+[`https://github.com/jvega017/warrantos/issues`](https://github.com/jvega017/warrantos/issues)
 
 The CHANGELOG keeps an explicit "still deferred" list with rationale
 for each item. If a gap matters to your use case, please open an issue

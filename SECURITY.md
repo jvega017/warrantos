@@ -11,7 +11,7 @@
 
 ## How to report a vulnerability
 
-Email: **security@prometheuspolicylab.com** (preferred) or open a private security advisory via [GitHub Security Advisories](https://github.com/jvega017/claude-provenance/security/advisories/new).
+Email: **security@prometheuspolicylab.com** (preferred) or open a private security advisory via [GitHub Security Advisories](https://github.com/jvega017/warrantos/security/advisories/new).
 
 Please do **not** file a public issue for a suspected vulnerability. A public issue alerts every reader before the fix lands.
 

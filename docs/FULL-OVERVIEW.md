@@ -68,7 +68,7 @@ warrantos check YOUR_DRAFT.md \
 To inspect the inputs or run the fuller quickstart example, use a source checkout (it ships the `examples/` directory):
 
 ```bash
-git clone https://github.com/jvega017/claude-provenance.git
+git clone https://github.com/jvega017/warrantos.git
 cd claude-provenance
 python -m pip install -e ".[mcp]"
 
