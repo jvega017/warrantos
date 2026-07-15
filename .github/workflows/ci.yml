@@ -43,10 +43,23 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Run the suite (stdlib only, nothing to install)
         run: python -m unittest discover -s tests -v
+        env:
+          # Ensure tests are hermetic: no external Claude CLI or API keys
+          CLAUDE_HOME: ""
+          ANTHROPIC_API_KEY: ""
+          PROVENANCE_GRADER: ""
       - name: Smoke-test the evaluation harness (offline, must exit 0)
         run: python eval/run_eval.py
+        env:
+          # Ensure evaluation runs without external tools
+          CLAUDE_HOME: ""
+          ANTHROPIC_API_KEY: ""
       - name: Smoke-test the four-verdict gallery (thesis demo, must exit 0)
         run: python tools/run_gallery.py
+        env:
+          # Ensure gallery runs without external tools
+          CLAUDE_HOME: ""
+          ANTHROPIC_API_KEY: ""
 
   # The signing tests SKIP without the optional extra. Run them at least once
   # with [attestation] installed so the Ed25519 path is actually exercised.
@@ -62,6 +75,11 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e ".[attestation]"
           python -m unittest discover -s tests -v
+        env:
+          # Ensure tests are hermetic: no external Claude CLI or API keys
+          CLAUDE_HOME: ""
+          ANTHROPIC_API_KEY: ""
+          PROVENANCE_GRADER: ""
 
   # Packaging gate: build the wheel and sdist, validate metadata, and prove a
   # clean install works with all console entry points. Catches packaging

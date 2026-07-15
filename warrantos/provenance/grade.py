@@ -594,6 +594,14 @@ class CodexGrader:
                     return self._error(claim_text, citation,
                                        "Codex call timed out after %ds" % timeout)
 
+                # Check returncode IMMEDIATELY after subprocess returns.
+                # Do not attempt to parse output from a failed process.
+                if proc.returncode != 0:
+                    stderr_msg = (proc.stderr or "").strip()[:120]
+                    return self._error(
+                        claim_text, citation,
+                        "Codex exited %d: %s" % (proc.returncode, stderr_msg))
+
             try:
                 with open(out_path, "r", encoding="utf-8", errors="replace") as fh:
                     raw = fh.read().strip()
@@ -601,11 +609,6 @@ class CodexGrader:
                 raw = ""
 
             if not raw:
-                if proc.returncode != 0:
-                    return self._error(
-                        claim_text, citation,
-                        "Codex exited %d: %s" % (proc.returncode,
-                                                 (proc.stderr or "").strip()[:120]))
                 return self._error(claim_text, citation,
                                    "Codex produced no final message.")
 
@@ -831,18 +834,43 @@ class ClaudeCliGrader:
 
 
 # ---------------------------------------------------------------------------
-# Factory function
+# Factory functions (named, not lambda, for readable stack traces)
 # ---------------------------------------------------------------------------
 
+def _factory_heuristic_grader():
+    """Factory: create a HeuristicGrader instance."""
+    return HeuristicGrader()
+
+
+def _factory_local_llm_grader():
+    """Factory: create a LocalLLMGrader instance."""
+    return LocalLLMGrader()
+
+
+def _factory_llm_grader():
+    """Factory: create an LLMGrader instance."""
+    return LLMGrader()
+
+
+def _factory_claude_cli_grader():
+    """Factory: create a ClaudeCliGrader instance."""
+    return ClaudeCliGrader()
+
+
+def _factory_codex_grader():
+    """Factory: create a CodexGrader instance."""
+    return CodexGrader()
+
+
 _GRADER_OVERRIDE_REGISTRY = {
-    "heuristic": lambda: HeuristicGrader(),
-    "local": lambda: LocalLLMGrader(),
-    "local-llm": lambda: LocalLLMGrader(),
-    "llm": lambda: LLMGrader(),
-    "anthropic": lambda: LLMGrader(),
-    "claude": lambda: ClaudeCliGrader(),
-    "claude-cli": lambda: ClaudeCliGrader(),
-    "codex": lambda: CodexGrader(),
+    "heuristic": _factory_heuristic_grader,
+    "local": _factory_local_llm_grader,
+    "local-llm": _factory_local_llm_grader,
+    "llm": _factory_llm_grader,
+    "anthropic": _factory_llm_grader,
+    "claude": _factory_claude_cli_grader,
+    "claude-cli": _factory_claude_cli_grader,
+    "codex": _factory_codex_grader,
 }
 
 
