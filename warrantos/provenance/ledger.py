@@ -22,6 +22,7 @@ Australian English throughout.
 import csv
 import io
 import sqlite3
+import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -199,8 +200,9 @@ def _compute_debt(con: sqlite3.Connection) -> dict:
             for verdict, count in rows:
                 if verdict in verif_counts:
                     verif_counts[verdict] = count
-        except Exception:
-            pass  # tolerate any schema drift
+        except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
+            # D2: integrity path - catch specific, log unexpected
+            sys.stderr.write(f"Warning: ledger verification counts read failed: {e}\n")
 
     # -----------------------------------------------------------------
     # Load-bearing unsupported claims
@@ -214,8 +216,9 @@ def _compute_debt(con: sqlite3.Connection) -> dict:
             for (claim_text,) in unsup_rows:
                 if is_load_bearing(claim_text):
                     lb_unsupported += 1
-        except Exception:
-            pass
+        except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
+            # D2: integrity path - catch specific, log unexpected
+            sys.stderr.write(f"Warning: ledger load-bearing claims read failed: {e}\n")
 
     # -----------------------------------------------------------------
     # debt_per_1000_words (proxy: uses claims as denominator)
@@ -260,8 +263,9 @@ def _compute_debt(con: sqlite3.Connection) -> dict:
                     direction = "down"
                 else:
                     direction = "flat"
-        except Exception:
-            pass
+        except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
+            # D2: integrity path - catch specific, log unexpected
+            sys.stderr.write(f"Warning: ledger trend read failed: {e}\n")
 
     return {
         "totals": totals,
@@ -361,14 +365,17 @@ def _collect_matrix_rows(con: sqlite3.Connection) -> List[dict]:
             ).fetchall()
             for claim_id, verdict, citation in vrows:
                 verif_map[claim_id] = {"verdict": verdict, "citation": citation or ""}
-        except Exception:
-            pass
+        except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
+            # D2: integrity path - catch specific, log unexpected
+            sys.stderr.write(f"Warning: ledger verification map read failed: {e}\n")
 
     try:
         claim_rows = con.execute(
             "SELECT id, status, trigger, claim_text FROM provenance_claim ORDER BY id"
         ).fetchall()
-    except Exception:
+    except (sqlite3.OperationalError, sqlite3.DatabaseError) as e:
+        # D2: integrity path - catch specific, log unexpected
+        sys.stderr.write(f"Warning: ledger claim rows read failed: {e}\n")
         return []
 
     result = []

@@ -57,7 +57,7 @@ Actor identity file format (JSON object mapping role -> identity)::
         "auditor": "human:director.so"
     }
 
-Stdlib only. Python 3.8 compatible.
+Stdlib only. Python 3.11+.
 """
 
 from __future__ import annotations
@@ -65,39 +65,38 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sqlite3
 import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-# Make the repository root importable when running this file directly.
 # File is at <root>/warrantos/cli/warrantos_cli.py, so the root is three up.
+# This is used to locate bundled data files (eval corpus, demo assets), not for sys.path manipulation.
 _REPO_ROOT = Path(__file__).resolve().parent.parent.parent
-if str(_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(_REPO_ROOT))
 
-from warrantos.provenance.pathguard import RUN_ID_RE, resolve_under  # noqa: E402
-from warrantos.provenance.cbom import (  # noqa: E402
+from warrantos.provenance.pathguard import RUN_ID_RE, resolve_under
+from warrantos.provenance.cbom import (
     CBOM,
     ClaimRecord,
     ClassificationOverrideRecord,
     ContextInput,
     build_cbom,
 )
-from warrantos.provenance.context_admissibility import (  # noqa: E402
+from warrantos.provenance.context_admissibility import (
     BoundaryResult,
     ContextItem,
     classify_context,
     scan_prose_boundary,
 )
-from warrantos.provenance.footer import render_override_footer  # noqa: E402
-from warrantos.provenance.overrides import list_overrides_for_run  # noqa: E402
-from warrantos.provenance.salience import LOAD_BEARING_THRESHOLD, is_load_bearing  # noqa: E402
-from warrantos.provenance.verify import extract_citation, verify_claim, verify_text  # noqa: E402
-from warrantos.provenance.extract import CLAIM_TRIGGERS, sentences  # noqa: E402
-from warrantos.provenance.gates import check_self_grounding  # noqa: E402
-from warrantos import __version__  # noqa: E402
+from warrantos.provenance.footer import render_override_footer
+from warrantos.provenance.overrides import list_overrides_for_run
+from warrantos.provenance.salience import LOAD_BEARING_THRESHOLD, is_load_bearing
+from warrantos.provenance.verify import extract_citation, verify_claim, verify_text
+from warrantos.provenance.extract import CLAIM_TRIGGERS, sentences
+from warrantos.provenance.gates import check_self_grounding
+from warrantos import __version__
 
 
 VERDICT_PASS = "PASS"
@@ -779,8 +778,10 @@ def run_verifier_capped(
             verdict = verify_claim(
                 claim["sentence"],
                 citation=claim.get("citation"),
+                fetch=fetch,
             )
         except Exception as exc:
+            # D2: verifier error path - catch broad to record failure gracefully
             verifier_rows.append({
                 "claim_text": claim["sentence"],
                 "citation": claim.get("citation"),
@@ -814,11 +815,6 @@ def run_verifier_capped(
             if c.get("salience", 0.0) < salience_min
         ][:3],
     }
-    # Fetch flag is honoured by the underlying verify_claim through
-    # the offline-by-default path; --no-fetch is implicit when the
-    # caller passes fetch=False because verify_claim does not perform
-    # a network fetch when there is no URL citation.
-    _ = fetch
     return verifier_rows, skipped_summary
 
 
@@ -1650,7 +1646,15 @@ _INIT_CONTEXT_TEMPLATE = [
 
 
 def _cmd_init(args) -> int:
-    """Scaffold context.json and actor.json so a first run has its inputs."""
+    """Scaffold context.json and actor.json so a first run has its inputs.
+
+    Also initializes the provenance ledger database with append-only triggers.
+    """
+    from warrantos.provenance.ledger_write import (
+        open_writable_db,
+        enable_append_only_triggers,
+    )
+
     target = Path(getattr(args, "dir", ".") or ".")
     try:
         target.mkdir(parents=True, exist_ok=True)
@@ -1682,6 +1686,28 @@ def _cmd_init(args) -> int:
             "skipped %s (already exists; pass --force to overwrite)\n"
             % (target / name)
         )
+
+    # Initialize the provenance ledger database with append-only triggers
+    try:
+        _cwd = Path(".").resolve()
+        db_path_raw = os.environ.get(
+            "WARRANTOS_DB", str(Path(".warrant") / "provenance.db")
+        )
+        db_path_safe = str(resolve_under(_cwd, db_path_raw))
+
+        # Create database and schema
+        con = open_writable_db(db_path_safe)
+        con.close()
+
+        # Enable append-only triggers
+        enable_append_only_triggers(db_path_safe)
+        sys.stdout.write("initialized provenance ledger database at %s\n" % db_path_safe)
+    except ValueError as exc:
+        sys.stderr.write("warrantos init: database path out of bounds: %s\n" % exc)
+        return 2
+    except Exception as exc:
+        sys.stderr.write("warrantos init: could not initialize ledger database: %s\n" % exc)
+        return 2
 
     sys.stdout.write(
         "\nactor.json maps the six provenance roles to identities. Use the\n"
@@ -1932,7 +1958,7 @@ def _cmd_check_single(args, draft_path):
                 salience_min=args.salience_min,
                 max_claims=args.max_verify_claims,
             )
-        except Exception as exc:  # pragma: no cover - defensive
+        except Exception as exc:  # D2: CLI integration - defensive catch for verifier subprocess
             sys.stderr.write("warrantos: verifier internal error captured: %s\n" % exc)
             verifier_rows = []
             verifier_skipped = {
@@ -1949,7 +1975,9 @@ def _cmd_check_single(args, draft_path):
     overrides_on_record = []
     try:
         overrides_on_record = list_overrides_for_run(_db_path_safe, run_id)
-    except Exception:
+    except sqlite3.Error as exc:
+        # D2: integrity path - warn instead of silent
+        sys.stderr.write(f"Warning: Could not load overrides: {type(exc).__name__}\n")
         overrides_on_record = []
 
     cbom = build_cbom(
@@ -2010,6 +2038,36 @@ def _cmd_check_single(args, draft_path):
         footer_markdown=footer_markdown,
     )
 
+    # --- Ledger persistence (Fix C4: append-only ledger for check runs) ---
+    from warrantos.provenance.ledger_write import record_check_run
+    ledger_status = "UNKNOWN"
+    try:
+        success, msg = record_check_run(
+            _db_path_safe,
+            run_id,
+            claims=claim_rows,
+            verifier_rows=verifier_rows,
+            boundary=boundary.verdict,
+            verdict=verdict,
+            reasons=reasons,
+            profile=args.profile,
+            timestamps={"run_ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
+        )
+        if success:
+            ledger_status = "WRITTEN"
+        else:
+            ledger_status = f"WRITE_FAILED: {msg}"
+            sys.stderr.write(f"Warning: ledger write failed: {msg}\n")
+            if args.ci:
+                # In CI mode, ledger write failure causes non-zero exit
+                return 1
+    except Exception as exc:
+        # D2: CLI integration - defensive catch for ledger write errors
+        ledger_status = f"WRITE_FAILED: {str(exc)}"
+        sys.stderr.write(f"Warning: ledger write error: {str(exc)}\n")
+        if args.ci:
+            return 1
+
     # --- Report ---
     type_counts: Dict[str, int] = {}
     for item in classified:
@@ -2037,6 +2095,7 @@ def _cmd_check_single(args, draft_path):
         "reasons": reasons,
         "verdict_rule_fired": fired_rule,
         "out_dir": str(out_dir),
+        "ledger": ledger_status,
         "cbom_schema": cbom.schema,
         "load_bearing_threshold": LOAD_BEARING_THRESHOLD,
         "g3_self_grounding": g3_result.to_dict() if g3_result is not None else None,

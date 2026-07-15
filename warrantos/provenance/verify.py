@@ -18,6 +18,7 @@ import html.parser
 import ipaddress
 import re
 import socket
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -62,7 +63,9 @@ def _is_safe_url(url: str) -> bool:
     """
     try:
         parts = urllib.parse.urlsplit(url)
-    except Exception:
+    except (ValueError, TypeError) as e:
+        # D2: network operation - specific exceptions only
+        sys.stderr.write(f"Warning: URL parsing failed: {e}\n")
         return False
 
     if parts.scheme not in _ALLOWED_SCHEMES:
@@ -74,7 +77,9 @@ def _is_safe_url(url: str) -> bool:
 
     try:
         results = socket.getaddrinfo(hostname, None)
-    except Exception:
+    except (socket.gaierror, socket.error, OSError) as e:
+        # D2: network operation - specific exceptions only
+        sys.stderr.write(f"Warning: DNS resolution failed: {e}\n")
         return False
 
     if not results:
@@ -211,7 +216,9 @@ def fetch_text(url: str) -> Optional[str]:
         # Collapse whitespace.
         text = re.sub(r"\s+", " ", text).strip()
         return text if text else None
-    except Exception:
+    except (urllib.error.URLError, socket.timeout, OSError, UnicodeDecodeError) as e:
+        # D2: network operation - specific exceptions only
+        sys.stderr.write(f"Warning: URL fetch failed: {e}\n")
         return None
 
 
@@ -256,8 +263,9 @@ def extract_citation(sentence: str) -> Optional[str]:
 
 def verify_claim(
     claim_text: str,
-    citation: Optional[str],
+    citation: Optional[str] = None,
     grader=None,
+    fetch: bool = True,
 ) -> Verdict:
     """Grade a single claim, optionally fetching the cited URL.
 
@@ -270,6 +278,9 @@ def verify_claim(
     grader:
         A grader instance (HeuristicGrader or LLMGrader). If None, the
         grader from get_grader() is used.
+    fetch:
+        If False, no network requests are made. The grader receives
+        source_text=None regardless of whether a citation URL is present.
 
     Returns
     -------
@@ -279,7 +290,7 @@ def verify_claim(
         grader = get_grader()
 
     source_text: Optional[str] = None
-    if citation and _URL_PATTERN.match(citation):
+    if fetch and citation and _URL_PATTERN.match(citation):
         source_text = fetch_text(citation)
 
     return grader.grade(claim_text, source_text, citation)

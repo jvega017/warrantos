@@ -38,7 +38,9 @@ def _read_event():
     try:
         raw = sys.stdin.read()
         return json.loads(raw) if raw.strip() else {}
-    except Exception:
+    except (json.JSONDecodeError, ValueError, TypeError) as e:
+        # D2: hook - may swallow but log warning
+        sys.stderr.write("Warning: provenance check failure: event parsing\n")
         return {}
 
 
@@ -56,7 +58,8 @@ def _last_assistant_text(transcript_path):
                 continue
             try:
                 obj = json.loads(line)
-            except Exception:
+            except (json.JSONDecodeError, ValueError):
+                # D2: hook - may swallow but log warning
                 continue
             if obj.get("type") != "assistant":
                 continue
@@ -72,7 +75,9 @@ def _last_assistant_text(transcript_path):
                 if parts:
                     return "\n".join(parts)
         return ""
-    except Exception:
+    except (json.JSONDecodeError, ValueError, TypeError, AttributeError) as e:
+        # D2: hook - may swallow but log warning
+        sys.stderr.write("Warning: provenance check failure: transcript read\n")
         return ""
 
 
@@ -87,7 +92,9 @@ def _written_text(event):
         if "edits" in ti and isinstance(ti["edits"], list):  # MultiEdit
             return "\n".join(str(e.get("new_string", "")) for e in ti["edits"])
         return ""
-    except Exception:
+    except (TypeError, KeyError, AttributeError) as e:
+        # D2: hook - may swallow but log warning
+        sys.stderr.write("Warning: provenance check failure: written text extraction\n")
         return ""
 
 
@@ -241,8 +248,9 @@ def log(session_id, source_event, file_path, mode, rows, totals):
         )
         con.commit()
         con.close()
-    except Exception:
-        pass  # the ledger is best-effort; never break the session over it
+    except (sqlite3.Error, OSError, IOError) as e:
+        # D2: hook - may swallow but log warning
+        sys.stderr.write("Warning: provenance check failure: ledger write\n")
 
 
 # --- report ---------------------------------------------------------------
@@ -312,6 +320,8 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except Exception as e:
+        # D2: hook - may swallow but log warning
         # Absolute backstop: a provenance hook must never break a session.
+        sys.stderr.write(f"Warning: provenance check failure: {type(e).__name__}\n")
         sys.exit(0)
