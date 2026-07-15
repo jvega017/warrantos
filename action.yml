@@ -48,28 +48,34 @@ runs:
 
     - name: Install WarrantOS from PyPI
       shell: bash
-      run: python -m pip install --upgrade pip warrantos
+      run: python -m pip install --upgrade pip "warrantos==0.11.0"
 
     - name: Run the slop gate (scaffold and conversational residue)
       if: ${{ inputs.mode == 'slop' || inputs.mode == 'both' }}
       shell: bash
-      run: warrantos slop ${{ inputs.paths }} --fail-over "${{ inputs.fail-over }}"
+      env:
+        PATHS: ${{ inputs.paths }}
+        FAIL_OVER: ${{ inputs.fail-over }}
+      run: warrantos slop "$PATHS" --fail-over "$FAIL_OVER"
 
     - name: Run the full check pipeline (--ci exits non-zero on HOLD/BLOCK/NOT_ASSESSABLE)
       if: ${{ inputs.mode == 'check' || inputs.mode == 'both' }}
       shell: bash
+      env:
+        PATHS: ${{ inputs.paths }}
+        PROFILE: ${{ inputs.profile }}
       run: |
         set -uo pipefail
         status=0
-        for p in ${{ inputs.paths }}; do
+        for p in $PATHS; do
           if [ -d "$p" ]; then
             while IFS= read -r -d '' f; do
               echo "::group::warrantos check $f"
-              warrantos check "$f" --profile "${{ inputs.profile }}" --ci || status=1
+              warrantos check "$f" --profile "$PROFILE" --ci || status=1
               echo "::endgroup::"
             done < <(find "$p" -type f -name '*.md' -not -path '*/.*' -print0)
           else
-            warrantos check "$p" --profile "${{ inputs.profile }}" --ci || status=1
+            warrantos check "$p" --profile "$PROFILE" --ci || status=1
           fi
         done
         exit "$status"

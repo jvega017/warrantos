@@ -15,6 +15,15 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  lint-actions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Lint GitHub Actions
+        run: |
+          npm install -g @mheap/actionlint
+          actionlint -oneline
+
   test:
     runs-on: ${{ matrix.os }}
     strategy:
