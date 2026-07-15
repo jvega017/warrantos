@@ -24,7 +24,7 @@ No third-party runtime dependencies for the core. The `[mcp]` extra is only need
 python -m unittest discover -s tests -v
 ```
 
-The suite is stdlib unittest. No pytest dependency. The CI matrix runs on Python 3.8 through 3.13; your local run should pass on the version you use day-to-day before you open a PR.
+The suite is stdlib unittest. No pytest dependency. The CI matrix runs on Python 3.11 through 3.13; your local run should pass on the version you use day-to-day before you open a PR.
 
 ## Running the per-layer status check
 
