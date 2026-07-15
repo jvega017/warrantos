@@ -18,7 +18,7 @@ Design notes:
   does not yet exist (a new run directory) are still resolved correctly
   without raising FileNotFoundError.
 
-Python 3.8 compatible. Stdlib only.
+Python 3.11+. Stdlib only.
 """
 
 from __future__ import annotations
