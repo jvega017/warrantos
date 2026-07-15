@@ -31,13 +31,18 @@ from warrantos.provenance.extract import (
     sentences,
 )
 from warrantos.provenance.grade import Verdict, get_grader
+from warrantos.provenance.config import (
+    REDIRECT_HOP_CAP,
+    FETCH_TIMEOUT,
+    FETCH_MAX_BYTES,
+    USER_AGENT,
+)
 
 # ---------------------------------------------------------------------------
 # SSRF and scheme guard
 # ---------------------------------------------------------------------------
 
 _ALLOWED_SCHEMES = {"http", "https"}
-_REDIRECT_HOP_CAP = 3
 
 
 def _is_safe_url(url: str) -> bool:
@@ -117,7 +122,7 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
         # Override the default (10) with our tighter cap.
         # The stdlib http_error_302 enforces this via req.redirect_dict,
         # which is fresh for every new Request object.
-        self.max_redirections = _REDIRECT_HOP_CAP
+        self.max_redirections = REDIRECT_HOP_CAP
 
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         if not _is_safe_url(newurl):
@@ -131,14 +136,6 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
 # Built once at import time so tests can monkeypatch it.
 # The handler holds no per-request state, so sharing one instance is safe.
 _safe_opener = urllib.request.build_opener(_SafeRedirectHandler())
-
-# ---------------------------------------------------------------------------
-# fetch_text
-# ---------------------------------------------------------------------------
-
-_FETCH_TIMEOUT = 8          # seconds
-_FETCH_MAX_BYTES = 1_500_000  # 1.5 MB
-_USER_AGENT = "claude-provenance/0.9.0b1 (+https://github.com/jvega017/claude-provenance)"
 
 
 class _HTMLStripper(html.parser.HTMLParser):
@@ -200,10 +197,10 @@ def fetch_text(url: str) -> Optional[str]:
     try:
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": _USER_AGENT},
+            headers={"User-Agent": USER_AGENT},
         )
-        with _safe_opener.open(req, timeout=_FETCH_TIMEOUT) as resp:
-            raw_bytes = resp.read(_FETCH_MAX_BYTES)
+        with _safe_opener.open(req, timeout=FETCH_TIMEOUT) as resp:
+            raw_bytes = resp.read(FETCH_MAX_BYTES)
             content_type = resp.headers.get("Content-Type", "")
 
         text = raw_bytes.decode("utf-8", errors="replace")
