@@ -49,7 +49,7 @@ def _write_log(lines):
     return Path(tmp.name)
 
 
-def _observed(ts, verdict, detected, supported):
+def _observed(ts, verdict, detected, cited):
     return {
         "ts": ts,
         "brief": "brief.md",
@@ -59,7 +59,7 @@ def _observed(ts, verdict, detected, supported):
         "boundary_verdict": "PASS",
         "boundary_violations": 0,
         "claims_detected": detected,
-        "claims_supported": supported,
+        "claims_cited": cited,
         "context_items": 3,
     }
 

@@ -115,7 +115,7 @@ def observe_one(
             "boundary_verdict": result.get("boundary_verdict"),
             "boundary_violations": result.get("boundary_violations"),
             "claims_detected": result.get("claims_detected"),
-            "claims_supported": result.get("claims_supported"),
+            "claims_cited": result.get("claims_cited"),
             "context_items": result.get("context_items"),
             "out_dir": result.get("out_dir"),
             "note": (

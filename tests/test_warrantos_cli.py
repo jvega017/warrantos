@@ -608,11 +608,11 @@ class TestProfileUnsupportedThreshold(unittest.TestCase):
         self.assertEqual(data["verdict"], "HOLD")
         self.assertIsNotNone(data["verdict_rule_fired"])
         self.assertEqual(
-            data["verdict_rule_fired"]["rule"], "profile_unsupported_fraction"
+            data["verdict_rule_fired"]["rule"], "profile_uncited_fraction"
         )
         self.assertEqual(data["verdict_rule_fired"]["profile"], "audit")
         self.assertTrue(
-            any("unsupported fraction" in r for r in data["reasons"]),
+            any("uncited fraction" in r for r in data["reasons"]),
             msg=data["reasons"],
         )
 

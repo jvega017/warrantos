@@ -168,19 +168,24 @@ _MALFORMED = object()
 
 
 def _claim_counts(row: Dict[str, Any]) -> Optional[Dict[str, int]]:
-    """Return {detected, supported} for a row, or None if absent.
+    """Return {detected, cited} for a row, or None if absent.
+
+    Phase 1 fix M1: renamed from "claims_supported" to "claims_cited" to
+    distinguish citation presence from verification result. Falls back to
+    "claims_supported" for backward compatibility with historical shadow logs.
 
     Only integer counts are accepted. A row missing either count, or
     carrying a non-integer / negative value, contributes no denominator
-    and is excluded from the unsupported-claim rate.
+    and is excluded from the uncited-claim rate.
     """
     detected = row.get("claims_detected")
-    supported = row.get("claims_supported")
-    if not isinstance(detected, int) or not isinstance(supported, int):
+    # Phase 1 fix M1: prefer new "claims_cited" name, fall back to old "claims_supported"
+    cited = row.get("claims_cited") or row.get("claims_supported")
+    if not isinstance(detected, int) or not isinstance(cited, int):
         return None
-    if detected < 0 or supported < 0 or supported > detected:
+    if detected < 0 or cited < 0 or cited > detected:
         return None
-    return {"detected": detected, "supported": supported}
+    return {"detected": detected, "cited": cited}
 
 
 def _rate(detected: int, supported: int) -> Optional[float]:
@@ -250,8 +255,8 @@ def aggregate_shadow_log(
     claim_rows.sort(key=lambda pair: pair[0])
 
     detected_total = sum(c["detected"] for _ts, c in claim_rows)
-    supported_total = sum(c["supported"] for _ts, c in claim_rows)
-    unsupported_rate = _rate(detected_total, supported_total)
+    cited_total = sum(c["cited"] for _ts, c in claim_rows)
+    unsupported_rate = _rate(detected_total, cited_total)
 
     unsupported_rate_earlier: Optional[float] = None
     unsupported_rate_later: Optional[float] = None
@@ -262,11 +267,11 @@ def aggregate_shadow_log(
         earlier = claim_rows[:mid]
         later = claim_rows[mid:]
         e_det = sum(c["detected"] for _ts, c in earlier)
-        e_sup = sum(c["supported"] for _ts, c in earlier)
+        e_cited = sum(c["cited"] for _ts, c in earlier)
         l_det = sum(c["detected"] for _ts, c in later)
-        l_sup = sum(c["supported"] for _ts, c in later)
-        unsupported_rate_earlier = _rate(e_det, e_sup)
-        unsupported_rate_later = _rate(l_det, l_sup)
+        l_cited = sum(c["cited"] for _ts, c in later)
+        unsupported_rate_earlier = _rate(e_det, e_cited)
+        unsupported_rate_later = _rate(l_det, l_cited)
         if (
             unsupported_rate_earlier is not None
             and unsupported_rate_later is not None
@@ -302,7 +307,7 @@ def aggregate_shadow_log(
         non_observed_by_status=non_observed_by_status,
         verdict_distribution=verdict_distribution,
         claims_detected_total=detected_total,
-        claims_supported_total=supported_total,
+        claims_supported_total=cited_total,
         unsupported_rate=unsupported_rate,
         unsupported_rate_earlier=unsupported_rate_earlier,
         unsupported_rate_later=unsupported_rate_later,
