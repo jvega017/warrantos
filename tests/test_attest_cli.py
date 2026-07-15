@@ -73,7 +73,7 @@ class TestAttestVerifyCli(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertTrue(warrant.is_file())
         bundle = json.loads(warrant.read_text(encoding="utf-8"))
-        self.assertEqual(bundle["version"], "warrant-bundle-v1")
+        self.assertEqual(bundle["version"], "warrant-bundle-v2")
 
         argv = ["verify-external", str(warrant), "--prose", str(self.draft)]
         if not self._signed:

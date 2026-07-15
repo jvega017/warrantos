@@ -160,8 +160,9 @@ def verify_warrant(
     if entries is None:
         entries = []
 
-    # Detect bundle version (v1 or v2).
+    # Detect bundle version (v1, v2, or unknown).
     is_v2 = bundle.get("version") == "warrant-bundle-v2" and cp.get("bundle_version") == "warrant-bundle-v2"
+    is_v1 = bundle.get("version") == "warrant-bundle-v1"
 
     # 1. Integrity: recompute the Merkle root from the entries. A bundle with no
     # checkpoint root cannot be integrity-valid (nothing was committed to).
@@ -209,9 +210,8 @@ def verify_warrant(
     # 5. Compute overall result.
     # v1 bundles: LEGACY_UNBOUND (never VALID, even if all checks pass).
     # v2 bundles: VALID only if all checks pass.
-    if not is_v2:
-        result["overall"] = "LEGACY_UNBOUND"
-    else:
+    # Unknown bundles (v0.9.0, etc.): INVALID (unrecognized format).
+    if is_v2:
         sig_ok = result["signature"] == "VALID" or (
             allow_unsigned and result["signature"] in ("UNSIGNED", "UNAVAILABLE")
         )
@@ -222,5 +222,10 @@ def verify_warrant(
             and sig_ok
         )
         result["overall"] = "VALID" if ok else "INVALID"
+    elif is_v1:
+        result["overall"] = "LEGACY_UNBOUND"
+    else:
+        # Unknown or unrecognized format (v0.9.0, etc.)
+        result["overall"] = "INVALID"
 
     return result

@@ -106,6 +106,7 @@ async function verifyWarrant(bundle, prose, expectedKey, allowUnsigned){
 
   // Detect bundle version: v2 has both top-level version and checkpoint bundle_version fields.
   const isV2 = bundle.version === "warrant-bundle-v2" && cp.bundle_version === "warrant-bundle-v2";
+  const isV1 = bundle.version === "warrant-bundle-v1";
 
   if (prose != null && prose !== ""){
     const pd = "sha256:" + hex(await sha256(enc.encode(prose)));
@@ -172,12 +173,11 @@ async function verifyWarrant(bundle, prose, expectedKey, allowUnsigned){
   // green VALID; UNSIGNED yields VALID only with the allow-unsigned opt-in.
   // SIGNATURE_INVALID, a tampered ledger, tampered prose, or tampered CBOM are INVALID.
   // v1 bundles are marked LEGACY_UNBOUND (never VALID).
+  // Unknown bundles (v0.9.0, etc.) are marked INVALID (unrecognized format).
   // SIGNED_UNPINNED and CANNOT_VERIFY_IN_BROWSER are amber UNVERIFIED: integrity is
   // intact but the signature is not something this reader can trust here, which is
   // never a green pass and never a false tamper accusation.
-  if (!isV2){
-    res.overall = "LEGACY_UNBOUND";
-  } else {
+  if (isV2){
     const sigOk = res.signature === SIG.VALID || (allowUnsigned && res.signature === SIG.UNSIGNED);
     const base = res.integrity === "VALID" && res.prose !== "INVALID" && res.cbom !== "INVALID";
     if (base && sigOk){
@@ -187,6 +187,11 @@ async function verifyWarrant(bundle, prose, expectedKey, allowUnsigned){
     } else {
       res.overall = "UNVERIFIED";
     }
+  } else if (isV1){
+    res.overall = "LEGACY_UNBOUND";
+  } else {
+    // Unknown or unrecognized format (v0.9.0, etc.)
+    res.overall = "INVALID";
   }
   return res;
 }

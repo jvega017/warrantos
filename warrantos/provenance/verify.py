@@ -213,8 +213,8 @@ def fetch_text(url: str) -> Optional[str]:
         # Collapse whitespace.
         text = re.sub(r"\s+", " ", text).strip()
         return text if text else None
-    except (urllib.error.URLError, socket.timeout, OSError, UnicodeDecodeError) as e:
-        # D2: network operation - specific exceptions only
+    except Exception as e:
+        # D2: network operation - swallow all exceptions (RFC says we never raise)
         sys.stderr.write(f"Warning: URL fetch failed: {e}\n")
         return None
 
