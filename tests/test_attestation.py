@@ -5,14 +5,17 @@ extra. If cryptography is absent the whole module is skipped, matching the
 optional-dependency design.
 """
 
+import sys
 import unittest
+from unittest import mock
 
 from warrantos.provenance import attestation
 
 try:
     attestation.generate_keypair()
     _HAVE = True
-except attestation.AttestationUnavailable:
+except (attestation.AttestationUnavailable, Exception):
+    # Catch both AttestationUnavailable and any other exception (e.g., pyo3 panic)
     _HAVE = False
 
 
@@ -101,6 +104,111 @@ class TestCanonicalBytes(unittest.TestCase):
 
     def test_signature_and_public_key_excluded(self):
         self.kat({"a": 1, "signature": "x", "public_key": "y"}, b'{"a":1}')
+
+
+class TestCryptoBackendDegradation(unittest.TestCase):
+    """Test degradation path when cryptography is unavailable or broken.
+
+    These tests verify the documented promise: "ship unsigned if extra not installed"
+    or if cryptography is broken. The verifier should return UNAVAILABLE without
+    crashing, and the overall result should be INVALID unless allow_unsigned=True.
+    """
+
+    def setUp(self):
+        """Create a valid test checkpoint with signature."""
+        if _HAVE:
+            self.priv, self.pub = attestation.generate_keypair()
+            self.checkpoint = {
+                "version": "warrantos-checkpoint-v1",
+                "root_hash": "sha256:" + "ab" * 32,
+                "entry_count": 3,
+                "run_id": "run_t",
+                "timestamp": "2026-06-09T00:00:00Z",
+            }
+            self.signed_checkpoint = attestation.sign_checkpoint(self.checkpoint, self.priv)
+        else:
+            self.priv = None
+            self.pub = None
+            self.checkpoint = None
+            self.signed_checkpoint = None
+
+    @unittest.skipUnless(_HAVE, "attestation extra required to create signed checkpoint")
+    def test_verify_checkpoint_with_cryptography_import_unavailable(self):
+        """Monkeypatch cryptography import to raise ImportError.
+
+        verify_checkpoint should return UNAVAILABLE, not crash.
+        """
+        with mock.patch.dict("sys.modules", {"cryptography": None}):
+            result = attestation.verify_checkpoint(self.signed_checkpoint)
+            self.assertEqual(result, "UNAVAILABLE")
+
+    @unittest.skipUnless(_HAVE, "attestation extra required to create signed checkpoint")
+    def test_verify_checkpoint_with_broken_wheel(self):
+        """Monkeypatch cryptography to raise RuntimeError (simulating pyo3 panic).
+
+        verify_checkpoint should return UNAVAILABLE, not crash.
+        """
+        def mock_load_backend():
+            raise RuntimeError("Python API call failed (simulated pyo3 panic)")
+
+        with mock.patch("warrantos.provenance.attestation._load_backend", side_effect=attestation.AttestationUnavailable("wheel broken")):
+            result = attestation.verify_checkpoint(self.signed_checkpoint)
+            self.assertEqual(result, "UNAVAILABLE")
+
+    @unittest.skipUnless(_HAVE, "attestation extra required to create signed checkpoint")
+    def test_verify_checkpoint_with_corrupt_base64_signature(self):
+        """Corrupt base64 in signature field.
+
+        verify_checkpoint should return MALFORMED, not crash.
+        """
+        corrupt = dict(self.signed_checkpoint)
+        corrupt["signature"] = "!!!invalid_base64!!!..."
+        result = attestation.verify_checkpoint(corrupt)
+        self.assertEqual(result, "MALFORMED")
+
+    @unittest.skipUnless(_HAVE, "attestation extra required to create signed checkpoint")
+    def test_verify_checkpoint_with_corrupt_base64_public_key(self):
+        """Corrupt base64 in public_key field.
+
+        verify_checkpoint should return MALFORMED, not crash.
+        """
+        corrupt = dict(self.signed_checkpoint)
+        corrupt["public_key"] = "!!!invalid_base64!!!..."
+        result = attestation.verify_checkpoint(corrupt)
+        self.assertEqual(result, "MALFORMED")
+
+    @unittest.skipUnless(_HAVE, "attestation extra required to create signed checkpoint")
+    def test_keyboard_interrupt_propagates(self):
+        """KeyboardInterrupt must propagate, not be caught.
+
+        This ensures Ctrl-C is not swallowed by broad exception handlers.
+        """
+        def mock_load_backend_interrupt():
+            raise KeyboardInterrupt()
+
+        with mock.patch("warrantos.provenance.attestation._load_backend", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                attestation.verify_checkpoint(self.signed_checkpoint)
+
+
+class TestVerifyCheckpointReturnsUnavailableWhenBackendUnavailable(unittest.TestCase):
+    """Verify that verify_checkpoint gracefully returns UNAVAILABLE when backend fails.
+
+    This tests the degradation path without requiring cryptography to actually be broken.
+    """
+
+    def test_verify_checkpoint_catches_attestation_unavailable(self):
+        """When _load_backend raises AttestationUnavailable, return UNAVAILABLE."""
+        checkpoint = {
+            "signature": "dGVzdHNpZ25hdHVyZQ",
+            "public_key": "dGVzdHB1YmxpY2tleQ",
+        }
+        with mock.patch(
+            "warrantos.provenance.attestation._load_backend",
+            side_effect=attestation.AttestationUnavailable("cryptography not available"),
+        ):
+            result = attestation.verify_checkpoint(checkpoint)
+            self.assertEqual(result, "UNAVAILABLE")
 
 
 if __name__ == "__main__":

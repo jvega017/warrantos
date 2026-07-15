@@ -45,6 +45,21 @@ def _load_backend():
             "Ed25519 signing requires the optional dependency. Install with: "
             'pip install "claude-provenance[attestation]"'
         ) from exc
+    except (KeyboardInterrupt, SystemExit):
+        # Ctrl-C and system exit must propagate; never catch these
+        raise
+    except BaseException as exc:  # pragma: no cover - wheel ABI mismatch, pyo3 panic, cffi missing, etc.
+        import sys
+        exc_class = type(exc).__name__
+        print(
+            f"attestation unavailable: {exc_class} from cryptography wheel",
+            file=sys.stderr,
+        )
+        raise AttestationUnavailable(
+            f"Ed25519 signing failed: {exc_class}. The cryptography wheel may be "
+            f"incompatible with this Python version or environment. Try reinstalling: "
+            f'pip install --force-reinstall "cryptography>=41.0"'
+        ) from exc
     return Ed25519PrivateKey, Ed25519PublicKey, serialization
 
 
@@ -121,9 +136,9 @@ def verify_checkpoint(signed: dict, expected_public_key_b64: Optional[str] = Non
     """Verify a signed checkpoint.
 
     Returns one of: ``VALID``, ``INVALID`` (signature does not match),
-    ``UNKNOWN_KEY`` (a public key was expected and this one differs), or
-    ``MALFORMED`` (missing fields). Does not raise on a bad signature, so a
-    verifier can branch on the outcome.
+    ``UNKNOWN_KEY`` (a public key was expected and this one differs),
+    ``MALFORMED`` (missing fields), or ``UNAVAILABLE`` (cryptography unavailable).
+    Does not raise on a bad signature, so a verifier can branch on the outcome.
     """
     sig_b64 = signed.get("signature")
     pub_b64 = signed.get("public_key")
@@ -131,7 +146,10 @@ def verify_checkpoint(signed: dict, expected_public_key_b64: Optional[str] = Non
         return "MALFORMED"
     if expected_public_key_b64 and pub_b64 != expected_public_key_b64:
         return "UNKNOWN_KEY"
-    _Priv, Ed25519PublicKey, _ser = _load_backend()
+    try:
+        _Priv, Ed25519PublicKey, _ser = _load_backend()
+    except AttestationUnavailable:
+        return "UNAVAILABLE"
     try:
         from cryptography.exceptions import InvalidSignature
         pub = Ed25519PublicKey.from_public_bytes(_b64d(pub_b64))
@@ -139,5 +157,8 @@ def verify_checkpoint(signed: dict, expected_public_key_b64: Optional[str] = Non
         return "VALID"
     except InvalidSignature:
         return "INVALID"
-    except Exception:
+    except (ValueError, TypeError, Exception) as exc:
+        # ValueError: invalid base64 or key bytes
+        # TypeError: wrong type passed to cryptography
+        # Other exceptions: bail to MALFORMED
         return "MALFORMED"

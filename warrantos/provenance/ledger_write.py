@@ -451,3 +451,184 @@ def list_append_only_tables() -> list:
     Useful for callers building tooling around the trigger set.
     """
     return list(_APPEND_ONLY_TABLES)
+
+
+def record_check_run(
+    db_path: Union[str, Path],
+    run_id: str,
+    *,
+    claims: list,
+    verifier_rows: list,
+    boundary: str,
+    verdict: str,
+    reasons: list,
+    profile: str,
+    timestamps: Optional[dict] = None,
+) -> tuple:
+    """Record a check run result to the append-only ledger.
+
+    Persists the output of a `warrantos check` invocation: one provenance_run
+    row capturing the run metadata and verdict, N provenance_claim rows (one
+    per detected claim), and M provenance_verification rows (one per verified
+    claim, empty if --verify was not used).
+
+    SPEC-L2-S002 closure: writes to the append-only ledger are transactional.
+    Either all rows for a run are written, or none are; partial writes are
+    aborted.
+
+    Parameters
+    ----------
+    db_path
+        Path to the SQLite ledger database.
+    run_id
+        Stable run identifier (same as used in the check run).
+    claims
+        List of detected claims (dicts with 'sentence', 'citation', 'triggers',
+        'salience', 'load_bearing' keys).
+    verifier_rows
+        List of verification results (dicts with 'claim_text', 'citation',
+        'verdict', 'confidence', 'rationale', 'grader' keys). Empty list
+        if --verify was not used.
+    boundary
+        The boundary verdict string (e.g., "PASS", "FAIL").
+    verdict
+        The consolidated verdict string (one of "PASS", "HOLD", "BLOCK",
+        "NOT_ASSESSABLE").
+    reasons
+        List of reason strings explaining the verdict.
+    profile
+        The Layer 7 G1 profile used (e.g., "final-prose", "audit", etc.).
+    timestamps
+        Dict with optional 'run_ts' and other timing info. Defaults to now.
+
+    Returns
+    -------
+    tuple
+        (success: bool, message: str). On success, returns (True, "written").
+        On failure, returns (False, error_message); caller should check
+        this return value and handle the error.
+    """
+    try:
+        if timestamps is None:
+            timestamps = {}
+        run_ts = timestamps.get("run_ts") or datetime.now(timezone.utc).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+
+        con = open_writable_db(db_path)
+        try:
+            # Start transaction
+            con.execute("BEGIN TRANSACTION")
+
+            # Insert the run row: count claims by status
+            supported = sum(1 for c in claims if c.get("citation"))
+            unsupported = len(claims) - supported
+
+            cur = con.execute(
+                "INSERT INTO provenance_run "
+                "(ts, session_id, source_event, file_path, mode, total, "
+                "supported, tagged, unsupported) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    run_ts,
+                    run_id,  # session_id used for run_id correlation
+                    "check",  # source_event
+                    profile,  # file_path repurposed for profile
+                    "check",  # mode indicates this is a check run
+                    len(claims),  # total
+                    supported,
+                    len(claims),  # tagged = total (all claims are tagged)
+                    unsupported,
+                ),
+            )
+            run_pk = int(cur.lastrowid) if cur.lastrowid is not None else None
+            if run_pk is None:
+                con.execute("ROLLBACK")
+                return (False, "failed to insert provenance_run row")
+
+            # Insert claim rows
+            for claim in claims:
+                status = "supported" if claim.get("citation") else "unsupported"
+                con.execute(
+                    "INSERT INTO provenance_claim "
+                    "(run_id, ts, session_id, status, trigger, claim_text) "
+                    "VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        run_pk,
+                        run_ts,
+                        run_id,
+                        status,
+                        ";".join(claim.get("triggers", [])) or None,
+                        claim.get("sentence", claim.get("claim_text", "")),
+                    ),
+                )
+
+            # Insert verification rows
+            for verifier in verifier_rows:
+                # Find the corresponding claim to get the claim_id
+                # We match by claim_text across claim_rows and verifier_rows
+                claim_text = verifier.get("claim_text", "")
+                rows = con.execute(
+                    "SELECT id FROM provenance_claim "
+                    "WHERE run_id = ? AND claim_text = ? LIMIT 1",
+                    (run_pk, claim_text),
+                ).fetchall()
+
+                if rows:
+                    claim_id = rows[0][0]
+                    con.execute(
+                        "INSERT INTO provenance_verification "
+                        "(claim_id, ts, citation, verdict, confidence, "
+                        "rationale, grader) "
+                        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (
+                            claim_id,
+                            run_ts,
+                            verifier.get("citation"),
+                            verifier.get("verdict", "unknown"),
+                            verifier.get("confidence"),
+                            verifier.get("rationale"),
+                            verifier.get("grader", "heuristic"),
+                        ),
+                    )
+
+            # Create and execute append-only trigger SQL on same connection
+            # to avoid database locking issues.
+            present = set()
+            rows = con.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+            for (name,) in rows:
+                if name in _APPEND_ONLY_TABLES:
+                    present.add(name)
+
+            for table in sorted(present):
+                con.execute(
+                    "CREATE TRIGGER IF NOT EXISTS prevent_update_" + table + " "
+                    "BEFORE UPDATE ON " + table + " "
+                    "BEGIN "
+                    "SELECT RAISE(ABORT, 'INV-004: " + table + " is append-only per SPEC-L2-S002'); "
+                    "END;"
+                )
+                con.execute(
+                    "CREATE TRIGGER IF NOT EXISTS prevent_delete_" + table + " "
+                    "BEFORE DELETE ON " + table + " "
+                    "BEGIN "
+                    "SELECT RAISE(ABORT, 'INV-004: " + table + " is append-only per SPEC-L2-S002'); "
+                    "END;"
+                )
+
+            con.commit()
+            return (True, "written")
+
+        except Exception as exc:
+            try:
+                con.execute("ROLLBACK")
+            except Exception:
+                pass
+            return (False, str(exc))
+        finally:
+            con.close()
+
+    except Exception as exc:
+        return (False, f"database error: {str(exc)}")

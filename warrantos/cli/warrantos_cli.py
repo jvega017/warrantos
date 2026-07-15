@@ -1706,6 +1706,7 @@ def _cmd_init(args) -> int:
         sys.stderr.write("warrantos init: database path out of bounds: %s\n" % exc)
         return 2
     except Exception as exc:
+        # D2: CLI integration - defensive catch for ledger initialization errors
         sys.stderr.write("warrantos init: could not initialize ledger database: %s\n" % exc)
         return 2
 
