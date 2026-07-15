@@ -96,6 +96,13 @@ from warrantos.provenance.salience import LOAD_BEARING_THRESHOLD, is_load_bearin
 from warrantos.provenance.verify import extract_citation, verify_claim, verify_text
 from warrantos.provenance.extract import CLAIM_TRIGGERS, sentences
 from warrantos.provenance.gates import check_self_grounding
+from warrantos.provenance.config import (
+    DEFAULT_LEDGER_PATH,
+    DEFAULT_DB_NAME,
+    PROFILE_UNCITED_THRESHOLD,
+    DEFAULT_UNCITED_THRESHOLD,
+    MAX_DOC_BYTES,
+)
 from warrantos import __version__
 
 
@@ -252,12 +259,12 @@ def build_parser() -> argparse.ArgumentParser:
     check.add_argument(
         "--db",
         default=os.environ.get(
-            "WARRANTOS_DB", str(Path(".warrant") / "provenance.db")
+            "WARRANTOS_DB", str(Path(DEFAULT_LEDGER_PATH) / DEFAULT_DB_NAME)
         ),
         help=(
             "Path to the override ledger database. Used to look up overrides. "
-            "Defaults to the WARRANTOS_DB environment variable when set, "
-            "otherwise ./.warrant/provenance.db."
+            f"Defaults to the WARRANTOS_DB environment variable when set, "
+            f"otherwise {Path(DEFAULT_LEDGER_PATH) / DEFAULT_DB_NAME}."
         ),
     )
     check.add_argument(
@@ -592,12 +599,12 @@ def build_parser() -> argparse.ArgumentParser:
     retention.add_argument(
         "--db",
         default=os.environ.get(
-            "WARRANTOS_DB", str(Path(".warrant") / "provenance.db")
+            "WARRANTOS_DB", str(Path(DEFAULT_LEDGER_PATH) / DEFAULT_DB_NAME)
         ),
         help=(
             "Path to the provenance ledger database. Defaults to the "
             "WARRANTOS_DB environment variable when set, otherwise "
-            "./.warrant/provenance.db."
+            f"{Path(DEFAULT_LEDGER_PATH) / DEFAULT_DB_NAME}."
         ),
     )
     retention.add_argument(
@@ -845,14 +852,28 @@ def to_context_input(item: ContextItem, raw: dict) -> ContextInput:
 
 
 def to_claim_record(claim_row: Dict[str, Any], context_ids_admitted: List[str]) -> ClaimRecord:
-    """Adapt a detected claim row to a CBOM ClaimRecord."""
-    status = "supported" if claim_row.get("citation") else "unsupported"
+    """Adapt a detected claim row to a CBOM ClaimRecord.
+
+    Phase 1 fix M1: distinguishes citation presence from verification result.
+    - UNCITED: no citation present
+    - CITED_UNVERIFIED: citation present, verification not yet run
+
+    When verifier runs, it overwrites CITED_UNVERIFIED with the actual result
+    (supported/contradicted/unverifiable).
+    """
+    from warrantos.provenance.claims import ClaimStatus
+
+    status = (
+        ClaimStatus.CITED_UNVERIFIED.value
+        if claim_row.get("citation")
+        else ClaimStatus.UNCITED.value
+    )
     # The CBOM validates that support_ids reference admitted inputs.
     # Without an upstream binding step we cannot link a specific
     # context_id, so we leave support_ids empty when no citation is
     # present; when a citation is present we use the sentence as
-    # provenance hint (status=supported is honest because the sentence
-    # itself carries a citation token).
+    # provenance hint (status=cited_unverified: the sentence carries
+    # a citation token but verification result is unknown).
     return ClaimRecord(
         claim_id="claim_" + uuid.uuid4().hex[:8],
         text=claim_row["sentence"],
@@ -874,31 +895,10 @@ _SOD_FINAL_ARTEFACT_PROFILES = frozenset({
 # The strictest profiles: a same-actor review BLOCKs rather than HOLDs.
 _SOD_BLOCK_PROFILES = frozenset({"audit"})
 
-# Per-profile unsupported-claim fraction thresholds (Phase 1 item 3).
-# When the fraction of detected claims that are unsupported exceeds the
-# profile threshold, the verdict is raised to HOLD even when no single claim
-# is load-bearing. This closes the bug where an audit run with 2 of 2 claims
-# unsupported could return a bare PASS (the audit profile suppresses the
-# boundary gate, and neither claim alone was load-bearing).
-#
-#   audit         0.00  any unsupported claim HOLDs
-#   final-prose   0.00  backstop: any unsupported claim HOLDs
-#   paper-full    0.20  tolerates a small uncited minority
-#   brief-light   0.25  tolerates routine date references etc.
-#   methodology   0.40  methods prose is allowed more uncited statement
-#   changelog     1.00  never fires on fraction alone
-_PROFILE_UNSUPPORTED_THRESHOLD: Dict[str, float] = {
-    "audit": 0.0,
-    "final-prose": 0.0,
-    "paper-full": 0.20,
-    "brief-light": 0.25,
-    "methodology": 0.40,
-    "changelog": 1.0,
-}
-# Profiles without an explicit entry use this default (lenient: never fires
-# on fraction alone, preserving prior behaviour for prompt-template and the
-# other process profiles).
-_DEFAULT_UNSUPPORTED_THRESHOLD = 1.0
+# Per-profile uncited-claim fraction thresholds are imported from config.py.
+# See warrantos.provenance.config.PROFILE_UNCITED_THRESHOLD and
+# warrantos.provenance.config.DEFAULT_UNCITED_THRESHOLD for the full
+# documentation and current values.
 
 
 def consolidate_verdict(
@@ -914,7 +914,7 @@ def consolidate_verdict(
 
     Verdict is one of PASS, HOLD, BLOCK, NOT_ASSESSABLE.
 
-    `fired_rule` is None unless the per-profile unsupported-fraction
+    `fired_rule` is None unless the per-profile uncited-fraction
     threshold raised the verdict to HOLD, in which case it is a dict
     describing the rule that fired (for surfacing in the run report JSON).
 
@@ -923,10 +923,10 @@ def consolidate_verdict(
     1. BLOCK if any verifier verdict is `contradicted`, any boundary
        violation occurred in a blocking profile, or a same-actor review
        (single_actor_override) was recorded on a strict profile (SoD).
-    2. HOLD if any unsupported load-bearing claim exists, any verifier
-       verdict is `unverifiable` for a load-bearing claim, the unsupported
+    2. HOLD if any uncited load-bearing claim exists, any verifier
+       verdict is `unverifiable` for a load-bearing claim, the uncited
        fraction exceeds the per-profile threshold
-       (`_PROFILE_UNSUPPORTED_THRESHOLD`), or a same-actor review was
+       (`PROFILE_UNCITED_THRESHOLD`), or a same-actor review was
        recorded on a final-artefact profile (separation of duties,
        SPEC-L8-S003: an independent reviewer is required to PASS).
     3. NOT_ASSESSABLE if the artefact role is `final-prose` and the
@@ -982,33 +982,35 @@ def consolidate_verdict(
                 "HOLD: unverifiable load-bearing claim: " + (v.get("claim_text") or "")[:80]
             )
 
-    # Per-profile unsupported-fraction threshold (Phase 1 item 3).
-    # Raise HOLD when the unsupported fraction exceeds the profile threshold,
+    # Per-profile uncited-fraction threshold (Phase 1 item 3).
+    # Phase 1 fix M1: renamed from "unsupported" to "uncited" to distinguish
+    # citation presence from verification result.
+    # Raise HOLD when the uncited fraction exceeds the profile threshold,
     # even if no single claim is load-bearing. Surface the fired rule.
     total_claims = len(claim_rows)
-    unsupported_claims = sum(1 for c in claim_rows if not c.get("citation"))
+    uncited_claims = sum(1 for c in claim_rows if not c.get("citation"))
     if total_claims > 0:
-        unsupported_fraction = unsupported_claims / total_claims
-        threshold = _PROFILE_UNSUPPORTED_THRESHOLD.get(
-            role_lower, _DEFAULT_UNSUPPORTED_THRESHOLD
+        uncited_fraction = uncited_claims / total_claims
+        threshold = PROFILE_UNCITED_THRESHOLD.get(
+            role_lower, DEFAULT_UNCITED_THRESHOLD
         )
-        if unsupported_fraction > threshold:
+        if uncited_fraction > threshold:
             fired_rule = {
-                "rule": "profile_unsupported_fraction",
+                "rule": "profile_uncited_fraction",
                 "profile": role_lower,
-                "unsupported": unsupported_claims,
+                "uncited": uncited_claims,
                 "total": total_claims,
-                "unsupported_fraction": round(unsupported_fraction, 4),
+                "uncited_fraction": round(uncited_fraction, 4),
                 "threshold": threshold,
             }
             reasons.append(
-                "HOLD: unsupported fraction %d/%d (%.0f%%) exceeds the '%s' "
+                "HOLD: uncited fraction %d/%d (%.0f%%) exceeds the '%s' "
                 "profile threshold of %.0f%%; verify the uncited claims or add "
                 "sources."
                 % (
-                    unsupported_claims,
+                    uncited_claims,
                     total_claims,
-                    unsupported_fraction * 100,
+                    uncited_fraction * 100,
                     role_lower,
                     threshold * 100,
                 )
@@ -1138,7 +1140,7 @@ def explain_profiles() -> str:
 
     Phase 1 item 2: makes profile leniency self-documenting. Two suppression
     surfaces are reported: whether the G1 prose-boundary gate is suppressed,
-    and the per-profile unsupported-fraction HOLD threshold.
+    and the per-profile uncited-fraction HOLD threshold.
     """
     profiles = [
         "final-prose",
@@ -1152,28 +1154,28 @@ def explain_profiles() -> str:
     ]
     lines = ["warrantos profiles: what each profile suppresses", ""]
     lines.append(
-        "  %-20s %-18s %s" % ("profile", "boundary gate", "unsupported-fraction HOLD")
+        "  %-20s %-18s %s" % ("profile", "boundary gate", "uncited-fraction HOLD")
     )
     lines.append("  " + "-" * 70)
     for p in profiles:
         boundary = (
             "SUPPRESSED" if p in _BOUNDARY_SUPPRESSING_PROFILES else "enforced"
         )
-        threshold = _PROFILE_UNSUPPORTED_THRESHOLD.get(
-            p, _DEFAULT_UNSUPPORTED_THRESHOLD
+        threshold = PROFILE_UNCITED_THRESHOLD.get(
+            p, DEFAULT_UNCITED_THRESHOLD
         )
         if threshold >= 1.0:
             thr = "never (fraction alone never HOLDs)"
         else:
-            thr = "HOLD when unsupported fraction > %.0f%%" % (threshold * 100)
+            thr = "HOLD when uncited fraction > %.0f%%" % (threshold * 100)
         lines.append("  %-20s %-18s %s" % (p, boundary, thr))
     lines.append("")
     lines.append(
         "Notes: a SUPPRESSED boundary gate means scan_prose_boundary() returns "
         "pass unconditionally for that profile, so AI-residue and "
         "process-narration leakage is not gated. A PASS under such a profile "
-        "still reports any unsupported-claim count on the verdict line so the "
-        "leniency is visible. Load-bearing unsupported claims always HOLD "
+        "still reports any uncited-claim count on the verdict line so the "
+        "leniency is visible. Load-bearing uncited claims always HOLD "
         "regardless of profile."
     )
     return "\n".join(lines)
@@ -1192,8 +1194,8 @@ def format_text_report(report: Dict[str, Any]) -> str:
         for k in sorted(type_counts):
             lines.append("    %-22s %d" % (k, type_counts[k]))
     lines.append("  claims detected: %d" % report["claims_detected"])
-    lines.append("  claims supported: %d" % report["claims_supported"])
-    lines.append("  claims unsupported: %d" % report["claims_unsupported"])
+    lines.append("  claims cited: %d" % report["claims_cited"])
+    lines.append("  claims uncited: %d" % report["claims_uncited"])
     if report.get("verifier_rows"):
         verifier_counts = report.get("by_verifier_verdict") or {}
         lines.append("  verifier verdicts: %d total" % report["verifier_total"])
@@ -1206,24 +1208,24 @@ def format_text_report(report: Dict[str, Any]) -> str:
     lines.append("  overrides on record: %d" % report["overrides_total"])
     lines.append("")
 
-    # Verdict transparency (Phase 1 item 2): always make the unsupported-claims
+    # Verdict transparency (Phase 1 item 2): always make the uncited-claims
     # count visible on the verdict line, and annotate a PASS that carries
-    # unsupported claims so leniency is never silent. Profiles that suppress
+    # uncited claims so leniency is never silent. Profiles that suppress
     # the boundary gate (audit/methodology/consultation_report/changelog) say so.
     verdict = report["verdict"]
-    unsupported = report.get("claims_unsupported", 0)
+    uncited = report.get("claims_uncited", 0)
     verdict_line = "VERDICT: " + verdict
-    if verdict == VERDICT_PASS and unsupported > 0:
+    if verdict == VERDICT_PASS and uncited > 0:
         profile = report.get("profile", "")
         if profile in _BOUNDARY_SUPPRESSING_PROFILES:
             verdict_line += (
-                " (%d unsupported claim(s); %s profile suppresses the prose "
-                "boundary gate; verify manually)" % (unsupported, profile)
+                " (%d uncited claim(s); %s profile suppresses the prose "
+                "boundary gate; verify manually)" % (uncited, profile)
             )
         else:
             verdict_line += (
-                " (%d unsupported claim(s); none load-bearing under this "
-                "profile; verify manually)" % unsupported
+                " (%d uncited claim(s); none load-bearing under this "
+                "profile; verify manually)" % uncited
             )
     lines.append(verdict_line)
     for reason in report.get("reasons") or []:
@@ -1231,12 +1233,12 @@ def format_text_report(report: Dict[str, Any]) -> str:
     fired = report.get("verdict_rule_fired")
     if fired:
         lines.append(
-            "  rule fired: %s (%d/%d unsupported = %.0f%% > %.0f%% threshold for '%s')"
+            "  rule fired: %s (%d/%d uncited = %.0f%% > %.0f%% threshold for '%s')"
             % (
                 fired.get("rule"),
-                fired.get("unsupported", 0),
+                fired.get("uncited", 0),
                 fired.get("total", 0),
-                fired.get("unsupported_fraction", 0.0) * 100,
+                fired.get("uncited_fraction", 0.0) * 100,
                 fired.get("threshold", 0.0) * 100,
                 fired.get("profile", ""),
             )
@@ -1281,7 +1283,7 @@ def _cmd_attest(args) -> int:
 
     # B5 path containment: confine --db and --out under cwd.
     _cwd = Path(".").resolve()
-    raw_db = args.db or str(Path(".warrant") / "overrides.db")
+    raw_db = args.db or str(Path(DEFAULT_LEDGER_PATH) / "overrides.db")
     try:
         db = str(resolve_under(_cwd, raw_db))
     except ValueError as exc:
@@ -1414,7 +1416,7 @@ def _cmd_calibrate(args) -> int:
     }
 
     _cwd = Path(".").resolve()
-    raw_out = args.out or str(Path(".warrant") / "calibration.json")
+    raw_out = args.out or str(Path(DEFAULT_LEDGER_PATH) / "calibration.json")
     try:
         out = resolve_under(_cwd, raw_out)
     except ValueError as exc:
@@ -1468,7 +1470,7 @@ def _cmd_metrics(args) -> int:
 
     if not args.no_write:
         _cwd = Path(".").resolve()
-        raw_out = args.out or str(Path(".warrant") / "metrics.json")
+        raw_out = args.out or str(Path(DEFAULT_LEDGER_PATH) / "metrics.json")
         try:
             out = resolve_under(_cwd, raw_out)
         except ValueError as exc:
@@ -1691,7 +1693,7 @@ def _cmd_init(args) -> int:
     try:
         _cwd = Path(".").resolve()
         db_path_raw = os.environ.get(
-            "WARRANTOS_DB", str(Path(".warrant") / "provenance.db")
+            "WARRANTOS_DB", str(Path(DEFAULT_LEDGER_PATH) / DEFAULT_DB_NAME)
         )
         db_path_safe = str(resolve_under(_cwd, db_path_raw))
 
@@ -1882,7 +1884,7 @@ def _cmd_check_single(args, draft_path):
 
     # B5 path containment: confine out_dir and --db under cwd.
     _cwd = Path(".").resolve()
-    raw_out_dir = args.out_dir or str(Path(".warrant") / "runs" / run_id)
+    raw_out_dir = args.out_dir or str(Path(DEFAULT_LEDGER_PATH) / "runs" / run_id)
     try:
         out_dir = resolve_under(_cwd, raw_out_dir)
     except ValueError as exc:
@@ -1907,6 +1909,15 @@ def _cmd_check_single(args, draft_path):
     except FileNotFoundError:
         sys.stderr.write("warrantos: draft file not found: %s\n" % draft_path)
         return 2
+
+    # --- ReDoS prevention: input size cap ---
+    draft_size = len(draft)
+    if draft_size > MAX_DOC_BYTES:
+        sys.stderr.write(
+            f"warrantos: WARNING: draft exceeds {MAX_DOC_BYTES} bytes ({draft_size} bytes). "
+            "Truncating to prevent ReDoS attacks.\n"
+        )
+        draft = draft[:MAX_DOC_BYTES]
 
     # --- F-classification sensitivity gate (optional, fail-closed) ---
     if getattr(args, "sensitivity_check", False):
@@ -2084,8 +2095,8 @@ def _cmd_check_single(args, draft_path):
         "context_items": len(classified),
         "by_context_type": type_counts,
         "claims_detected": len(claim_rows),
-        "claims_supported": sum(1 for c in claim_rows if c.get("citation")),
-        "claims_unsupported": sum(1 for c in claim_rows if not c.get("citation")),
+        "claims_cited": sum(1 for c in claim_rows if c.get("citation")),
+        "claims_uncited": sum(1 for c in claim_rows if not c.get("citation")),
         "verifier_rows": verifier_rows,
         "verifier_total": len(verifier_rows),
         "by_verifier_verdict": verifier_counts,

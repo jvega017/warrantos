@@ -39,6 +39,8 @@ Australian English throughout.
 import re
 from typing import Optional
 
+from .config import MAX_SENTENCE_CHARS
+
 # ---------------------------------------------------------------------------
 # Compiled patterns
 # ---------------------------------------------------------------------------
@@ -142,6 +144,10 @@ def score_claim(sentence: str, trigger: Optional[str] = None) -> float:
     float
         Score in [0.0, 1.0].
     """
+    # ReDoS prevention: reject oversized inputs before regex processing.
+    if len(sentence) > MAX_SENTENCE_CHARS:
+        return 0.0
+
     score = 0.0
 
     # Statute reference: binding legal obligations are always load-bearing.
