@@ -8,6 +8,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+try:
+    from conftest import get_clean_env
+except ImportError:  # running as tests.test_* from the repo root
+    from tests.conftest import get_clean_env
+
 from warrantos.provenance.footer import render_override_footer
 from warrantos.provenance.overrides import HumanOverride, record_override
 
@@ -174,6 +179,7 @@ class TestWarrantosCliScaffold(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=30,
+            env=get_clean_env(),
         )
 
     def test_help_renders(self):

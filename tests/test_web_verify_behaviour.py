@@ -17,6 +17,11 @@ import subprocess
 import unittest
 from pathlib import Path
 
+try:
+    from conftest import get_clean_env
+except ImportError:  # running as tests.test_* from the repo root
+    from tests.conftest import get_clean_env
+
 
 def _has_node():
     """Check if node command is available."""
@@ -24,6 +29,7 @@ def _has_node():
         ["node", "--version"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
+        env=get_clean_env(),
     )
     return result.returncode == 0
 
@@ -139,6 +145,7 @@ const window = {{
                 stderr=subprocess.PIPE,
                 text=True,
                 timeout=60,
+                env=get_clean_env(),
             )
         except subprocess.TimeoutExpired:
             self.skipTest("node verifier harness timed out (CI infra flake)")

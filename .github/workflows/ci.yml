@@ -39,6 +39,48 @@ jobs:
       - name: Smoke-test the four-verdict gallery (thesis demo, must exit 0)
         run: python tools/run_gallery.py
 
+  # Hermetic gate: the suite must never invoke an external `claude` binary,
+  # an API key, or a PROVENANCE_* override. A booby-trap `claude` shim is
+  # placed FIRST on PATH: it records every invocation to a call log and
+  # exits 97. The suite runs with CLAUDE_HOME / ANTHROPIC_API_KEY /
+  # PROVENANCE_* explicitly unset; afterwards the job fails if the shim was
+  # called even once.
+  hermetic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Install the booby-trap `claude` shim first on PATH
+        run: |
+          mkdir -p "$RUNNER_TEMP/boobytrap"
+          cat > "$RUNNER_TEMP/boobytrap/claude" <<'SHIM'
+          #!/bin/sh
+          # Booby-trap: the WarrantOS test suite must never invoke the
+          # external `claude` binary. Record the call and fail loudly.
+          echo "claude $*" >> "${BOOBYTRAP_CALLS:-/tmp/boobytrap-claude-calls.log}"
+          exit 97
+          SHIM
+          chmod +x "$RUNNER_TEMP/boobytrap/claude"
+          echo "BOOBYTRAP_CALLS=$RUNNER_TEMP/boobytrap/claude-calls.log" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/boobytrap" >> "$GITHUB_PATH"
+      - name: Run the suite with the shim armed and the environment scrubbed
+        run: |
+          env -u CLAUDE_HOME -u ANTHROPIC_API_KEY \
+            $(env | grep -o '^PROVENANCE_[A-Z_]*' | sed 's/^/-u /') \
+            python -m unittest discover -s tests -v
+      - name: Smoke-test the evaluation harness under the same trap
+        run: env -u CLAUDE_HOME -u ANTHROPIC_API_KEY python eval/run_eval.py
+      - name: Fail if the suite invoked the `claude` shim
+        run: |
+          if [ -s "$BOOBYTRAP_CALLS" ]; then
+            echo "::error::the test suite invoked the external 'claude' binary:"
+            cat "$BOOBYTRAP_CALLS"
+            exit 1
+          fi
+          echo "shim call count: 0 (hermetic)"
+
   # The signing tests SKIP without the optional extra. Run them at least once
   # with [attestation] installed so the Ed25519 path is actually exercised.
   attestation:

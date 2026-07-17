@@ -186,3 +186,34 @@ Tracked as a v0.10 deferral in CHANGELOG. Today:
 | §2 Claude Code hook | None separately | Your Claude session cost | Yes (to Claude session) | Session-model-dependent |
 | §3 MCP sampling (deferred, v0.10) | None separately | Your host's session cost | Yes (to host) | Host-model-dependent |
 | Anthropic LLM grader | `ANTHROPIC_API_KEY` | Per claim, ~USD 0.01 | Yes (to Anthropic) | Highest |
+
+## §4. LLM grading is strictly opt-in (hermetic test suite)
+
+Every LLM-backed grading path above — local LLM, Claude Code hook,
+Claude CLI subscription auto-select, or the paid Anthropic grader — is
+an **explicit human opt-in** activated only by setting the relevant
+environment variable (`PROVENANCE_GRADER`,
+`PROVENANCE_LOCAL_GRADER_URL`, `ANTHROPIC_API_KEY`). Nothing in
+warrantos selects an LLM grader silently, and the automated test suite
+never opts in on your behalf:
+
+- **The suite is hermetic.** Every subprocess a test launches runs
+  with a scrubbed environment (`tests/conftest.py::get_clean_env()`):
+  `CLAUDE_HOME`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, and every
+  `PROVENANCE_*` override are removed before the child starts. Tests
+  that need a `PROVENANCE_*` variable (for example the hook tests
+  setting `PROVENANCE_DB`) add back exactly the keys they mean to set.
+- **The rule is enforced, not promised.** An AST audit
+  (`tests/test_hermetic.py`) fails the suite if any test calls
+  `subprocess.run` / `subprocess.Popen` without an explicit `env=`.
+- **CI booby-traps the `claude` binary.** The `hermetic` CI job
+  (.github/workflows/ci.yml) puts a shim named `claude` first on PATH
+  that logs every invocation and exits 97, runs the whole suite with
+  `CLAUDE_HOME` / `ANTHROPIC_API_KEY` / `PROVENANCE_*` unset, and
+  fails if the shim was called even once. The suite's call count
+  against the shim is zero by construction.
+
+To run LLM grading yourself (calibration, benchmarking, real
+verification), set the opt-in variables in your own shell before
+invoking `warrantos check --verify` or `eval/run_eval.py --grader ...`.
+Removing the variables returns you to the free offline heuristic.
