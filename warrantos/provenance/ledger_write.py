@@ -55,16 +55,18 @@ CREATE INDEX IF NOT EXISTS idx_context_transform_kind ON context_transform(kind)
 # Full ledger schema with INV-004 append-only triggers (shipped by default).
 _CREATE_FULL_LEDGER_SCHEMA = """
 CREATE TABLE IF NOT EXISTS provenance_run (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts           TEXT    NOT NULL,
-    session_id   TEXT,
-    source_event TEXT,
-    file_path    TEXT,
-    mode         TEXT    NOT NULL,
-    total        INTEGER NOT NULL,
-    supported    INTEGER NOT NULL,
-    tagged       INTEGER NOT NULL,
-    unsupported  INTEGER NOT NULL
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts               TEXT    NOT NULL,
+    session_id       TEXT,
+    source_event     TEXT,
+    file_path        TEXT,
+    mode             TEXT    NOT NULL,
+    total            INTEGER NOT NULL,
+    supported        INTEGER NOT NULL,
+    tagged           INTEGER NOT NULL,
+    unsupported      INTEGER NOT NULL,
+    prev_run_hash    TEXT,
+    run_content_hash TEXT
 );
 
 CREATE TABLE IF NOT EXISTS provenance_claim (
@@ -451,3 +453,194 @@ def list_append_only_tables() -> list:
     Useful for callers building tooling around the trigger set.
     """
     return list(_APPEND_ONLY_TABLES)
+
+
+def get_check_runs(db_path: Union[str, Path]) -> list:
+    """Retrieve all check runs from the ledger with hash-chain metadata.
+
+    Returns
+    -------
+    list of dict
+        Each dict contains: id, ts, session_id, source_event, file_path, mode,
+        total, supported, tagged, unsupported, prev_run_hash, run_content_hash.
+    """
+    p = Path(db_path)
+    if not p.is_file():
+        return []
+    con = sqlite3.connect(str(p))
+    try:
+        rows = con.execute(
+            "SELECT id, ts, session_id, source_event, file_path, mode, total, supported, "
+            "tagged, unsupported, prev_run_hash, run_content_hash FROM provenance_run ORDER BY id"
+        ).fetchall()
+    finally:
+        con.close()
+    return [
+        {
+            "id": r[0],
+            "ts": r[1],
+            "session_id": r[2],
+            "source_event": r[3],
+            "file_path": r[4],
+            "mode": r[5],
+            "total": r[6],
+            "supported": r[7],
+            "tagged": r[8],
+            "unsupported": r[9],
+            "prev_run_hash": r[10],
+            "run_content_hash": r[11],
+        }
+        for r in rows
+    ]
+
+
+def verify_hash_chain(db_path: Union[str, Path]) -> dict:
+    """Verify the hash chain integrity of all provenance runs.
+
+    Returns
+    -------
+    dict with keys:
+        - 'valid': bool, True if all hashes are consistent
+        - 'runs_checked': int, number of runs verified
+        - 'errors': list of dicts with 'run_id', 'error' describing chain breaks
+    """
+    import hashlib
+    import json as json_mod
+
+    runs = get_check_runs(db_path)
+    errors = []
+
+    for i, run in enumerate(runs):
+        # For the first run, prev_run_hash should be None
+        if i == 0:
+            if run["prev_run_hash"] is not None:
+                errors.append({
+                    "run_id": run["id"],
+                    "error": f"First run has non-None prev_run_hash: {run['prev_run_hash']}"
+                })
+        else:
+            # For subsequent runs, verify prev_run_hash matches the previous run's content hash
+            expected_prev = runs[i - 1]["run_content_hash"]
+            if run["prev_run_hash"] != expected_prev:
+                errors.append({
+                    "run_id": run["id"],
+                    "error": f"prev_run_hash mismatch: expected {expected_prev}, got {run['prev_run_hash']}"
+                })
+
+        # Verify that the run_content_hash is correct
+        # Reconstruct the original run record (excluding hash fields)
+        run_record = {
+            "ts": run["ts"],
+            "session_id": run["session_id"],
+            "source_event": run["source_event"],
+            "file_path": run["file_path"],
+            "mode": run["mode"],
+            "total": run["total"],
+            "supported": run["supported"],
+            "tagged": run["tagged"],
+            "unsupported": run["unsupported"],
+        }
+        run_json = json_mod.dumps(run_record, sort_keys=True, separators=(",", ":"))
+        expected_hash = "sha256:" + hashlib.sha256(run_json.encode("utf-8")).hexdigest()
+        if run["run_content_hash"] != expected_hash:
+            errors.append({
+                "run_id": run["id"],
+                "error": f"run_content_hash mismatch: expected {expected_hash}, got {run['run_content_hash']}"
+            })
+
+    return {
+        "valid": len(errors) == 0,
+        "runs_checked": len(runs),
+        "errors": errors,
+    }
+
+
+def record_check_run(
+    db_path: Union[str, Path],
+    *,
+    ts: Optional[str] = None,
+    session_id: Optional[str] = None,
+    source_event: Optional[str] = None,
+    file_path: Optional[str] = None,
+    mode: str = "default",
+    total: int = 0,
+    supported: int = 0,
+    tagged: int = 0,
+    unsupported: int = 0,
+) -> int:
+    """Record a check run to the ledger with hash-chaining (INV-004.2).
+
+    Each run is recorded with a canonical JSON hash and the previous run's hash,
+    creating a tamper-evident chain: changing any run invalidates all subsequent
+    hashes. This makes a signed checkpoint (which includes check-run hashes in
+    the Merkle tree) provably detect tampering anywhere in the check history.
+
+    Parameters
+    ----------
+    db_path
+        SQLite database to write to. The table is created if absent.
+    ts
+        ISO-8601 UTC timestamp; defaults to now.
+    session_id
+        Optional session identifier.
+    source_event
+        Optional source event identifier.
+    file_path
+        Optional file path being checked.
+    mode
+        Check mode (default "default").
+    total, supported, tagged, unsupported
+        Claim counts from the run.
+
+    Returns
+    -------
+    int
+        The auto-incremented id of the new row, or -1 if insertion failed.
+    """
+    import hashlib
+
+    if ts is None:
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    con = open_writable_db(db_path)
+    try:
+        # Construct the run record (without ID, prev_run_hash, or content hash yet)
+        run_record = {
+            "ts": ts,
+            "session_id": session_id,
+            "source_event": source_event,
+            "file_path": file_path,
+            "mode": mode,
+            "total": total,
+            "supported": supported,
+            "tagged": tagged,
+            "unsupported": unsupported,
+        }
+
+        # Query the previous run to get its content hash
+        prev_row = con.execute(
+            "SELECT id, run_content_hash FROM provenance_run ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        prev_run_hash = prev_row[1] if prev_row else None
+
+        # Compute canonical JSON hash of the current run
+        import json as json_mod
+        run_json = json_mod.dumps(run_record, sort_keys=True, separators=(",", ":"))
+        run_content_hash = "sha256:" + hashlib.sha256(run_json.encode("utf-8")).hexdigest()
+
+        # Insert the run with the hash chain
+        cur = con.execute(
+            "INSERT INTO provenance_run "
+            "(ts, session_id, source_event, file_path, mode, total, supported, tagged, unsupported, prev_run_hash, run_content_hash) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                ts, session_id, source_event, file_path, mode,
+                total, supported, tagged, unsupported,
+                prev_run_hash, run_content_hash,
+            ),
+        )
+        new_id = int(cur.lastrowid) if cur.lastrowid is not None else -1
+        con.commit()
+    finally:
+        con.close()
+    return new_id
