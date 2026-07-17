@@ -44,8 +44,20 @@ CLAIM_TRIGGERS: List[Tuple[str, "re.Pattern[str]"]] = [
     ("year",        re.compile(r"\b(?:18|19|20)\d{2}\b")),
     ("percentage",  re.compile(r"\b\d+(?:\.\d+)?\s?%|\bper\s?cent\b|\bpercent\b", re.I)),
     ("magnitude",   re.compile(r"\b\d[\d,]*(?:\.\d+)?\s?(?:million|billion|trillion|bn|tn)\b", re.I)),
-    ("statute",     re.compile(r"\b(?:s\.?\s?\d+|section\s\d+|Act\s(?:18|19|20)\d{2})\b")),
-    ("attribution", re.compile(r"\b(?:according to|found that|reported that|estimated|shows that|study\b|survey\b|data show|statistics show)\b", re.I)),
+    # Statute pattern: numbered references (s. 5, section 42, Act 1988) stay
+    # case-sensitive; the keyword alternatives added in phase-1b are matched
+    # case-insensitively via the scoped (?i:...) group.
+    ("statute",     re.compile(
+        r"\b(?:s\.?\s?\d+|section\s\d+|Act\s(?:18|19|20)\d{2})\b"
+        r"|(?i:\b(?:regulation|legislation|statutory|code\s+section|division|schedule|part|"
+        r"clause|article|subsection|legislative|ordinance|statute|act|bill|"
+        r"congress|parliament|law|legal|judicial|court|mandate|requirement|"
+        r"authority|provision)s?\b)")),
+    ("attribution", re.compile(
+        r"\b(?:according to|found that|reported that|estimated|shows that|study\b|survey\b|data show|statistics show"
+        r"|stated|confirmed|revealed|disclosed|indicate[sd]|demonstrate[sd]|conclude[sd]|"
+        r"note[sd]|cite[sd]|determine[sd]|assessed|evaluated|judged|found|identified|"
+        r"reported|documented|shown|established|verified)\b", re.I)),
     # Decision/obligation language. Closes the alignment bug where salience
     # _DECISION scores must/shall/require sentences load-bearing (0.55) but
     # extract never detected them, so they silently PASSed.
