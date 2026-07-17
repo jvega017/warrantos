@@ -184,12 +184,23 @@ class TestVerifyClaim(unittest.TestCase):
         self.assertEqual(v.verdict, "skipped")
 
     def test_uses_get_grader_when_none_passed(self):
-        """When grader=None, get_grader() is called automatically."""
+        """When grader=None, get_grader() is called automatically.
+
+        Hermetic: ClaudeCliGrader availability is forced False so an
+        ambient `claude` binary on PATH (or the CI booby-trap shim) is
+        never invoked; auto-selection must land on the heuristic.
+        """
         import os
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("ANTHROPIC_API_KEY", None)
-            with patch("warrantos.provenance.verify.fetch_text", return_value=None):
-                v = verify_claim("Output rose 5 per cent.", None, grader=None)
+            os.environ.pop("PROVENANCE_GRADER", None)
+            os.environ.pop("PROVENANCE_LOCAL_GRADER_URL", None)
+            with patch(
+                "warrantos.provenance.grade.ClaudeCliGrader.is_available",
+                return_value=False,
+            ):
+                with patch("warrantos.provenance.verify.fetch_text", return_value=None):
+                    v = verify_claim("Output rose 5 per cent.", None, grader=None)
         self.assertIsInstance(v.verdict, str)
 
 
@@ -254,11 +265,19 @@ class TestVerifyText(unittest.TestCase):
             self.assertIsInstance(v, Verdict)
 
     def test_uses_get_grader_when_none_passed(self):
+        # Hermetic: force ClaudeCliGrader unavailable so an ambient
+        # `claude` binary is never invoked (see class above).
         import os
         text = "Spending rose 6 per cent in 2023."
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop("ANTHROPIC_API_KEY", None)
-            verdicts = verify_text(text, grader=None, fetch=False)
+            os.environ.pop("PROVENANCE_GRADER", None)
+            os.environ.pop("PROVENANCE_LOCAL_GRADER_URL", None)
+            with patch(
+                "warrantos.provenance.grade.ClaudeCliGrader.is_available",
+                return_value=False,
+            ):
+                verdicts = verify_text(text, grader=None, fetch=False)
         self.assertIsInstance(verdicts, list)
         self.assertGreater(len(verdicts), 0)
 
