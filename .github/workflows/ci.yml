@@ -96,6 +96,48 @@ jobs:
           python -m pip install -e ".[attestation]"
           python -m unittest discover -s tests -v
 
+  # Integration test for the composite action (action.yml). Exercises the
+  # newline-delimited `paths` contract end-to-end: filenames containing
+  # spaces, multiple paths in one input, and a shell-injection attempt that
+  # must be treated as a literal (non-existent) filename instead of being
+  # executed. Also proves the --require-hashes pinned install path works.
+  action-integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - name: Create fixture documents (spaced filenames, multiple paths)
+        run: |
+          mkdir -p "${RUNNER_TEMP}/action it/dir with space"
+          printf '# Clean document\n\nPlain prose with no residue.\n' \
+            > "${RUNNER_TEMP}/action it/file with space.md"
+          printf '# Second document\n\nAlso clean.\n' \
+            > "${RUNNER_TEMP}/action it/dir with space/second doc.md"
+      - name: Slop gate over a spaced filename plus a spaced directory
+        uses: ./
+        with:
+          mode: slop
+          paths: |
+            ${{ runner.temp }}/action it/file with space.md
+            ${{ runner.temp }}/action it/dir with space
+      - name: Shell-injection attempt must not execute (literal filename, exit 2)
+        id: injection
+        continue-on-error: true
+        uses: ./
+        with:
+          mode: slop
+          paths: "README.md; touch ${{ runner.temp }}/pwned"
+      - name: Assert the injection step failed safely and executed nothing
+        run: |
+          if [ "${{ steps.injection.outcome }}" != "failure" ]; then
+            echo "::error::injection input unexpectedly succeeded (should be a missing-path failure)"
+            exit 1
+          fi
+          if [ -e "${RUNNER_TEMP}/pwned" ]; then
+            echo "::error::shell injection executed: ${RUNNER_TEMP}/pwned exists"
+            exit 1
+          fi
+          echo "injection input handled as data, not code"
+
   # Packaging gate: build the wheel and sdist, validate metadata, and prove a
   # clean install works with all console entry points. Catches packaging
   # regressions before a release rather than at publish time.

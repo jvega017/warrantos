@@ -1,0 +1,12 @@
+# Source spec for action-requirements.txt (the GitHub Action's hash-pinned
+# install set). Regenerate the lock file after every release that should
+# ship through the action:
+#
+#   pip install pip-tools
+#   pip-compile --generate-hashes --no-annotate --strip-extras \
+#     --output-file action-requirements.txt action-requirements.in
+#
+# WarrantOS has zero required runtime dependencies (stdlib only), so the
+# lock file pins exactly one distribution. Pin to the latest version
+# published on PyPI; bump this line as part of the release checklist.
+warrantos==0.10.0
