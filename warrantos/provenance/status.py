@@ -551,6 +551,32 @@ def collect_status() -> List[LayerStatus]:
     return rows
 
 
+def probe_results() -> Dict[str, str]:
+    """Run the execution probes and return per-layer conformance status.
+
+    Unlike :func:`collect_status` (which checks that symbols *exist*),
+    this executes each layer's real pipeline surface against an
+    adversarial fixture (provenance.conformance) and reports what was
+    *observed*:
+
+    - ``ENFORCED``: the layer's enforcement behaviour happened on the
+      fixture (the gate flagged, the trigger aborted, the tamper was
+      detected).
+    - ``AVAILABLE``: the surface imports and is callable but the
+      enforcement outcome was not observed - the signature a
+      commented-out pipeline call or a stubbed gate leaves behind.
+    - ``NOT_BUILT``: the module or symbol does not resolve.
+
+    Returns a dict keyed by probe id (L1-L7 pipeline layers, G1-G5
+    Layer 7 gates, I1-I5 integrity surfaces) with one of the three
+    status strings per entry. Tolerant of a partial install: a broken
+    layer degrades that entry, never the whole report.
+    """
+    from warrantos.provenance.conformance import run_probes
+
+    return {r.probe_id: r.status for r in run_probes()}
+
+
 def render_markdown(rows: Optional[List[LayerStatus]] = None) -> str:
     """Render the status report as Markdown."""
     if rows is None:
