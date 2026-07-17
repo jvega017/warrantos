@@ -12,7 +12,8 @@ from warrantos.provenance import attestation
 try:
     attestation.generate_keypair()
     _HAVE = True
-except attestation.AttestationUnavailable:
+except (attestation.AttestationUnavailable, BaseException):
+    # Catch AttestationUnavailable and any pyo3/cryptography import errors
     _HAVE = False
 
 

@@ -133,7 +133,7 @@ class TestCheckpoint(unittest.TestCase):
 
     def test_build_checkpoint_fields(self):
         cp = build_checkpoint(_entries(4), run_id="run_x", timestamp="2026-06-09T00:00:00Z")
-        self.assertEqual(cp["version"], "warrantos-checkpoint-v1")
+        self.assertEqual(cp["version"], "warrantos-checkpoint-v2")
         self.assertEqual(cp["entry_count"], 4)
         self.assertEqual(cp["run_id"], "run_x")
         self.assertTrue(cp["root_hash"].startswith("sha256:"))

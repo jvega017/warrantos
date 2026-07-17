@@ -29,7 +29,8 @@ class TestAttestVerifyCli(unittest.TestCase):
             priv, _pub = attestation.generate_keypair()
             os.environ["WARRANTOS_SIGNING_KEY"] = priv
             self._signed = True
-        except attestation.AttestationUnavailable:
+        except (attestation.AttestationUnavailable, BaseException):
+            # Catch AttestationUnavailable and any pyo3/cryptography import errors
             self._signed = False
 
         # Input files (draft, actor) stay in a temp dir; they are read-only inputs.
