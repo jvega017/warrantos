@@ -13,6 +13,26 @@ the limits are stated plainly here. Read this before relying on a verdict.
 - It is **not** a hallucination detector or a fact-checker. A `PASS` means the
   artefact met the accountability gates, not that it is true.
 
+## Citation-Trigger Detection: Honest Scope
+
+WarrantOS detects **citation-trigger patterns** (numeric claims, statutory references,
+attribution language, superlatives, causal language, etc.), not all factual claims. Many
+true factual statements have no trigger pattern and will not be flagged for sourcing.
+
+**Examples of undetected (but checkable) claims:**
+- "Canberra is the capital of Australia." — Copular claim; no numeric or attribution marker.
+- "The Earth orbits the Sun." — Common knowledge; no citation-trigger pattern.
+- "Exercise improves health." — General assertion without magnitudes, year, statute, or other trigger.
+
+**Examples of detected (trigger-bearing) claims:**
+- "In 2024, global GDP grew 2.5%." — Has year and percentage triggers.
+- "According to OECD data, inequality was worse." — Has attribution trigger.
+- "The largest solar farm in the world." — Has superlative trigger.
+
+Recall against open-domain factual claims is unknown and assumed **low (≤50%)**.
+The patterns exist to catch load-bearing quantitative and attributional claims that
+commonly appear in AI-drafted text. They are not a fact-checker.
+
 ## Verifier and grading limits
 
 - The default **HeuristicGrader is offline and free** and cannot emit
