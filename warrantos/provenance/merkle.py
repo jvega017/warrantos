@@ -165,19 +165,31 @@ def ledger_root(entries: Sequence[bytes]) -> str:
     return MerkleTree(entries).root_hex()
 
 
-def build_checkpoint(entries: Sequence[bytes], *, run_id: str, timestamp: str) -> dict:
-    """A signable checkpoint committing to the ledger state.
+def build_checkpoint(
+    entries: Sequence[bytes], *, run_id: str, timestamp: str,
+    prose_sha256: Optional[str] = None, cbom_sha256: Optional[str] = None
+) -> dict:
+    """A signable checkpoint committing to the ledger state and security-critical assets.
 
     The signature is added by the attestation layer (P1.2); this function
     produces the canonical unsigned body so signing and verification agree on
     exactly what was committed.
+
+    v2 binding (P0.3 security): prose_sha256 and cbom_sha256 bind all three
+    assets (prose, claims, ledger) into one checkpoint, so tampering with any
+    asset after signing is detected.
     """
     tree = MerkleTree(entries)
-    return {
-        "version": "warrantos-checkpoint-v1",
+    checkpoint = {
+        "version": "warrantos-checkpoint-v2",
         "root_hash": tree.root_hex(),
         "entry_count": len(entries),
         "run_id": run_id,
         "timestamp": timestamp,
         "algorithm": "sha256-merkle-rfc6962-domainsep",
     }
+    if prose_sha256 is not None:
+        checkpoint["prose_sha256"] = prose_sha256
+    if cbom_sha256 is not None:
+        checkpoint["cbom_sha256"] = cbom_sha256
+    return checkpoint

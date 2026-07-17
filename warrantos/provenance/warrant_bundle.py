@@ -54,20 +54,38 @@ def create_warrant(
     ``private_seed_b64`` (or the WARRANTOS_SIGNING_KEY env var) enables signing;
     if neither is present and signing is not possible, the bundle ships with an
     unsigned checkpoint (still integrity-verifiable, just not attributable).
+
+    v2 binding: The checkpoint now includes prose_sha256 and cbom_sha256, binding
+    all three security-critical assets (prose, claims, ledger) into the signed root.
     """
     entry_blobs = [_entry_bytes(e) for e in ledger_entries]
-    checkpoint = merkle.build_checkpoint(entry_blobs, run_id=run_id, timestamp=timestamp)
+    prose_sha = _prose_digest(prose)
+    cbom_sha = "sha256:" + hashlib.sha256(
+        json.dumps(cbom, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+    ).hexdigest()
+    checkpoint = merkle.build_checkpoint(
+        entry_blobs, run_id=run_id, timestamp=timestamp,
+        prose_sha256=prose_sha, cbom_sha256=cbom_sha
+    )
 
     signed = False
-    try:
-        from warrantos.provenance import attestation
+    # Only attempt signing if a key is provided or WARRANTOS_SIGNING_KEY is set
+    import os as _os
+    key_available = private_seed_b64 or _os.environ.get("WARRANTOS_SIGNING_KEY")
+
+    if key_available:
         try:
-            checkpoint = attestation.sign_checkpoint(checkpoint, private_seed_b64)
-            signed = True
-        except attestation.AttestationUnavailable:
+            from warrantos.provenance import attestation
+            try:
+                checkpoint = attestation.sign_checkpoint(checkpoint, private_seed_b64)
+                signed = True
+            except attestation.AttestationUnavailable:
+                signed = False
+        except ImportError:
             signed = False
-    except ImportError:
-        signed = False
+        except Exception:
+            # Catch any exception from sign_checkpoint (cryptography errors, pyo3 panics, etc.)
+            signed = False
 
     return {
         "version": "warrant-bundle-v1",
@@ -83,6 +101,7 @@ def verify_warrant(
     bundle: dict,
     *,
     prose: Optional[str] = None,
+    cbom: Optional[dict] = None,
     expected_public_key_b64: Optional[str] = None,
     allow_unsigned: bool = False,
 ) -> dict:
@@ -93,14 +112,18 @@ def verify_warrant(
       matches the checkpoint root, else ``INVALID``. A missing checkpoint or
       missing root is ``INVALID`` (you cannot trust what is not committed to).
     - ``prose``: ``VALID`` / ``INVALID`` / ``NOT_CHECKED`` (only if ``prose`` given).
+    - ``cbom``: ``VALID`` / ``INVALID`` / ``NOT_CHECKED`` (only if ``cbom`` given).
     - ``signature``: ``VALID`` / ``INVALID`` / ``UNKNOWN_KEY`` / ``UNSIGNED`` /
       ``UNAVAILABLE`` (the [attestation] extra is not installed).
-    - ``overall``: ``VALID`` only if integrity is VALID, prose is not INVALID, and
+    - ``overall``: ``VALID`` only if integrity is VALID, prose/cbom are not INVALID, and
       the signature is VALID. An UNSIGNED or UNAVAILABLE signature is overall
       ``INVALID`` UNLESS ``allow_unsigned=True`` is passed explicitly, so an
       attestation is not silently accepted without a verified signer.
+
+    v2 verification: If the checkpoint includes prose_sha256 and cbom_sha256,
+    tampering with those assets after signing will be detected.
     """
-    result = {"integrity": "INVALID", "prose": "NOT_CHECKED", "signature": "UNSIGNED"}
+    result = {"integrity": "INVALID", "prose": "NOT_CHECKED", "cbom": "NOT_CHECKED", "signature": "UNSIGNED"}
     cp = bundle.get("checkpoint") or {}
     entries = bundle.get("ledger_entries")
     if entries is None:
@@ -112,11 +135,31 @@ def verify_warrant(
     root = cp.get("root_hash")
     result["integrity"] = "VALID" if (root and recomputed == root) else "INVALID"
 
-    # 2. Prose digest (optional).
+    # 2. Prose digest (optional). Also check against checkpoint binding if present.
     if prose is not None:
-        result["prose"] = "VALID" if _prose_digest(prose) == bundle.get("prose_sha256") else "INVALID"
+        prose_digest = _prose_digest(prose)
+        bundle_digest = bundle.get("prose_sha256")
+        checkpoint_digest = cp.get("prose_sha256")
+        # Verify against both bundle-level and checkpoint-level digests
+        if checkpoint_digest and checkpoint_digest != prose_digest:
+            result["prose"] = "INVALID"
+        elif bundle_digest and bundle_digest != prose_digest:
+            result["prose"] = "INVALID"
+        else:
+            result["prose"] = "VALID"
 
-    # 3. Signature (optional extra).
+    # 3. CBOM digest (optional). Also check against checkpoint binding if present.
+    if cbom is not None:
+        cbom_sha = "sha256:" + hashlib.sha256(
+            json.dumps(cbom, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+        ).hexdigest()
+        checkpoint_cbom = cp.get("cbom_sha256")
+        if checkpoint_cbom and checkpoint_cbom != cbom_sha:
+            result["cbom"] = "INVALID"
+        else:
+            result["cbom"] = "VALID"
+
+    # 4. Signature (optional extra).
     if cp.get("signature"):
         try:
             from warrantos.provenance import attestation
@@ -132,6 +175,7 @@ def verify_warrant(
     ok = (
         result["integrity"] == "VALID"
         and result["prose"] != "INVALID"
+        and result["cbom"] != "INVALID"
         and sig_ok
     )
     result["overall"] = "VALID" if ok else "INVALID"

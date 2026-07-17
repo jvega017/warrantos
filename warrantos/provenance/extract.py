@@ -1,9 +1,15 @@
-"""provenance.extract: shared claim-detection patterns and sentence splitting.
+"""provenance.extract: shared citation-trigger detection patterns and sentence splitting.
 
-These patterns are copied from hooks/provenance_check.py, which remains the
-canonical in-session tripwire. This module provides out-of-band reuse for the
-CLI verification pipeline (provenance.verify, provenance.grade). If you change
-detection logic, update the hook first and mirror the change here.
+This module detects patterns that signal checkable claims (years, percentages, magnitudes,
+statutes, attribution, causal language, superlatives, comparisons, etc.). Note that these
+patterns are heuristic triggers, not guarantees of factuality: a sentence matching a pattern
+is not necessarily true, and many factual sentences (copular claims like "Canberra is the
+capital of Australia", common knowledge) do not match any pattern.
+
+These patterns are copied from hooks/provenance_check.py, which remains the canonical
+in-session tripwire. This module provides out-of-band reuse for the CLI verification
+pipeline (provenance.verify, provenance.grade). If you change detection logic, update
+the hook first and mirror the change here.
 
 Australian English throughout.
 """
