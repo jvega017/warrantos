@@ -4,10 +4,24 @@
 
 ## Supported versions
 
-| Version | Supported |
-|---|---|
-| `0.9.x` (current beta) | Yes |
-| `< 0.9` | No (please upgrade) |
+| Version | Supported | Notes |
+|---|---|---|
+| `0.11.0+` | Yes | v2 warrant bundles with cryptographic binding (prose_sha256 + cbom_sha256 in checkpoint) |
+| `0.10.0` and earlier | No | P0 Advisory: `.warrant` bundles do not bind prose and CBOM to the checkpoint. See below. |
+
+## P0 Advisory: v0.10.0 and earlier warrant bundles
+
+**Affected versions:** `0.10.0` and earlier
+
+**Vulnerability:** The Merkle checkpoint in `.warrant` bundles attests to the ledger entries (claims and verifications) only. It does not include a binding to the prose (`prose_sha256`) or CBOM (`cbom_sha256`). An adversary with access to a signed bundle can mutate the prose or claims after the bundle is signed, and the signature verification will pass because the checkpoint and signature have not changed.
+
+**Mitigation:**
+1. Update to `0.11.0` or later.
+2. Re-attest your checked runs with `warrantos attest` (generates v2 bundles automatically).
+3. Discard old `.warrant` files or mark them `LEGACY_UNBOUND` in your audit trail.
+4. When verifying external bundles, inspect the checkpoint `version` field: `warrantos-checkpoint-v2` is safe, `warrantos-checkpoint-v1` or `warrantos-checkpoint-v0` require manual audit of prose and CBOM integrity before relying on the signature.
+
+**Technical details:** Starting with v0.11.0, `build_checkpoint()` in `merkle.py` accepts optional `prose_sha256` and `cbom_sha256` parameters and includes them in the checkpoint object before signing. Attestation of a v1 bundle (unsigned or with an old signature) will upgrade the checkpoint to v2 automatically. Verification is backward-compatible: unsigned v1 bundles still verify as `VALID` if integrity holds, but are logged as `LEGACY_UNBOUND` for audit purposes.
 
 ## How to report a vulnerability
 

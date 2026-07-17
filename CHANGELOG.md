@@ -6,6 +6,14 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+### Added
+
+- **P0.3 Cryptographic Binding for v2 Warrant Bundles.** The checkpoint now binds `prose_sha256` and `cbom_sha256` into the Merkle root before signing, so tampering with prose or claims after attestation is cryptographically detectable. v2 checkpoints use `warrantos-checkpoint-v2`. Verification is backward-compatible; v0 and v1 bundles remain verifiable as `VALID` when integrity holds, but are now tagged `LEGACY_UNBOUND` in audit logs.
+
+### Security
+
+- **P0 Advisory: v0.10.0 and earlier warrants do not bind prose and CBOM to the Merkle root.** An adversary with access to a signed bundle can modify the prose or claims after attestation and the signature remains valid. The integrity check would fail (changed ledger) but a verifier who only spot-checks the signature would miss the mutation. Affected users should update to 0.11.0, re-attest their bundles (which automatically upgrades to v2), and verify the new `prose_sha256` and `cbom_sha256` fields in the checkpoint. See `SECURITY.md` for details.
+
 ## [0.10.0] - 2026-07-08
 
 The distribution wave. No change to the build state (still **20 BUILT / 0 PARTIAL**).

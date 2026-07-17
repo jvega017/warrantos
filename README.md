@@ -1,12 +1,12 @@
 # WarrantOS: CI for claims
 
-Every factual claim in an AI-assisted document ships with a source, a `[CITE NEEDED]` tag, or a logged BLOCK. No warrant, no ship.
+Every citation-trigger in an AI-assisted document ships with a source, a `[CITE NEEDED]` tag, or a logged BLOCK. No warrant, no ship.
 
 *`claude-provenance` on GitHub and as the legacy Claude Code plugin; `warrantos` on PyPI and the CLI.*
 
 [![ci](https://github.com/jvega017/warrantos/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/warrantos/actions/workflows/ci.yml)
 [![layers: 20B / 0P](https://img.shields.io/badge/layers-20B%20%2F%200P-brightgreen)](docs/STATUS.md)
-![version: 0.10.0](https://img.shields.io/badge/version-0.10.0-orange)
+![version: 0.11.0](https://img.shields.io/badge/version-0.11.0-brightgreen)
 ![python: 3.11--3.13](https://img.shields.io/badge/python-3.11--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
 
@@ -86,7 +86,7 @@ Every checked run can be sealed into a portable `.warrant` bundle that a third p
 ## How it works
 
 WarrantOS reads one document at the writer's desk, before it ships.
-It detects factual claim sentences and checks each for a source in the same sentence or the line directly below, or an explicit `[CITE NEEDED]`.
+It detects citation-trigger patterns (years, percentages, magnitude, statutory references, attribution, causal language, superlatives, etc.) and checks each for a source in the same sentence or the line directly below, or an explicit `[CITE NEEDED]`.
 It scans for chat scaffold and process residue that bled into the artefact.
 It returns one verdict (`PASS`, `HOLD`, `BLOCK`, or `NOT_ASSESSABLE`) and writes every miss to an append-only, tamper-evident ledger you can hand an auditor.
 Stdlib only, MIT, no API, no account.
