@@ -317,21 +317,36 @@ def verify_text(
         source_text=None for every claim regardless of whether a citation
         URL is present. Useful for offline/deterministic use.
 
+    Phase 1b-ME: claim selection honours WARRANTOS_LLM_VERIFY. In 'off'
+    mode (default) selection is regex-only, identical to prior behaviour.
+    In 'on' mode, regex-flagged sentences are additionally confirmed by
+    the LLM filter (provenance.llm_filter); LLM-rejected sentences are
+    dropped as false positives. In 'only' mode the regex gate is bypassed
+    and every sentence is sent to the LLM.
+
     Returns
     -------
     List[Verdict]
-        One Verdict per sentence that contains at least one claim trigger.
+        One Verdict per sentence that contains at least one claim trigger
+        (and, when LLM filtering is enabled, survives the LLM filter).
     """
+    from warrantos.provenance import llm_filter
+
     if grader is None:
         grader = get_grader()
 
     verdicts: List[Verdict] = []
     sents = sentences(text)
 
-    for sent in sents:
-        if not _looks_like_claim(sent):
-            continue
+    mode = llm_filter.llm_verify_mode()
+    if mode == "only":
+        candidates = llm_filter.filter_sentences(sents)
+    else:
+        candidates = [s for s in sents if _looks_like_claim(s)]
+        if mode == "on":
+            candidates = llm_filter.filter_sentences(candidates)
 
+    for sent in candidates:
         citation = extract_citation(sent)
 
         if fetch and citation and _URL_PATTERN.match(citation):

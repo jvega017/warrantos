@@ -100,3 +100,28 @@ def sentences(text: str) -> List[str]:
     """
     chunks = [s.strip() for s in _SENT_SPLIT.split(text) if s and s.strip()]
     return chunks
+
+
+def sentences_with_llm_filter(text: str, use_llm: "bool | None" = None) -> List[str]:
+    """Split *text* into sentences, optionally filtering via the LLM layer.
+
+    Phase 1b-ME: when *use_llm* is True (or, when None, when the
+    WARRANTOS_LLM_VERIFY environment variable is 'on' or 'only'), each
+    sentence is passed through provenance.llm_filter and sentences Claude
+    rejects as non-claims are dropped. With use_llm False (or the default
+    'off' mode) this is identical to sentences().
+
+    Degrades gracefully: without an ANTHROPIC_API_KEY or the optional
+    `anthropic` package, all sentences are kept.
+    """
+    # Imported lazily so the regex-only path stays stdlib-only with zero
+    # import-time cost, and to avoid a circular import.
+    from warrantos.provenance import llm_filter
+
+    sents = sentences(text)
+    if use_llm is None:
+        use_llm = llm_filter.llm_verify_mode() != "off"
+    if not use_llm:
+        return sents
+
+    return llm_filter.filter_sentences(sents)

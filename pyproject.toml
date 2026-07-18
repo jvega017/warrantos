@@ -57,6 +57,11 @@ mcp = ["mcp>=1.0.0"]
 # standard library ships no public-key signing.
 attestation = ["cryptography>=41.0"]
 
+# LLM-assisted claim filtering (Phase 1b-ME). Only needed when opting in
+# via WARRANTOS_LLM_VERIFY=on / --llm-verify; the regex-only default path
+# stays stdlib-only and never imports this.
+llm = ["anthropic>=0.40"]
+
 # Development extras: the test suite is stdlib unittest so no testing
 # dep is required.
 dev = []

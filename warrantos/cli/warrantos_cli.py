@@ -354,6 +354,19 @@ def build_parser() -> argparse.ArgumentParser:
             "match the documented LOAD_BEARING_THRESHOLD."
         ),
     )
+    check.add_argument(
+        "--llm-verify",
+        action="store_true",
+        help=(
+            "Phase 1b-ME: enable LLM-assisted claim filtering (equivalent "
+            "to WARRANTOS_LLM_VERIFY=on). Regex-flagged sentences are "
+            "confirmed by Claude before verification, dropping everyday-"
+            "prose false positives. Requires ANTHROPIC_API_KEY and the "
+            "optional `anthropic` package (pip install \"warrantos[llm]\"); "
+            "degrades gracefully to regex-only when either is missing. "
+            "Default: off (pure regex, no network calls for detection)."
+        ),
+    )
 
     # --- slop: zero-configuration AI scaffold-residue scanner ---
     slop_p = sub.add_parser(
@@ -507,6 +520,18 @@ def build_parser() -> argparse.ArgumentParser:
              "By default an unsigned or unverifiable signature is overall INVALID.",
     )
     verify.add_argument("--json", action="store_true", help="Emit the verdict as JSON.")
+    verify.add_argument(
+        "--llm-verify",
+        action="store_true",
+        help=(
+            "Phase 1b-ME: enable LLM-assisted claim filtering for any claim "
+            "detection performed during verification (sets "
+            "WARRANTOS_LLM_VERIFY=on for this process). The core bundle "
+            "integrity/signature checks are unaffected and remain offline. "
+            "Requires ANTHROPIC_API_KEY and the optional `anthropic` "
+            "package; degrades gracefully to regex-only otherwise."
+        ),
+    )
 
     # --- calibrate: run the eval harness and write .warrant/calibration.json ---
     calibrate = sub.add_parser(
@@ -701,14 +726,25 @@ def detect_claims(draft_text: str) -> List[Dict[str, Any]]:
     Returns one row per sentence that matches at least one trigger.
     Each row carries the sentence, the trigger names that fired, the
     citation token if any, and the salience score.
+
+    Phase 1b-ME: honours WARRANTOS_LLM_VERIFY. In 'on' mode, regex-flagged
+    sentences are additionally confirmed by the LLM filter and rejected
+    false positives are dropped. In 'only' mode the regex gate is bypassed:
+    every sentence is put to the LLM, and kept rows without a regex trigger
+    carry the pseudo-trigger name "llm". Default 'off' is regex-only.
     """
+    from warrantos.provenance import llm_filter
     from warrantos.provenance.salience import score_claim
+
+    mode = llm_filter.llm_verify_mode()
 
     rows: List[Dict[str, Any]] = []
     for sent in sentences(draft_text):
         triggered = [name for name, rx in CLAIM_TRIGGERS if rx.search(sent)]
         if not triggered:
-            continue
+            if mode != "only":
+                continue
+            triggered = ["llm"]
         citation = extract_citation(sent)
         rows.append(
             {
@@ -719,6 +755,11 @@ def detect_claims(draft_text: str) -> List[Dict[str, Any]]:
                 "load_bearing": is_load_bearing(sent),
             }
         )
+
+    if mode in ("on", "only") and rows:
+        results = llm_filter.filter_claims_with_llm([r["sentence"] for r in rows])
+        rows = [row for row, (_s, keep) in zip(rows, results) if keep]
+
     return rows
 
 
@@ -1752,6 +1793,13 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    # Phase 1b-ME: --llm-verify opts this process into LLM-assisted claim
+    # filtering by setting WARRANTOS_LLM_VERIFY=on. The env var is the
+    # single routing switch consumed by provenance.llm_filter, so flag and
+    # env-var invocations behave identically.
+    if getattr(args, "llm_verify", False):
+        os.environ["WARRANTOS_LLM_VERIFY"] = "on"
 
     if args.command == "status":
         from warrantos.provenance.status import (
