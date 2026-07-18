@@ -63,34 +63,49 @@ class TestCitationTriggerDetection(unittest.TestCase):
         self.assertTrue(statute.search("This statute states the maximum penalty."))
 
     def test_statute_keywords_expanded_set(self):
-        """Phase 1b: newly added statute keywords all trigger."""
+        """Phase 1b (refined): retained statute keywords all trigger.
+
+        Common-word keywords (part, act, law, court, requirement, provision,
+        article, division, schedule, clause, authority) were removed after the
+        precision collapse identified in review; their old test samples are gone.
+        """
         statute = self._named_trigger("statute")
         samples = [
             "The legislation was amended last session.",
             "There is a statutory obligation to report.",
             "Code section 12 applies here.",
-            "Division 3 covers exemptions.",
-            "Schedule 2 lists the fees.",
-            "Clause 7 was struck out.",
-            "Article 5 guarantees due process.",
             "See subsection (b) for details.",
             "The legislative agenda stalled.",
             "The ordinance bans overnight parking.",
-            "The act was repealed.",
             "The bill passed the senate.",
             "Congress voted on the measure.",
             "Parliament debated the amendment.",
-            "The law prohibits this conduct.",
             "There are legal obligations involved.",
             "Judicial review is available.",
-            "The court dismissed the appeal.",
             "The mandate expires next year.",
-            "This requirement is binding.",
-            "The authority granted approval.",
-            "The provision sunsets in two years.",
         ]
         for s in samples:
             self.assertTrue(statute.search(s), "statute pattern should match: %r" % s)
+
+    def test_statute_high_precision_signals(self):
+        """High-precision statute signals that should NOT fire on everyday language."""
+        statute = self._named_trigger("statute")
+        # Should match
+        self.assertTrue(statute.search("Pursuant to section 5 of the Act."))
+        self.assertTrue(statute.search("In accordance with the legislation."))
+        self.assertTrue(statute.search("The rule was gazetted yesterday."))
+        self.assertTrue(statute.search("The Act was enacted in 2020."))
+        # Should NOT match (common words)
+        self.assertFalse(statute.search("For the most part, I agree."))
+        self.assertFalse(statute.search("It's a real balancing act."))
+        self.assertFalse(statute.search("We booked the tennis court."))
+
+    def test_statute_case_insensitive_numbered_forms(self):
+        """Numbered statute references should match regardless of case."""
+        statute = self._named_trigger("statute")
+        self.assertTrue(statute.search("Section 42 applies here."))  # capital S
+        self.assertTrue(statute.search("SECTION 42 APPLIES."))        # all caps
+        self.assertTrue(statute.search("S. 5 of the code."))          # capital S.
 
     def test_statute_keywords_case_insensitive(self):
         """Phase 1b: keyword alternatives match regardless of case."""
@@ -107,11 +122,10 @@ class TestCitationTriggerDetection(unittest.TestCase):
 
     # --- Phase 1b regression tests: expanded attribution phrases ---
 
-    def test_attribution_phrase_demonstrates(self):
-        """Phase 1b: 'demonstrates'/'demonstrated' trigger attribution."""
+    def test_attribution_phrase_demonstrated(self):
+        """Phase 1b: 'demonstrated' triggers attribution."""
         attribution = self._named_trigger("attribution")
         self.assertTrue(attribution.search("The study demonstrated significant gains."))
-        self.assertTrue(attribution.search("The evidence demonstrates a clear link."))
 
     def test_attribution_phrase_according_to_sources(self):
         """Phase 1b: 'According to sources' triggers attribution."""
@@ -119,31 +133,40 @@ class TestCitationTriggerDetection(unittest.TestCase):
         self.assertTrue(attribution.search("According to sources, the deal is close."))
 
     def test_attribution_phrases_expanded_set(self):
-        """Phase 1b: newly added attribution phrases all trigger."""
+        """Phase 1b (refined): retained attribution phrases all trigger.
+
+        Bare verbs (found, shown, established, reported, noted, identified)
+        were removed after the precision collapse identified in review; their
+        old test samples are gone.
+        """
         attribution = self._named_trigger("attribution")
         samples = [
             "The minister stated the policy was final.",
             "Officials confirmed the timeline.",
             "The audit revealed discrepancies.",
             "The company disclosed the breach.",
-            "The trend indicates a slowdown.",
-            "The report concludes the scheme failed.",
-            "The reviewer notes several gaps.",
+            "The trend indicated a slowdown.",
+            "The report concluded the scheme failed.",
             "The paper cites earlier work.",
             "The tribunal determines eligibility.",
             "The panel assessed the damage.",
             "The team evaluated the options.",
             "The referee judged the appeal.",
-            "Investigators found no wrongdoing.",
-            "Auditors identified three risks.",
-            "Analysts reported strong demand.",
             "The failures were documented in detail.",
-            "The effect was shown in trials.",
-            "The link was established by researchers.",
             "The results were verified independently.",
         ]
         for s in samples:
             self.assertTrue(attribution.search(s), "attribution pattern should match: %r" % s)
+
+    def test_attribution_requires_object_clause(self):
+        """Attribution verbs should prefer 'X found that' shape, not bare 'found'."""
+        attribution = self._named_trigger("attribution")
+        # Should match (explicit object clause)
+        self.assertTrue(attribution.search("The study found that emissions rose."))
+        self.assertTrue(attribution.search("Officials stated that compliance improved."))
+        # Bare verb (now excluded per refinement)
+        self.assertFalse(attribution.search("I found my keys."))
+        self.assertFalse(attribution.search("As shown at the meeting."))
 
     def test_attribution_original_phrases_still_detected(self):
         """Original attribution phrases still trigger (regression)."""
@@ -152,6 +175,27 @@ class TestCitationTriggerDetection(unittest.TestCase):
         self.assertTrue(attribution.search("The study shows that exercise improves health."))
         self.assertTrue(attribution.search("Researchers found that sleep matters."))
         self.assertTrue(attribution.search("The agency reported that costs fell."))
+
+    # --- Phase 1b refinement: realistic negative set ---
+
+    def test_realistic_negatives_no_false_positives(self):
+        """Realistic prose should not trigger on refined patterns."""
+        statute = self._named_trigger("statute")
+        attribution = self._named_trigger("attribution")
+        negatives = [
+            "For the most part, I agree.",
+            "It was a real balancing act.",
+            "We booked the tennis court.",
+            "The job requirements are strict.",
+            "I read a newspaper article.",
+            "I found my keys under the couch.",
+            "As shown at the party, morale was high.",
+            "The board established a new policy.",
+            "We reported the findings to HR.",
+        ]
+        for sent in negatives:
+            self.assertFalse(statute.search(sent), f"statute should not match: {sent}")
+            self.assertFalse(attribution.search(sent), f"attribution should not match: {sent}")
 
     # --- Phase 1b sanity checks: numeric detection unchanged ---
 
