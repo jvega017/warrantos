@@ -9,6 +9,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+try:
+    from conftest import get_clean_env
+except ImportError:  # running as tests.test_* from the repo root
+    from tests.conftest import get_clean_env
+
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 _RUNNER = _REPO_ROOT / "eval" / "run_classifier_corpus.py"
 _SEED_CORPUS = _REPO_ROOT / "eval" / "classifier-corpus" / "seeds.jsonl"
@@ -36,6 +41,7 @@ class TestSeedCorpusPasses(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=30,
+            env=get_clean_env(),
         )
         self.assertEqual(proc.returncode, 0, msg=proc.stderr)
         report = json.loads(proc.stdout)
@@ -72,6 +78,7 @@ class TestRunnerOnSyntheticCorpus(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=30,
+            env=get_clean_env(),
         )
         self.assertEqual(proc.returncode, 1, msg=proc.stdout + proc.stderr)
         report = json.loads(proc.stdout)
@@ -86,6 +93,7 @@ class TestRunnerOnSyntheticCorpus(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=10,
+            env=get_clean_env(),
         )
         self.assertEqual(proc.returncode, 2)
         self.assertIn("corpus not found", proc.stderr)

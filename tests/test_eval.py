@@ -29,6 +29,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+try:
+    from conftest import get_clean_env
+except ImportError:  # running as tests.test_* from the repo root
+    from tests.conftest import get_clean_env
+
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _EVAL_SCRIPT = _REPO_ROOT / "eval" / "run_eval.py"
 _CORPUS = _REPO_ROOT / "eval" / "corpus" / "seed.jsonl"
@@ -67,6 +72,7 @@ class TestRunEvalExitsZero(unittest.TestCase):
             [sys.executable, str(_EVAL_SCRIPT)],
             capture_output=True,
             text=True,
+            env=get_clean_env(),
         )
         self.assertEqual(
             result.returncode,
@@ -81,6 +87,7 @@ class TestRunEvalExitsZero(unittest.TestCase):
             [sys.executable, str(_EVAL_SCRIPT)],
             capture_output=True,
             text=True,
+            env=get_clean_env(),
         )
         self.assertIn("evaluation report", result.stdout)
         self.assertIn("precision", result.stdout)
@@ -93,6 +100,7 @@ class TestRunEvalExitsZero(unittest.TestCase):
             [sys.executable, str(_EVAL_SCRIPT), "--corpus", "/does/not/exist.jsonl"],
             capture_output=True,
             text=True,
+            env=get_clean_env(),
         )
         self.assertEqual(result.returncode, 1)
         self.assertIn("ERROR", result.stderr)
@@ -346,6 +354,7 @@ class TestGraderEvalCLINoArgs(unittest.TestCase):
             [sys.executable, str(_EVAL_SCRIPT)],
             capture_output=True,
             text=True,
+            env=get_clean_env(),
         )
 
     def test_exits_zero(self):
@@ -417,8 +426,8 @@ class TestGraderEvalCLIBoth(unittest.TestCase):
     """--grader both must exit 0 and print the LLM unavailable notice in CI."""
 
     def setUp(self):
-        # Strip ANTHROPIC_API_KEY from the environment so LLMGrader falls back.
-        env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
+        # Scrubbed environment (no ANTHROPIC_API_KEY) so LLMGrader falls back.
+        env = get_clean_env()
         self._result = subprocess.run(
             [sys.executable, str(_EVAL_SCRIPT), "--grader", "both"],
             capture_output=True,
@@ -468,6 +477,7 @@ class TestGraderCorpusMissing(unittest.TestCase):
             ],
             capture_output=True,
             text=True,
+            env=get_clean_env(),
         )
         self.assertEqual(
             result.returncode,

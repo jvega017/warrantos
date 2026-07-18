@@ -28,6 +28,24 @@ import unittest
 import uuid
 from pathlib import Path
 
+try:
+    from conftest import get_clean_env
+except ImportError:  # running as tests.test_* from the repo root
+    from tests.conftest import get_clean_env
+
+
+def _cli_env():
+    """Hermetic CLI environment: scrubbed, with the grader pinned.
+
+    PROVENANCE_GRADER=heuristic prevents get_grader() auto-selecting an
+    ambient `claude` binary on PATH (or the CI booby-trap shim) when a
+    test runs `warrantos check --verify` as a subprocess.
+    """
+    env = get_clean_env()
+    env["PROVENANCE_GRADER"] = "heuristic"
+    return env
+
+
 from warrantos.provenance.overrides import record_override
 
 
@@ -91,6 +109,7 @@ class _Harness:
             capture_output=True,
             text=True,
             timeout=60,
+            env=_cli_env(),
         )
 
 
@@ -403,7 +422,10 @@ class TestErrorContract(unittest.TestCase):
             "--db", str(self.h.db),
             "--out-dir", str(self.h.out_dir),
         ]
-        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(_REPO_ROOT))
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=str(_REPO_ROOT),
+            env=_cli_env(),
+        )
         self.assertEqual(proc.returncode, 2)
         self.assertIn("draft file not found", proc.stderr)
 
@@ -417,7 +439,10 @@ class TestErrorContract(unittest.TestCase):
             "--db", str(self.h.db),
             "--out-dir", str(self.h.out_dir),
         ]
-        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(_REPO_ROOT))
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=str(_REPO_ROOT),
+            env=_cli_env(),
+        )
         self.assertEqual(proc.returncode, 2)
         self.assertIn("context file invalid", proc.stderr)
 
@@ -431,7 +456,10 @@ class TestErrorContract(unittest.TestCase):
             "--db", str(self.h.db),
             "--out-dir", str(self.h.out_dir),
         ]
-        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(_REPO_ROOT))
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, cwd=str(_REPO_ROOT),
+            env=_cli_env(),
+        )
         self.assertEqual(proc.returncode, 2)
         self.assertIn("actor identity file invalid", proc.stderr)
 
@@ -690,7 +718,8 @@ class TestExplainProfile(unittest.TestCase):
             "check", "--explain-profile",
         ]
         proc = subprocess.run(
-            cmd, cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=60
+            cmd, cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=60,
+            env=_cli_env(),
         )
         self.assertEqual(proc.returncode, 0, msg=proc.stderr)
         self.assertIn("boundary gate", proc.stdout)
@@ -760,7 +789,8 @@ class TestCalibrateSubcommand(unittest.TestCase):
     def _run(self, *args):
         cmd = [sys.executable, str(_CLI_PATH), "calibrate"] + list(args)
         return subprocess.run(
-            cmd, cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=120
+            cmd, cwd=str(_REPO_ROOT), capture_output=True, text=True, timeout=120,
+            env=_cli_env(),
         )
 
     def test_calibrate_writes_calibration_json(self):

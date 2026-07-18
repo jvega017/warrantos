@@ -8,6 +8,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+try:
+    from conftest import get_clean_env
+except ImportError:  # running as tests.test_* from the repo root
+    from tests.conftest import get_clean_env
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI = REPO_ROOT / "warrantos" / "cli" / "provenance_cli.py"
 
@@ -52,6 +57,7 @@ class TestContextCli(unittest.TestCase):
                 cwd=str(REPO_ROOT),
                 text=True,
                 capture_output=True,
+                env=get_clean_env(),
             )
 
             self.assertEqual(proc.returncode, 0, proc.stderr)
@@ -83,6 +89,7 @@ class TestContextCli(unittest.TestCase):
                 cwd=str(REPO_ROOT),
                 text=True,
                 capture_output=True,
+                env=get_clean_env(),
             )
 
             self.assertEqual(proc.returncode, 1)

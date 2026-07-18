@@ -7,6 +7,11 @@ import sys
 import unittest
 from pathlib import Path
 
+try:
+    from conftest import get_clean_env
+except ImportError:  # running as tests.test_* from the repo root
+    from tests.conftest import get_clean_env
+
 from warrantos.provenance.status import (
     LayerStatus,
     collect_status,
@@ -100,6 +105,7 @@ class TestStatusCli(unittest.TestCase):
             capture_output=True,
             text=True,
             timeout=30,
+            env=get_clean_env(),
         )
 
     def test_text_default(self):

@@ -22,6 +22,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
+try:
+    from conftest import get_clean_env
+except ImportError:  # running as tests.test_* from the repo root
+    from tests.conftest import get_clean_env
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HOOK = REPO_ROOT / "warrantos" / "hooks" / "provenance_check.py"
 
@@ -147,7 +152,7 @@ class HookIntegration(unittest.TestCase):
     """End-to-end behaviour of the hook process via stdin/stdout/exit code."""
 
     def _run(self, event, mode=None):
-        env = dict(os.environ)
+        env = get_clean_env()
         env["PROVENANCE_DB"] = self.db_path
         if mode is not None:
             env["PROVENANCE_MODE"] = mode
@@ -222,7 +227,7 @@ class HookIntegration(unittest.TestCase):
         self.assertEqual(p.stdout.strip(), "", "stop-loop guard must not block")
 
     def test_garbage_stdin_never_crashes(self):
-        env = dict(os.environ)
+        env = get_clean_env()
         env["PROVENANCE_DB"] = self.db_path
         env["PROVENANCE_MODE"] = "enforce"
         proc = subprocess.run(
