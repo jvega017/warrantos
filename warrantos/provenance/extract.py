@@ -44,8 +44,29 @@ CLAIM_TRIGGERS: List[Tuple[str, "re.Pattern[str]"]] = [
     ("year",        re.compile(r"\b(?:18|19|20)\d{2}\b")),
     ("percentage",  re.compile(r"\b\d+(?:\.\d+)?\s?%|\bper\s?cent\b|\bpercent\b", re.I)),
     ("magnitude",   re.compile(r"\b\d[\d,]*(?:\.\d+)?\s?(?:million|billion|trillion|bn|tn)\b", re.I)),
-    ("statute",     re.compile(r"\b(?:s\.?\s?\d+|section\s\d+|Act\s(?:18|19|20)\d{2})\b")),
-    ("attribution", re.compile(r"\b(?:according to|found that|reported that|estimated|shows that|study\b|survey\b|data show|statistics show)\b", re.I)),
+    # Statute pattern, refined in phase-1b: common words (part, act, law,
+    # court, requirement, provision, article, division, schedule, clause,
+    # authority) removed after precision collapse; replaced with
+    # high-precision signals (pursuant to, in accordance with, gazetted,
+    # enacted, repealed, amended by, prescribed). Numbered forms (s. 5,
+    # section 42, Act 1988) are now case-insensitive so "Section 42" matches.
+    # "under the" is restricted to a capitalised following word ("under the
+    # Privacy Act") so everyday phrases ("under the couch") do not fire.
+    ("statute",     re.compile(
+        r"(?i:\b(?:s\.?\s?\d+|section\s\d+|Act\s(?:18|19|20)\d{2})\b)"
+        r"|(?i:\b(?:regulation|legislation|statutory|code\s+section|subsection|"
+        r"legislative|ordinance|statute|bill|congress|parliament|legal|judicial|"
+        r"mandate|pursuant\s+to|in\s+accordance\s+with|prescribed|"
+        r"gazetted|enacted|repealed|amended\s+by)s?\b)"
+        r"|\b[Uu]nder\s+the\s+[A-Z]")),
+    # Attribution pattern, refined in phase-1b: bare verbs (found, shown,
+    # established, reported, noted, identified) removed; object-clause shapes
+    # ("found that", "reported that") retained.
+    ("attribution", re.compile(
+        r"\b(?:according to|found that|reported that|estimated|shows that|study\b|survey\b|"
+        r"data show|statistics show|stated|confirmed|revealed|disclosed|indicated|"
+        r"demonstrated|concluded|cites?|determines?|assessed|evaluated|judged|"
+        r"documented|verified)\b", re.I)),
     # Decision/obligation language. Closes the alignment bug where salience
     # _DECISION scores must/shall/require sentences load-bearing (0.55) but
     # extract never detected them, so they silently PASSed.
@@ -79,3 +100,28 @@ def sentences(text: str) -> List[str]:
     """
     chunks = [s.strip() for s in _SENT_SPLIT.split(text) if s and s.strip()]
     return chunks
+
+
+def sentences_with_llm_filter(text: str, use_llm: "bool | None" = None) -> List[str]:
+    """Split *text* into sentences, optionally filtering via the LLM layer.
+
+    Phase 1b-ME: when *use_llm* is True (or, when None, when the
+    WARRANTOS_LLM_VERIFY environment variable is 'on' or 'only'), each
+    sentence is passed through provenance.llm_filter and sentences Claude
+    rejects as non-claims are dropped. With use_llm False (or the default
+    'off' mode) this is identical to sentences().
+
+    Degrades gracefully: without an ANTHROPIC_API_KEY or the optional
+    `anthropic` package, all sentences are kept.
+    """
+    # Imported lazily so the regex-only path stays stdlib-only with zero
+    # import-time cost, and to avoid a circular import.
+    from warrantos.provenance import llm_filter
+
+    sents = sentences(text)
+    if use_llm is None:
+        use_llm = llm_filter.llm_verify_mode() != "off"
+    if not use_llm:
+        return sents
+
+    return llm_filter.filter_sentences(sents)

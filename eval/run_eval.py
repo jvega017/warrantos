@@ -626,7 +626,19 @@ def main(argv=None):
              "Codex CLI (evaluation only; requires the Codex CLI installed and "
              "authenticated; never auto-selected; not used in CI).",
     )
+    parser.add_argument(
+        "--llm-verify",
+        action="store_true",
+        help="Phase 1b-ME: run the eval with LLM-assisted claim filtering "
+             "enabled (sets WARRANTOS_LLM_VERIFY=on so verify_text routes "
+             "regex-flagged sentences through provenance.llm_filter). "
+             "Requires ANTHROPIC_API_KEY and the optional `anthropic` "
+             "package; degrades gracefully to regex-only otherwise.",
+    )
     args = parser.parse_args(argv)
+
+    if args.llm_verify:
+        os.environ["WARRANTOS_LLM_VERIFY"] = "on"
 
     # Load corpus.
     items = load_corpus(args.corpus)
