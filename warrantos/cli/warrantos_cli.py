@@ -573,9 +573,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
     calibrate.add_argument(
         "--grader",
-        choices=("heuristic", "llm", "codex"),
+        choices=("heuristic", "local", "llm", "codex"),
         default="heuristic",
-        help="Which grader to calibrate (default: heuristic, free/offline).",
+        help=(
+            "Which grader to calibrate (default: heuristic, free/offline). "
+            "local=Ollama/LM Studio/llama.cpp; llm=Anthropic API; codex=eval-only."
+        ),
+    )
+    calibrate.add_argument(
+        "--grader-url",
+        default=None,
+        help=(
+            "URL for local LLM endpoint (required with --grader=local). "
+            "Example: http://localhost:11434/v1/chat/completions"
+        ),
+    )
+    calibrate.add_argument(
+        "--grader-model",
+        default=None,
+        help=(
+            "Model name for local LLM (e.g., llama3.2:3b). "
+            "Sets PROVENANCE_LOCAL_GRADER_MODEL. Optional with --grader=local."
+        ),
     )
     calibrate.add_argument(
         "--grader-corpus",
@@ -1438,6 +1457,15 @@ def _cmd_calibrate(args) -> int:
 
     if args.grader == "heuristic":
         grader, grader_label = HeuristicGrader(), "HeuristicGrader"
+    elif args.grader == "local":
+        from warrantos.provenance.grade import LocalLLMGrader
+        if args.grader_url:
+            os.environ["PROVENANCE_LOCAL_GRADER_URL"] = args.grader_url
+        if args.grader_model:
+            os.environ["PROVENANCE_LOCAL_GRADER_MODEL"] = args.grader_model
+        grader = LocalLLMGrader()
+        model_name = args.grader_model or os.environ.get("PROVENANCE_LOCAL_GRADER_MODEL", "unknown")
+        grader_label = f"LocalLLMGrader({model_name})"
     elif args.grader == "llm":
         from warrantos.provenance.grade import LLMGrader
         grader, grader_label = LLMGrader(), "LLMGrader"
