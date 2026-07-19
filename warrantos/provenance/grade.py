@@ -834,6 +834,24 @@ class ClaudeCliGrader:
 # Factory function
 # ---------------------------------------------------------------------------
 
+def _probe_ollama_local():
+    """Check if Ollama is running on localhost:11434 and available.
+
+    Returns True if a cheap GET /api/tags returns 200, False otherwise.
+    Never raises. Used by get_grader() for opt-in auto-detection.
+    """
+    try:
+        req = urllib.request.Request(
+            "http://localhost:11434/api/tags",
+            method="GET"
+        )
+        req.add_header("User-Agent", "warrantos/ollama-probe")
+        with urllib.request.urlopen(req, timeout=1) as resp:
+            return resp.status == 200
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError):
+        return False
+
+
 _GRADER_OVERRIDE_REGISTRY = {
     "heuristic": lambda: HeuristicGrader(),
     "local": lambda: LocalLLMGrader(),
@@ -859,13 +877,16 @@ def get_grader():
     1. ``LocalLLMGrader`` if ``PROVENANCE_LOCAL_GRADER_URL`` is set. No
        data egress, no Anthropic API key required. See LocalLLMGrader
        docstring for env vars.
-    2. ``LLMGrader`` if ``ANTHROPIC_API_KEY`` is set. Calls the
+    2. ``LocalLLMGrader`` if Ollama is detected on localhost:11434
+       (opt-in auto-detection via cheap /api/tags probe). Sets
+       ``PROVENANCE_LOCAL_GRADER_URL`` automatically.
+    3. ``LLMGrader`` if ``ANTHROPIC_API_KEY`` is set. Calls the
        Anthropic Messages API.
-    3. ``ClaudeCliGrader`` if the ``claude`` CLI is on PATH (and neither
+    4. ``ClaudeCliGrader`` if the ``claude`` CLI is on PATH (and neither
        of the above applies). This is the subscription-over-API path: it
        shells out to ``claude --print`` so a user on a Claude plan verifies
        through their subscription rather than spending API credits.
-    4. ``HeuristicGrader`` otherwise. Local, free, deterministic, but
+    5. ``HeuristicGrader`` otherwise. Local, free, deterministic, but
        cannot emit ``contradicted`` by construction.
 
     ``CodexGrader`` is never auto-selected: it is an evaluation-only
@@ -873,7 +894,8 @@ def get_grader():
     or the eval harness).
 
     Order rationale: an explicit API key or local-LLM URL signals a
-    deliberate choice and is honoured first. The ``claude`` CLI is the
+    deliberate choice and is honoured first. Ollama auto-detection is
+    next (cheap probe, no cost if absent). The ``claude`` CLI is the
     subscription-over-API fallback (no credits spent) when no key is set.
     The heuristic is the final fallback.
     """
@@ -883,6 +905,12 @@ def get_grader():
 
     if os.environ.get("PROVENANCE_LOCAL_GRADER_URL"):
         return LocalLLMGrader()
+
+    # Opt-in Ollama auto-detection: probe localhost:11434
+    if _probe_ollama_local():
+        os.environ["PROVENANCE_LOCAL_GRADER_URL"] = "http://localhost:11434/v1/chat/completions"
+        return LocalLLMGrader()
+
     if os.environ.get("ANTHROPIC_API_KEY"):
         return LLMGrader()
     if ClaudeCliGrader.is_available():
