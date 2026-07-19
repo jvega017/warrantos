@@ -6,13 +6,33 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-07-19
+
+Standalone verification without external dependencies. The local LLM grader path is now primary and production-ready.
+
 ### Added
 
-- **P0.3 Cryptographic Binding for v2 Warrant Bundles.** The checkpoint now binds `prose_sha256` and `cbom_sha256` into the Merkle root before signing, so tampering with prose or claims after attestation is cryptographically detectable. v2 checkpoints use `warrantos-checkpoint-v2`. Verification is backward-compatible; v0 and v1 bundles remain verifiable as `VALID` when integrity holds, but are now tagged `LEGACY_UNBOUND` in audit logs.
+- **Ollama auto-detection and zero-config local LLM grading.** When Ollama is running on `localhost:11434`, warrantos auto-detects it with zero configuration and uses it for claim verification instead of requiring an API key. The probe is cheap (GET /api/tags, 0.5s timeout) and skips in CI environments to prevent timeouts.
+- **`--grader` CLI flag for explicit grader selection.** Users can now choose grader on each run: `--grader {heuristic,local,llm,claude-cli}` for `check` and `calibrate` subcommands. Overrides auto-selection for testing and controlled deployments.
+- **`--grader-url` and `--grader-model` flags.** Point to custom OpenAI-compatible endpoints (LM Studio, llama.cpp, vLLM, etc.) with explicit model hints. Example: `--grader=local --grader-url http://localhost:1234/v1/chat/completions --grader-model mistral-7b`.
+- **Local grader calibration.** Users can now run `warrantos calibrate --grader=local` to measure per-class recall, precision, and coverage for their chosen local model against the bundled evaluation corpus.
+- **Comprehensive NO-API-KEY.md guide.** Documented three setup paths (environment variables, CLI flags, auto-detection) with examples for Ollama, LM Studio, llama.cpp, and vLLM. Includes cost/data-egress reality (zero both), fallback behavior, and accuracy trade-offs.
+- **Grader selection hierarchy (now live).** Explicit CLI flag > env var > Ollama auto-detect > ANTHROPIC_API_KEY > claude CLI > heuristic fallback. First match wins; any grader failure cascades to the next.
 
-### Security
+### Changed
 
-- **P0 Advisory: v0.10.0 and earlier warrants do not bind prose and CBOM to the Merkle root.** An adversary with access to a signed bundle can modify the prose or claims after attestation and the signature remains valid. The integrity check would fail (changed ledger) but a verifier who only spot-checks the signature would miss the mutation. Affected users should update to 0.11.0, re-attest their bundles (which automatically upgrades to v2), and verify the new `prose_sha256` and `cbom_sha256` fields in the checkpoint. See `SECURITY.md` for details.
+- **`check` and `calibrate` commands now accept grader configuration.** Previously only `verify --verify` could use an LLM. Now both the CLI workflow and the eval harness can select graders independently.
+- **Ollama probe skips in CI.** Detects `CI`, `GITHUB_ACTIONS`, `GITLAB_CI` env vars and skips network probes during test runs to prevent timeouts in CI pipelines with network isolation.
+
+### Fixed
+
+- **Hermetic and Windows CI tests no longer timeout.** The Ollama probe now skips in CI environments, resolving timeout failures on Windows test runners and the hermetic job.
+
+### Notes
+
+- **Backwards compatible.** All existing workflows (ANTHROPIC_API_KEY, claude CLI, heuristic-only) remain unchanged. The local LLM path is opt-in via auto-detection or explicit flags.
+- **Zero new dependencies in core.** The base `warrantos` package remains stdlib-only. Optional LLM packages (`anthropic`, etc.) can be installed via extras if needed.
+- **Graceful degradation.** Any grader failure (network, timeout, misconfiguration) silently falls back to the next option in the hierarchy; no run breaks.
 
 ## [0.10.0] - 2026-07-08
 
