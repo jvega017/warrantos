@@ -6,7 +6,7 @@ Every citation-trigger in an AI-assisted document ships with a source, a `[CITE 
 
 [![ci](https://github.com/jvega017/warrantos/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/warrantos/actions/workflows/ci.yml)
 [![layers: 20B / 0P](https://img.shields.io/badge/layers-20B%20%2F%200P-brightgreen)](docs/STATUS.md)
-![version: 0.11.0](https://img.shields.io/badge/version-0.11.0-brightgreen)
+![version: 0.12.0](https://img.shields.io/badge/version-0.12.0-brightgreen)
 ![python: 3.11--3.13](https://img.shields.io/badge/python-3.11--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
 
@@ -45,6 +45,27 @@ pipx install warrantos      # isolated CLI install
 uvx warrantos demo          # zero-install trial run
 pip install warrantos       # plain pip works too
 ```
+
+## Verify claims without an API key
+
+**v0.12.0**: WarrantOS works standalone with a local LLM. The easiest path is Ollama.
+
+```bash
+# 1. Run Ollama (one-time setup)
+ollama pull llama3.2         # ~2.0 GB, ~8k context
+ollama serve                 # listens on http://localhost:11434
+
+# 2. In another terminal, verify your draft (zero config if Ollama is running)
+warrantos check draft.md --context context.json --verify --no-fetch
+
+# Or choose a different model or server
+warrantos check draft.md --verify --no-fetch \
+  --grader local \
+  --grader-url http://localhost:1234/v1/chat/completions \
+  --grader-model neural-chat:latest
+```
+
+Supported servers: Ollama (recommended), LM Studio, llama.cpp, vLLM. Full guide in [`docs/NO-API-KEY.md`](docs/NO-API-KEY.md).
 
 ## Lint your docs for AI slop
 
