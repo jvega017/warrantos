@@ -839,16 +839,22 @@ def _probe_ollama_local():
 
     Returns True if a cheap GET /api/tags returns 200, False otherwise.
     Never raises. Used by get_grader() for opt-in auto-detection.
+    Only probes if PROVENANCE_LOCAL_GRADER_URL is not already set
+    (to avoid unnecessary network calls).
     """
+    if os.environ.get("PROVENANCE_LOCAL_GRADER_URL"):
+        return False
     try:
         req = urllib.request.Request(
             "http://localhost:11434/api/tags",
             method="GET"
         )
         req.add_header("User-Agent", "warrantos/ollama-probe")
-        with urllib.request.urlopen(req, timeout=1) as resp:
+        with urllib.request.urlopen(req, timeout=0.5) as resp:
             return resp.status == 200
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError, TimeoutError):
+    except Exception:
+        # Catch all: URLError, HTTPError, OSError, TimeoutError, socket errors, etc.
+        # Never raise. Return False if anything goes wrong.
         return False
 
 
