@@ -29,6 +29,7 @@ ollama serve  # listens on http://localhost:11434
 
 ### Point warrantos at it
 
+**Option A: Environment variables (persistent)**
 ```bash
 export PROVENANCE_LOCAL_GRADER_URL=http://localhost:11434/v1/chat/completions
 export PROVENANCE_LOCAL_GRADER_MODEL=llama3.2
@@ -39,9 +40,48 @@ warrantos check examples/quickstart-demo/draft.md \
   --verify --no-fetch
 ```
 
+**Option B: CLI flags (one-off)**
+```bash
+warrantos check examples/quickstart-demo/draft.md \
+  --context examples/quickstart-demo/context.json \
+  --actor-identity examples/quickstart-demo/actor.json \
+  --verify --no-fetch \
+  --grader local \
+  --grader-url http://localhost:11434/v1/chat/completions \
+  --grader-model llama3.2
+```
+
+**Option C: Ollama auto-detection (zero config)**
+```bash
+# If Ollama is running on localhost:11434, warrantos detects it automatically
+warrantos check examples/quickstart-demo/draft.md \
+  --context examples/quickstart-demo/context.json \
+  --actor-identity examples/quickstart-demo/actor.json \
+  --verify --no-fetch
+```
+
 The verifier now uses your local model. The `verifier_rows` field in
 the report carries `grader: local-llm:llama3.2` instead of
 `heuristic`.
+
+### Supported local LLM servers
+
+Any OpenAI-compatible endpoint works. Here are the tested options:
+
+| Tool | Endpoint | Notes |
+|---|---|---|
+| **Ollama** | `http://localhost:11434/v1/chat/completions` | Recommended for ease of use. Auto-detected by warrantos. |
+| **LM Studio** | `http://localhost:1234/v1/chat/completions` | Desktop app; closed-source but free for personal use. |
+| **llama.cpp** | `http://localhost:8000/v1/chat/completions` | CLI tool; most direct control over quantization. |
+| **vLLM** | `http://localhost:8000/v1/chat/completions` | GPU-optimized serving; use for high throughput. |
+
+To use an alternative, set `PROVENANCE_LOCAL_GRADER_URL` to its endpoint:
+
+```bash
+# LM Studio example (port 1234)
+export PROVENANCE_LOCAL_GRADER_URL=http://localhost:1234/v1/chat/completions
+warrantos check draft.md --verify --no-fetch
+```
 
 ### Environment variables
 

@@ -304,6 +304,32 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     check.add_argument(
+        "--grader",
+        choices=("heuristic", "local", "llm", "claude-cli"),
+        default=None,
+        help=(
+            "Which grader to use for verification (default: auto-detect). "
+            "heuristic=offline regex-only; local=Ollama/LM Studio/llama.cpp; "
+            "llm=Anthropic API; claude-cli=Claude subscription. Requires --verify."
+        ),
+    )
+    check.add_argument(
+        "--grader-url",
+        default=None,
+        help=(
+            "URL for local LLM endpoint (e.g. http://localhost:11434/v1/chat/completions). "
+            "Sets PROVENANCE_LOCAL_GRADER_URL. Requires --grader=local."
+        ),
+    )
+    check.add_argument(
+        "--grader-model",
+        default=None,
+        help=(
+            "Model name for local LLM (e.g. llama3.2:3b). "
+            "Sets PROVENANCE_LOCAL_GRADER_MODEL. Optional."
+        ),
+    )
+    check.add_argument(
         "--sensitivity-check",
         action="store_true",
         help=(
@@ -547,9 +573,28 @@ def build_parser() -> argparse.ArgumentParser:
     )
     calibrate.add_argument(
         "--grader",
-        choices=("heuristic", "llm", "codex"),
+        choices=("heuristic", "local", "llm", "codex"),
         default="heuristic",
-        help="Which grader to calibrate (default: heuristic, free/offline).",
+        help=(
+            "Which grader to calibrate (default: heuristic, free/offline). "
+            "local=Ollama/LM Studio/llama.cpp; llm=Anthropic API; codex=eval-only."
+        ),
+    )
+    calibrate.add_argument(
+        "--grader-url",
+        default=None,
+        help=(
+            "URL for local LLM endpoint (required with --grader=local). "
+            "Example: http://localhost:11434/v1/chat/completions"
+        ),
+    )
+    calibrate.add_argument(
+        "--grader-model",
+        default=None,
+        help=(
+            "Model name for local LLM (e.g., llama3.2:3b). "
+            "Sets PROVENANCE_LOCAL_GRADER_MODEL. Optional with --grader=local."
+        ),
     )
     calibrate.add_argument(
         "--grader-corpus",
@@ -1412,6 +1457,15 @@ def _cmd_calibrate(args) -> int:
 
     if args.grader == "heuristic":
         grader, grader_label = HeuristicGrader(), "HeuristicGrader"
+    elif args.grader == "local":
+        from warrantos.provenance.grade import LocalLLMGrader
+        if args.grader_url:
+            os.environ["PROVENANCE_LOCAL_GRADER_URL"] = args.grader_url
+        if args.grader_model:
+            os.environ["PROVENANCE_LOCAL_GRADER_MODEL"] = args.grader_model
+        grader = LocalLLMGrader()
+        model_name = args.grader_model or os.environ.get("PROVENANCE_LOCAL_GRADER_MODEL", "unknown")
+        grader_label = f"LocalLLMGrader({model_name})"
     elif args.grader == "llm":
         from warrantos.provenance.grade import LLMGrader
         grader, grader_label = LLMGrader(), "LLMGrader"
@@ -1965,6 +2019,24 @@ def _cmd_check_single(args, draft_path):
     boundary = scan_prose_boundary(draft, artefact_role=args.profile)
 
     claim_rows = detect_claims(draft)
+
+    # Setup grader environment variables if --grader flag was provided
+    if hasattr(args, 'grader') and args.grader:
+        if args.grader == "heuristic":
+            os.environ["PROVENANCE_GRADER"] = "heuristic"
+            # Clear any existing grader URLs
+            os.environ.pop("PROVENANCE_LOCAL_GRADER_URL", None)
+            os.environ.pop("ANTHROPIC_API_KEY", None)
+        elif args.grader == "local":
+            os.environ["PROVENANCE_GRADER"] = "local"
+            if args.grader_url:
+                os.environ["PROVENANCE_LOCAL_GRADER_URL"] = args.grader_url
+            if args.grader_model:
+                os.environ["PROVENANCE_LOCAL_GRADER_MODEL"] = args.grader_model
+        elif args.grader == "llm":
+            os.environ["PROVENANCE_GRADER"] = "llm"
+        elif args.grader == "claude-cli":
+            os.environ["PROVENANCE_GRADER"] = "claude-cli"
 
     verifier_rows: List[Dict[str, Any]] = []
     verifier_skipped: Dict[str, Any] = {
