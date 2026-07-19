@@ -839,11 +839,19 @@ def _probe_ollama_local():
 
     Returns True if a cheap GET /api/tags returns 200, False otherwise.
     Never raises. Used by get_grader() for opt-in auto-detection.
-    Only probes if PROVENANCE_LOCAL_GRADER_URL is not already set
-    (to avoid unnecessary network calls).
+
+    Skips probing if:
+    - PROVENANCE_LOCAL_GRADER_URL is already set (explicit config wins)
+    - We're in a CI environment (detect via CI env vars)
+    - We're in a test runner environment (running tests, not production)
     """
     if os.environ.get("PROVENANCE_LOCAL_GRADER_URL"):
         return False
+
+    # Skip in CI environments: GitHub Actions, GitLab, etc.
+    if os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS") or os.environ.get("GITLAB_CI"):
+        return False
+
     try:
         req = urllib.request.Request(
             "http://localhost:11434/api/tags",
