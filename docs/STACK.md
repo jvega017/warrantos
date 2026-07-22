@@ -235,8 +235,11 @@ The stack is not production qualified.
 
 Claim support is also split from legacy `supported` wording. Citation detection
 is `citation_present`; source resolution, passage location, support assertion,
-`support_verified`, contest and contradiction are separate states carried by linked
-source and claim-binding records.
+`passage_reproduced`, `support_verified`, contest and contradiction are
+separate states carried by linked source and claim-binding records. Standalone
+WarrantOS currently produces only the evidence state `passage_reproduced` from
+exact bytes/ranges; unauthenticated caller strings cannot confer a semantic
+state.
 ## Product Positioning
 
 Use this wording:

@@ -30,9 +30,13 @@ Claim support uses the following progression and adverse-outcome vocabulary. The
 2. `source_resolved`
 3. `passage_located`
 4. `support_asserted`
-5. `support_verified`
-6. `support_contested`
-7. `contradicted`
+5. `passage_reproduced` (exact evidence bytes/ranges reproduced; no semantic verdict)
+6. `support_verified`
+7. `support_contested`
+8. `contradicted`
 
 The current CLI adapter may detect a citation while leaving `support_ids`
 empty. Such a record is `citation_present`, not semantically verified support.
+The standalone evidence verifier can advance a binding only to
+`passage_reproduced`. Its legacy reviewer/verdict inputs are unauthenticated
+compatibility data and are ignored.

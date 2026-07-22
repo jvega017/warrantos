@@ -32,7 +32,10 @@ class EvidenceCliTests(unittest.TestCase):
                 "--snapshot", str(snapshot), "--source", str(source),
                 "--reviewer", "human:reviewer", "--verdict", "supports", "--out", str(verified),
             ]), 0)
-            self.assertEqual(json.loads(verified.read_text())["support_state"], "support_verified")
+            reproduced = json.loads(verified.read_text())
+            self.assertEqual(reproduced["support_state"], "passage_reproduced")
+            self.assertIsNone(reproduced["reviewed_by"])
+            self.assertIsNone(reproduced["supports"][0]["verdict"])
             self.assertEqual(main([
                 "reverify", "--artefact", str(artefact), "--binding", str(verified),
                 "--snapshot", str(snapshot), "--source", str(source), "--json",

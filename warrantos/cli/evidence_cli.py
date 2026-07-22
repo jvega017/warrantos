@@ -48,16 +48,24 @@ def build_parser() -> argparse.ArgumentParser:
     assertion.add_argument("--binding-id")
     assertion.add_argument("--out", required=True)
 
-    verify = sub.add_parser("verify", help="Verify bytes/ranges and record a review verdict.")
+    verify = sub.add_parser(
+        "verify",
+        help="Reproduce bytes/ranges; legacy review flags cannot confer semantic support.",
+    )
     verify.add_argument("--artefact", required=True)
     verify.add_argument("--binding", required=True)
     verify.add_argument("--snapshot", required=True)
     verify.add_argument("--source", required=True)
-    verify.add_argument("--reviewer", required=True)
-    verify.add_argument("--verdict", choices=("supports", "contested", "contradicts"), required=True)
+    verify.add_argument("--reviewer", required=True, help="Legacy compatibility input; ignored.")
+    verify.add_argument(
+        "--verdict", choices=("supports", "contested", "contradicts"), required=True,
+        help="Legacy compatibility input; ignored. Output is passage_reproduced.",
+    )
     verify.add_argument("--out", required=True)
 
-    reverify = sub.add_parser("reverify", help="Fail-closed recheck of an existing reviewed binding.")
+    reverify = sub.add_parser(
+        "reverify", help="Fail-closed evidence recheck; semantic labels are downgraded.",
+    )
     reverify.add_argument("--artefact", required=True)
     reverify.add_argument("--binding", required=True)
     reverify.add_argument("--snapshot", required=True)

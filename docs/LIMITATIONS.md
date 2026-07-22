@@ -67,13 +67,17 @@ provides additive source-snapshot and claim-binding schemas for upstream
 systems, but the standard CLI does not yet perform source resolution, passage
 location or semantic entailment. The explicit vocabulary is:
 `citation_present`, `source_resolved`, `passage_located`, `support_asserted`,
-`support_verified`, `support_contested`, and `contradicted`.
+`passage_reproduced`, `support_verified`, `support_contested`, and
+`contradicted`.
 
 `verify_binding()` reproduces exact bytes, locators and passage digests and
-records a verdict declared by a distinct reviewer string. It does **not**
-authenticate that reviewer's identity. An embedding runtime such as Vega must
-bind the verdict to a host- or IdP-authenticated principal before describing it
-as authenticated semantic review.
+returns `passage_reproduced`. Its legacy reviewer and semantic-verdict strings
+are ignored and can never mint `support_verified`. Standalone WarrantOS does
+not yet define or validate an authenticated semantic-proof schema. An embedding
+runtime such as Vega must bind any semantic finding to exact claim, source,
+binding, mission and run hashes; authenticate the reviewer principal and its
+authority; and preserve independently verifiable credential evidence before
+describing the result as authenticated semantic review.
 ## Attestation and cryptography
 
 - The integrity core (`provenance.merkle`) and `.warrant` integrity verification

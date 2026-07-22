@@ -20,7 +20,7 @@
     "locator": "text_char_range",
     "content_addressed_sources": true,
     "passage_digest_verified": true,
-    "semantic_verdict_source": "declared distinct reviewer; standalone binding API does not authenticate identity",
+    "semantic_verdict_source": "none in standalone WarrantOS; legacy reviewer and verdict strings are ignored",
     "semantic_verdict_authenticated": false
   },
   "production_verification": {
@@ -34,6 +34,7 @@
     "source_resolved",
     "passage_located",
     "support_asserted",
+    "passage_reproduced",
     "support_verified",
     "support_contested",
     "contradicted"

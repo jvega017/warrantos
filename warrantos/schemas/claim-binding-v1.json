@@ -12,7 +12,7 @@
     "artefact_revision": {"type": "string", "pattern": "^sha256:[0-9a-fA-F]{64}$"},
     "claim_text_sha256": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-fA-F]{64}$"},
     "claim_locator": {"$ref": "#/$defs/textCharRange"},
-    "support_state": {"enum": ["citation_present", "source_resolved", "passage_located", "support_asserted", "support_verified", "support_contested", "contradicted"]},
+    "support_state": {"enum": ["citation_present", "source_resolved", "passage_located", "support_asserted", "passage_reproduced", "support_verified", "support_contested", "contradicted"]},
     "supports": {"type": "array", "items": {"type": "object", "required": ["source_snapshot_id", "relation", "locator"], "properties": {"source_snapshot_id": {"type": "string"}, "relation": {"type": "string"}, "locator": {"$ref": "#/$defs/textCharRange"}, "quoted_span_sha256": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-fA-F]{64}$"}, "verdict": {"type": ["string", "null"], "enum": [null, "supports", "contested", "contradicts"]}, "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}}, "additionalProperties": false}},
     "created_by": {"type": "string"},
     "reviewed_by": {"type": ["string", "null"]},

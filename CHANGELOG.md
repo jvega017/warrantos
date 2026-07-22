@@ -26,6 +26,11 @@ canonical statement is `release-manifest.json`.
 
 ### Security
 
+- **Fail-closed semantic boundary.** Exact claim/source byte and locator checks
+  now produce the evidence-only `passage_reproduced` state. Legacy caller
+  strings supplied as reviewer/verdict are ignored and cannot mint
+  `support_verified`; standalone WarrantOS does not yet validate an
+  authenticated, hash-bound semantic-proof schema.
 - Added exact source-byte, text-extraction, claim-range and passage-range
   verification plus an installed `warrantos-evidence` workflow. A semantic
   verdict remains attributable to the declared reviewer rather than being

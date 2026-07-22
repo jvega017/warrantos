@@ -16,7 +16,10 @@ Every citation-trigger in an AI-assisted document ships with a source, a `[CITE 
 >
 > **Support vocabulary:** the legacy CLI label `claims supported` means a
 > citation token was present. New records call that `citation_present`.
-> `support_verified` requires an explicit linked claim-binding record.
+> Exact byte/range verification produces `passage_reproduced`, an
+> evidence-only state. The legacy `--reviewer` and `--verdict` inputs cannot
+> mint `support_verified`; standalone WarrantOS does not authenticate semantic
+> review proof.
 ## Ten seconds
 
 ```text

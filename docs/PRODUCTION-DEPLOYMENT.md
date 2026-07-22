@@ -21,14 +21,15 @@ and rejects a valid signature made by any key other than the pinned key.
 
 ## Required host controls
 
-- Authenticate `created_by` and `reviewed_by` principals outside WarrantOS.
-  WarrantOS requires distinct non-empty labels but cannot authenticate a human,
-  model account or service by itself.
+- Authenticate `created_by` and semantic-review principals outside WarrantOS.
+  A caller-supplied reviewer label is not identity or authority evidence.
 - Keep source bytes available for binding re-verification. A URL is not a
   snapshot.
-- Treat `support_verified` as: exact bytes, digests and passages reproduced and
-  a distinct reviewer recorded `supports`. It does not mean WarrantOS proved
-  truth or semantic entailment.
+- Treat standalone `passage_reproduced` as exact bytes, digests and passages
+  reproduced only. The compatibility `--reviewer` and `--verdict` flags are
+  ignored and cannot create `support_verified`. A host claiming semantic
+  support must supply an independently verifiable, authenticated proof bound to
+  the exact claim/source/binding hashes and relevant mission/run identifiers.
 - Anchor checkpoints to an independently operated timestamp/transparency
   service if resistance to an operator who controls the signing key is needed.
   This candidate does not provide such infrastructure.

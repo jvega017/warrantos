@@ -1,10 +1,15 @@
 """Content-addressed claim-to-passage evidence without pretending truth.
 
-``support_verified`` means that WarrantOS reproduced the declared claim and
-source passages from the supplied artefact/source bytes, checked every digest,
-and recorded a distinct review principal's semantic verdict.  The principal is
-still declarative unless the host authenticates it; the state is not a claim
-that WarrantOS independently detects truth or entailment.
+Standalone WarrantOS can reproduce exact artefact/source bytes, locators and
+passage digests.  That result is ``passage_reproduced``: it is evidence that
+the addressed material is stable, not evidence that the source semantically
+supports the claim.
+
+Legacy callers may still pass ``reviewer`` and ``semantic_verdict`` to
+``verify_binding``.  Those unauthenticated strings are deliberately ignored
+and can never mint ``support_verified``.  A host that confers a semantic state
+must do so through its own authenticated, hash-bound proof protocol; WarrantOS
+does not currently implement or validate such a proof.
 """
 from __future__ import annotations
 import hashlib
@@ -17,6 +22,7 @@ class ClaimSupportState(str, Enum):
     SOURCE_RESOLVED = "source_resolved"
     PASSAGE_LOCATED = "passage_located"
     SUPPORT_ASSERTED = "support_asserted"
+    PASSAGE_REPRODUCED = "passage_reproduced"
     SUPPORT_VERIFIED = "support_verified"
     SUPPORT_CONTESTED = "support_contested"
     CONTRADICTED = "contradicted"
@@ -106,6 +112,7 @@ class ClaimBinding:
         passage_states = {
             ClaimSupportState.PASSAGE_LOCATED.value,
             ClaimSupportState.SUPPORT_ASSERTED.value,
+            ClaimSupportState.PASSAGE_REPRODUCED.value,
             ClaimSupportState.SUPPORT_VERIFIED.value,
             ClaimSupportState.SUPPORT_CONTESTED.value,
             ClaimSupportState.CONTRADICTED.value,
@@ -227,10 +234,12 @@ def verify_binding(binding: ClaimBinding, *, artefact_text: str,
                    snapshots: List[SourceSnapshot], source_bytes: Mapping[str, bytes],
                    reviewer: str, semantic_verdict: str,
                    source_encoding: str = "utf-8") -> BindingVerification:
-    """Reproduce all byte/range evidence and record an explicit review verdict.
+    """Reproduce byte/range evidence without accepting semantic authority.
 
-    The semantic verdict is supplied by the reviewer. WarrantOS verifies the
-    evidence addressed by that verdict, not the truth of the verdict itself.
+    ``reviewer`` and ``semantic_verdict`` remain in the signature for source
+    compatibility with the pre-hardening API.  They are untrusted caller data,
+    are not copied into the returned binding, and cannot confer any semantic
+    support state.  A successful result is always ``passage_reproduced``.
     """
     checks: Dict[str, bool] = {}
     errors: List[str] = []
@@ -246,12 +255,11 @@ def verify_binding(binding: ClaimBinding, *, artefact_text: str,
         errors.append("claim locator: %s" % exc)
     if not checks["claim_passage"] and not any(e.startswith("claim locator:") for e in errors):
         errors.append("claim passage digest mismatch")
-    checks["reviewer_distinct"] = bool(reviewer and reviewer != binding.created_by)
-    if not checks["reviewer_distinct"]:
-        errors.append("reviewer must be non-empty and distinct from binding creator")
-    checks["semantic_verdict"] = semantic_verdict in ("supports", "contested", "contradicts")
-    if not checks["semantic_verdict"]:
-        errors.append("semantic verdict must be supports, contested, or contradicts")
+    # Compatibility inputs are intentionally non-authoritative.  Recording a
+    # different label is not authentication and must not inflate evidence
+    # reproduction into semantic support.
+    _ = reviewer, semantic_verdict
+    checks["legacy_semantic_inputs_ignored"] = True
     links: List[SupportLink] = []
     for index, link in enumerate(binding.supports):
         prefix = "support_%d" % index
@@ -286,20 +294,16 @@ def verify_binding(binding: ClaimBinding, *, artefact_text: str,
             relation=link.relation,
             locator=dict(link.locator),
             quoted_span_sha256=link.quoted_span_sha256,
-            verdict=semantic_verdict,
+            verdict=None,
             confidence=link.confidence,
         ))
     valid = bool(checks) and all(checks.values()) and len(links) == len(binding.supports)
-    state = {
-        "supports": ClaimSupportState.SUPPORT_VERIFIED.value,
-        "contested": ClaimSupportState.SUPPORT_CONTESTED.value,
-        "contradicts": ClaimSupportState.CONTRADICTED.value,
-    }.get(semantic_verdict, binding.support_state) if valid else binding.support_state
+    state = ClaimSupportState.PASSAGE_REPRODUCED.value if valid else binding.support_state
     verified = ClaimBinding(
         binding_id=binding.binding_id, claim_id=binding.claim_id,
         assertion_id=binding.assertion_id, artefact_revision=binding.artefact_revision,
         support_state=state, supports=links if valid else binding.supports,
-        created_by=binding.created_by, reviewed_by=reviewer if valid else None,
+        created_by=binding.created_by, reviewed_by=None,
         created_at=binding.created_at, claim_text_sha256=binding.claim_text_sha256,
         claim_locator=dict(binding.claim_locator),
     )
@@ -362,19 +366,12 @@ def claim_binding_from_dict(data: Mapping[str, object]) -> ClaimBinding:
 def verify_recorded_binding(binding: ClaimBinding, *, artefact_text: str,
                             snapshots: List[SourceSnapshot],
                             source_bytes: Mapping[str, bytes]) -> BindingVerification:
-    """Re-verify a recorded reviewed binding without inventing a new reviewer."""
-    verdicts = {link.verdict for link in binding.supports}
-    expected_state = {
-        ClaimSupportState.SUPPORT_VERIFIED.value: "supports",
-        ClaimSupportState.SUPPORT_CONTESTED.value: "contested",
-        ClaimSupportState.CONTRADICTED.value: "contradicts",
-    }
-    verdict = expected_state.get(binding.support_state)
-    if verdict is None or verdicts != {verdict} or not binding.reviewed_by:
-        return BindingVerification(
-            valid=False, checks={"recorded_review": False},
-            errors=["binding is not a coherent recorded reviewed state"], binding=binding,
-        )
+    """Reproduce a recorded binding, downgrading legacy semantic assertions.
+
+    A recorded reviewer label/verdict is not authenticated semantic proof.
+    Re-verification therefore strips those fields and returns only the
+    evidence-only ``passage_reproduced`` state when all bytes and ranges match.
+    """
     asserted = ClaimBinding(
         binding_id=binding.binding_id, claim_id=binding.claim_id,
         assertion_id=binding.assertion_id, artefact_revision=binding.artefact_revision,
@@ -390,8 +387,8 @@ def verify_recorded_binding(binding: ClaimBinding, *, artefact_text: str,
     )
     return verify_binding(
         asserted, artefact_text=artefact_text, snapshots=snapshots,
-        source_bytes=source_bytes, reviewer=binding.reviewed_by,
-        semantic_verdict=verdict,
+        source_bytes=source_bytes, reviewer="",
+        semantic_verdict="",
     )
 
 def _require_id(value: str, name: str) -> None:
