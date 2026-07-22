@@ -16,8 +16,13 @@ canonical statement is `release-manifest.json`.
   schemas. The legacy `supported` CLI label remains for compatibility but now
   serialises as `support_state: citation_present`; it is not semantic proof.
 - Added release-truth drift checks across code, manifest and public surfaces.
+- Added a separate fail-closed public-publication truth profile so a local
+  candidate tag cannot silently promote local-only status and acquisition claims.
 - Packaged the source-snapshot and claim-binding JSON schemas as importable
   warrantos.schemas resources with a stdlib loader and copy-drift tests.
+- Included the zero-backend browser verifier and release tooling in the source
+  distribution, and added build attestations, CycloneDX output, resolved
+  dependency audit and a three-OS by three-Python installed-package smoke matrix.
 
 
 ### Added

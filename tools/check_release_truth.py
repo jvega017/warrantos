@@ -2,13 +2,16 @@
 """Fail CI when public release truth drifts from release-manifest.json."""
 from __future__ import annotations
 import json
+import argparse
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-def check() -> list[str]:
+def check(publication: str = "local") -> list[str]:
+    if publication not in {"local", "public"}:
+        raise ValueError("publication must be local or public")
     manifest = json.loads((ROOT / "release-manifest.json").read_text(encoding="utf-8-sig"))
     version = manifest["version"]
     errors: list[str] = []
@@ -42,10 +45,27 @@ def check() -> list[str]:
     production = manifest.get("production_verification") or {}
     if production.get("pinned_signer_required") is not True or production.get("bundled_production_key") is not False:
         errors.append("production verification must require a pinned signer and ship no production key")
+    if publication == "public":
+        expected_tag = f"v{version}"
+        if manifest.get("release_status") != "public-beta":
+            errors.append("public publication requires release_status public-beta")
+        if manifest.get("git_tag") != expected_tag:
+            errors.append(f"public publication requires git_tag {expected_tag}")
+        if manifest.get("changelog_section") != version:
+            errors.append("public publication requires a versioned changelog section")
+        public_text = "\n".join(
+            (ROOT / name).read_text(encoding="utf-8-sig").casefold()
+            for name in ("README.md", "SECURITY.md", "docs/STATUS.md", "docs/LIMITATIONS.md")
+        )
+        if "local release candidate" in public_text or f"no `v{version}` tag" in public_text:
+            errors.append("public truth surfaces still contain local-acquisition blockers")
     return errors
 
 def main() -> int:
-    errors = check()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--publication", choices=["local", "public"], default="local")
+    args = parser.parse_args()
+    errors = check(args.publication)
     if errors:
         for error in errors:
             print("release-truth drift: " + error, file=sys.stderr)

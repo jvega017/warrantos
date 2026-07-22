@@ -24,7 +24,7 @@ jobs:
           python-version: ${{ matrix.python }}
       - run: python tools/check_tag_version.py "${{ github.ref_name }}"
       - run: python -m pip install -e ".[attestation]"
-      - run: python tools/check_release_truth.py
+      - run: python tools/check_release_truth.py --publication public
       - run: python -m unittest discover -s tests -v
 
   build:
@@ -32,6 +32,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -43,24 +45,64 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[attestation]"
-          python tools/check_release_truth.py
+          python tools/check_release_truth.py --publication public
           python -m unittest discover -s tests -v
       - name: Build once and validate
         run: |
-          python -m pip install build twine
-          python -m build
-          python -m twine check dist/*
-          python -m pip install --force-reinstall dist/*.whl
-          warrantos --version
-          warrantos demo
+          python -m pip install build twine cyclonedx-bom==7.3.0
+          python -m build --outdir dist/packages
+          python -m twine check dist/packages/*
+          python -m venv sbom-environment
+          sbom-environment/bin/python -m pip install "dist/packages/warrantos-${GITHUB_REF_NAME#v}-py3-none-any.whl[attestation]"
+          sbom-environment/bin/warrantos --version
+          sbom-environment/bin/warrantos demo
+          mkdir -p dist/evidence
+          cyclonedx-py environment sbom-environment \
+            --output-file "dist/evidence/warrantos-${GITHUB_REF_NAME}.cdx.json"
+      - name: Attest build provenance for build-once distributions and SBOM
+        uses: actions/attest@36051bcae73b7c2a8a6945a48cbf80953c6baa35 # v4
+        with:
+          subject-path: |
+            dist/packages/*
+            dist/evidence/*.cdx.json
+      - name: Attest the CycloneDX SBOM against the release wheel
+        uses: actions/attest@36051bcae73b7c2a8a6945a48cbf80953c6baa35 # v4
+        with:
+          subject-path: dist/packages/*.whl
+          sbom-path: dist/evidence/warrantos-${{ github.ref_name }}.cdx.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dist
           path: dist/*
           if-no-files-found: error
 
-  publish-testpypi:
+  dependency-audit:
     needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Audit the exact attestation environment
+        shell: bash
+        run: |
+          python -m venv audit-environment
+          wheel="$(find dist/packages -maxdepth 1 -name 'warrantos-*.whl' -print -quit)"
+          audit-environment/bin/python -m pip install "${wheel}[attestation]"
+          audit-environment/bin/python -m pip freeze --exclude warrantos \
+            > audited-runtime-requirements.txt
+          python -m pip install pip-audit==2.10.1
+          python -m pip_audit --requirement audited-runtime-requirements.txt \
+            --disable-pip --no-deps --strict
+
+  publish-testpypi:
+    needs: [build, dependency-audit]
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
@@ -74,6 +116,7 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/packages
 
   smoke-test-testpypi:
     needs: publish-testpypi
@@ -82,17 +125,22 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13"]
     permissions:
       contents: read
     steps:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python }}
       - name: Install exact beta from TestPyPI
         shell: bash
         run: |
-          python -m pip install --index-url https://test.pypi.org/simple/ "warrantos==${GITHUB_REF_NAME#v}"
+          python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ "warrantos[attestation]==${GITHUB_REF_NAME#v}"
           warrantos --version
+          warrantos --help
+          provenance --help
+          warrantos-evidence --help
+          warrantos-verify-hook --help
           warrantos demo
 
   publish-pypi:
@@ -108,6 +156,8 @@ jobs:
           name: dist
           path: dist
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+        with:
+          packages-dir: dist/packages
 
   github-release:
     needs: publish-pypi
@@ -121,5 +171,7 @@ jobs:
           path: dist
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          files: dist/*
+          files: |
+            dist/packages/*
+            dist/evidence/*
           generate_release_notes: true
