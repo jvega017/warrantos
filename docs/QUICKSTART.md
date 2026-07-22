@@ -19,7 +19,7 @@ $expectedInstallerSha256 = "<out-of-band install.ps1 SHA-256>"
 $expectedManifestSha256 = "<out-of-band artifact-manifest.json SHA-256>"
 if ((Get-FileHash -LiteralPath .\install.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedInstallerSha256) { throw "Untrusted installer bytes" }
 .\install.ps1 -ExpectedManifestSha256 $expectedManifestSha256
-.\.venv\Scripts\warrantos --version
+.\.vega-venv\Scripts\warrantos --version
 ```
 
 The parent-shell check authenticates `install.ps1`; the installer then verifies
@@ -31,7 +31,7 @@ behaviour.
 ## Run the retained demonstration
 
 ```powershell
-.\.venv\Scripts\warrantos demo --output .\warrantos-demo
+.\.vega-venv\Scripts\warrantos demo --output .\warrantos-demo
 ```
 
 The demonstration deliberately produces a `BLOCK` decision, then retains:
@@ -45,7 +45,7 @@ Re-run the printed verification command. For the explicitly unsigned synthetic
 demo it has this shape:
 
 ```powershell
-.\.venv\Scripts\warrantos verify-external .\warrantos-demo\demo.warrant `
+.\.vega-venv\Scripts\warrantos verify-external .\warrantos-demo\demo.warrant `
   --prose .\warrantos-demo\draft.md --allow-unsigned
 ```
 

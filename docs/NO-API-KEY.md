@@ -96,8 +96,8 @@ single project):
 }
 ```
 
-After installing with `pip install claude-provenance`, you can also
-launch the hook by entry point:
+Inside the authenticated candidate environment, you can launch the hook by
+entry point. Do not install the obsolete public `claude-provenance` package:
 
 ```json
 {

@@ -55,6 +55,10 @@ class ReleasePublicationGateTests(unittest.TestCase):
                 "docs/index.md": "authenticated 0.11.0b2\nExpectedManifestSha256\n",
                 "docs/QUICKSTART.md": "authenticated 0.11.0b2\nExpectedManifestSha256\n",
                 "docs/DISTRIBUTION.md": "authenticated\n0.11.0b2\nP0 artefact-binding\n",
+                "docs/FULL-OVERVIEW.md": "candidate bundle only\n",
+                "docs/MCP-CONFIG.md": "source developer evaluation only\n",
+                "docs/NO-API-KEY.md": "candidate bundle only\n",
+                "docs/VERIFICATION.md": "candidate bundle only\n",
             }
             for relative, text in safe.items():
                 path = root / relative
@@ -67,6 +71,40 @@ class ReleasePublicationGateTests(unittest.TestCase):
                     errors = _check_acquisition_truth(root, manifest)
                     self.assertTrue(any(label in error for error in errors), errors)
                     path.write_text(safe["README.md"], encoding="utf-8")
+
+    def test_every_published_adopter_page_is_scanned(self):
+        manifest = {
+            "distribution_surface_versions": {
+                "public_recommendation": "blocked-p0-advisory",
+                "recommended_current_path": "authenticated-0.11.0b2-candidate-bundle",
+            }
+        }
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            safe = {
+                "README.md": "authenticated 0.11.0b2\nExpectedManifestSha256\n",
+                "docs/index.md": "authenticated 0.11.0b2\nExpectedManifestSha256\n",
+                "docs/QUICKSTART.md": "authenticated 0.11.0b2\nExpectedManifestSha256\n",
+                "docs/DISTRIBUTION.md": "authenticated\n0.11.0b2\nP0 artefact-binding\n",
+                "docs/FULL-OVERVIEW.md": "candidate bundle only\n",
+                "docs/MCP-CONFIG.md": "candidate bundle only\n",
+                "docs/NO-API-KEY.md": "candidate bundle only\n",
+                "docs/VERIFICATION.md": "candidate bundle only\n",
+            }
+            for relative, text in safe.items():
+                path = root / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(text, encoding="utf-8")
+            for relative in (
+                "docs/FULL-OVERVIEW.md", "docs/MCP-CONFIG.md",
+                "docs/NO-API-KEY.md", "docs/VERIFICATION.md",
+            ):
+                with self.subTest(relative=relative):
+                    path = root / relative
+                    path.write_text("pip install claude-provenance\n", encoding="utf-8")
+                    errors = _check_acquisition_truth(root, manifest)
+                    self.assertTrue(any(relative in error for error in errors), errors)
+                    path.write_text(safe[relative], encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -68,8 +68,8 @@ $expectedInstallerSha256 = "<out-of-band install.ps1 SHA-256>"
 $expectedManifestSha256 = "<out-of-band artifact-manifest.json SHA-256>"
 if ((Get-FileHash -LiteralPath .\install.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedInstallerSha256) { throw "Untrusted installer bytes" }
 .\install.ps1 -ExpectedManifestSha256 $expectedManifestSha256
-.\.venv\Scripts\warrantos --version
-.\.venv\Scripts\warrantos demo --output .\warrantos-demo
+.\.vega-venv\Scripts\warrantos --version
+.\.vega-venv\Scripts\warrantos demo --output .\warrantos-demo
 ```
 
 The installer re-authenticates the signed manifest and both wheel digests before

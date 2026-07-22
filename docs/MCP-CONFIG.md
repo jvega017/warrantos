@@ -148,9 +148,11 @@ path. Auto-resolution of `WARRANTOS_DB` is a tracked v0.10 item.)
 **The server starts but no tools appear in Claude.** Confirm the
 `mcp` package is installed: `python -c "import mcp"`. Restart Claude.
 
-**`warrantos-mcp` not found.** Either install with `pip install
-"claude-provenance[mcp]"` or use the `python -m provenance.mcp_server`
-form.
+**`warrantos-mcp` not found.** The authenticated candidate bundle does not
+install the optional MCP transport. Treat MCP setup as source-checkout developer
+evaluation until 0.11.0b2 is publicly promoted; do not resolve the obsolete
+public `claude-provenance` extra or use the stale `provenance.mcp_server` module
+path.
 
 **Server starts then exits immediately.** Run it from a terminal to
 see the error. The most common cause is a Python version below 3.8.

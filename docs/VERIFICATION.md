@@ -62,11 +62,10 @@ a release gate. The browser verifier (`web/verify.html`) accepts the same
 ## What signing requires
 
 The standard library ships no public-key signing, so the Ed25519 signature path
-needs the optional extra:
-
-```bash
-pip install "claude-provenance[attestation]"
-```
+needs the attestation dependency. The authenticated 0.11.0b2 combined candidate
+bundle installs that dependency through Vega Runtime's locked wheel transaction.
+Do not resolve the obsolete public `claude-provenance` extra or public WarrantOS
+0.10.0 while the P0 artefact-binding advisory remains open.
 
 The **integrity** check (recompute the root, match the checkpoint) needs nothing
 beyond the standard library. The project ships **no real default key**; a

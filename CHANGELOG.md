@@ -16,6 +16,9 @@ canonical statement is `release-manifest.json`.
   while their immutable version remains affected by the 0.10.0 P0 advisory.
   Current adopter documentation now recommends only the authenticated 0.11.0b2
   candidate bundle, and release-truth tests reject unsafe CTA regression.
+- Extended that gate to every published adopter page, removed obsolete
+  `claude-provenance` and legacy MCP instructions, and aligned all candidate
+  commands with the installer's default `.vega-venv` environment.
 - Included the offline browser verifier and its usage note in wheel installs
   under `share/warrantos/web/`, closing the source-only packaging gap.
 - Repaired the candidate Quickstart, contributor setup and Action examples so

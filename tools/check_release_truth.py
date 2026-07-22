@@ -14,11 +14,16 @@ ACQUISITION_SURFACES = (
     "docs/index.md",
     "docs/QUICKSTART.md",
     "docs/DISTRIBUTION.md",
+    "docs/FULL-OVERVIEW.md",
+    "docs/MCP-CONFIG.md",
+    "docs/NO-API-KEY.md",
+    "docs/VERIFICATION.md",
 )
 
 BLOCKED_ACQUISITION_PATTERNS = {
     "package-index install": re.compile(
-        r"(?mi)^\s*(?:pipx\s+install|pip\s+install)\s+[\"']?warrantos(?:[\"'\[\s]|$)"
+        r"(?i)(?:(?:python\s+-m\s+)?pip\s+install\s+(?!-e\b)|pipx\s+install\s+)"
+        r"[\"']?(?:warrantos|claude-provenance)(?:[\"'\[\s]|$)"
     ),
     "zero-install package execution": re.compile(
         r"(?mi)^\s*uvx\s+(?:--from\s+\S+\s+)?warrantos\b"
@@ -28,6 +33,9 @@ BLOCKED_ACQUISITION_PATTERNS = {
     ),
     "advisory-affected pre-commit ref": re.compile(
         r"(?mi)^\s*rev:\s*v0\.10\.0\s*$"
+    ),
+    "obsolete legacy module path": re.compile(
+        r"python\s+-m\s+provenance\.mcp_server", re.I
     ),
 }
 

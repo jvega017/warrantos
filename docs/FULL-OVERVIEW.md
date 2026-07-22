@@ -28,7 +28,7 @@ It governs the artefact, not the model. It runs at the writer's desk, on one doc
 
 Built in a personal capacity by an independent policy researcher for the people who publish AI-assisted writing under their own name and carry the reputational liability for a fabricated citation: research-integrity, policy, and academic-governance practitioners. It is a personal open-source project, not associated with, funded by, or endorsed by any employer or government. It is informed by the working paper *From Citation to Epistemic Governance* (Prometheus Policy Lab, in preparation): it operationalises that paper's problem framing, the gap between citation as attribution and citation as evidence, rather than its formal model.
 
-**The honest demo, reproducible.** The demo ships inside the package, so you do not have to take an anecdote on trust. After `pip install warrantos`, one command with no setup runs WarrantOS over a bundled AI-style first draft and returns `BLOCK`: 6 claims detected, 0 supported, 7 boundary violations (scaffold and conversational residue).
+**The honest demo, reproducible.** The demo ships inside the authenticated candidate bundle, so you do not have to take an anecdote on trust. One command in that environment runs WarrantOS over a bundled AI-style first draft and returns `BLOCK`: 6 claims detected, 0 supported, 7 boundary violations (scaffold and conversational residue).
 
 ```bash
 warrantos demo
@@ -50,24 +50,24 @@ Under the hood, `claude-provenance` wraps AI-assisted writing in an eight-layer 
 
 ## Quickstart
 
-Install from PyPI:
+Use the authenticated candidate environment from the [Quickstart](QUICKSTART.md):
 
-```bash
-pip install warrantos          # MCP server extra: pip install "warrantos[mcp]"
+```powershell
+.\.vega-venv\Scripts\warrantos --version
 ```
 
 See it work immediately, no setup (the demo fixtures ship in the package):
 
-```bash
-warrantos demo                 # bundled honest demo -> BLOCK verdict
+```powershell
+.\.vega-venv\Scripts\warrantos demo  # bundled honest demo -> BLOCK verdict
 ```
 
 Start on your own document:
 
-```bash
-warrantos init                 # scaffolds context.json + actor.json templates
-warrantos check YOUR_DRAFT.md \
-  --context context.json \
+```powershell
+.\.vega-venv\Scripts\warrantos init  # scaffolds context.json + actor.json templates
+.\.vega-venv\Scripts\warrantos check YOUR_DRAFT.md `
+  --context context.json `
   --actor-identity actor.json --profile final-prose
 ```
 
@@ -75,7 +75,7 @@ To inspect the inputs or run the fuller quickstart example, use a source checkou
 
 ```bash
 git clone https://github.com/jvega017/warrantos.git
-cd claude-provenance
+cd warrantos
 python -m pip install -e ".[mcp]"
 
 # Per-run artefacts are written under .warrant/runs/
