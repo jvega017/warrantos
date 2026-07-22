@@ -123,7 +123,7 @@ def verify_warrant(
     v2 verification: If the checkpoint includes prose_sha256 and cbom_sha256,
     tampering with those assets after signing will be detected.
     """
-    result = {"integrity": "INVALID", "prose": "NOT_CHECKED", "cbom": "NOT_CHECKED", "signature": "UNSIGNED"}
+    result = {"integrity": "INVALID", "binding": "INVALID", "prose": "NOT_CHECKED", "cbom": "NOT_CHECKED", "signature": "UNSIGNED"}
     cp = bundle.get("checkpoint") or {}
     entries = bundle.get("ledger_entries")
     if entries is None:
@@ -134,6 +134,24 @@ def verify_warrant(
     recomputed = merkle.ledger_root([_entry_bytes(e) for e in entries])
     root = cp.get("root_hash")
     result["integrity"] = "VALID" if (root and recomputed == root) else "INVALID"
+
+    # The v2 checkpoint commits the bundle-level prose digest and embedded
+    # CBOM. Reproduce that binding even when the caller does not separately
+    # supply prose/CBOM inputs, so substitution cannot hide behind an omitted
+    # optional argument. Legacy checkpoints are explicitly identified rather
+    # than silently described as bound.
+    if cp.get("version") == "warrantos-checkpoint-v2":
+        embedded_cbom_sha = "sha256:" + hashlib.sha256(
+            json.dumps(bundle.get("cbom"), sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+        ).hexdigest()
+        result["binding"] = "VALID" if (
+            cp.get("prose_sha256")
+            and cp.get("prose_sha256") == bundle.get("prose_sha256")
+            and cp.get("cbom_sha256")
+            and cp.get("cbom_sha256") == embedded_cbom_sha
+        ) else "INVALID"
+    else:
+        result["binding"] = "LEGACY_UNBOUND"
 
     # 2. Prose digest (optional). Also check against checkpoint binding if present.
     if prose is not None:
@@ -154,7 +172,12 @@ def verify_warrant(
             json.dumps(cbom, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
         ).hexdigest()
         checkpoint_cbom = cp.get("cbom_sha256")
+        embedded_cbom_sha = "sha256:" + hashlib.sha256(
+            json.dumps(bundle.get("cbom"), sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
+        ).hexdigest()
         if checkpoint_cbom and checkpoint_cbom != cbom_sha:
+            result["cbom"] = "INVALID"
+        elif embedded_cbom_sha != cbom_sha:
             result["cbom"] = "INVALID"
         else:
             result["cbom"] = "VALID"
@@ -174,6 +197,7 @@ def verify_warrant(
     )
     ok = (
         result["integrity"] == "VALID"
+        and result["binding"] != "INVALID"
         and result["prose"] != "INVALID"
         and result["cbom"] != "INVALID"
         and sig_ok

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://warrantos.dev/schema/claim-binding-v1.json",
+  "title": "WarrantOS claim binding",
+  "type": "object",
+  "required": ["schema", "binding_id", "claim_id", "artefact_revision", "support_state", "supports"],
+  "properties": {
+    "schema": {"const": "warrantos-claim-binding/v1"},
+    "binding_id": {"type": "string", "minLength": 1},
+    "claim_id": {"type": "string", "minLength": 1},
+    "assertion_id": {"type": ["string", "null"]},
+    "artefact_revision": {"type": "string", "pattern": "^sha256:[0-9a-fA-F]{64}$"},
+    "claim_text_sha256": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-fA-F]{64}$"},
+    "claim_locator": {"$ref": "#/$defs/textCharRange"},
+    "support_state": {"enum": ["citation_present", "source_resolved", "passage_located", "support_asserted", "support_verified", "support_contested", "contradicted"]},
+    "supports": {"type": "array", "items": {"type": "object", "required": ["source_snapshot_id", "relation", "locator"], "properties": {"source_snapshot_id": {"type": "string"}, "relation": {"type": "string"}, "locator": {"$ref": "#/$defs/textCharRange"}, "quoted_span_sha256": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-fA-F]{64}$"}, "verdict": {"type": ["string", "null"], "enum": [null, "supports", "contested", "contradicts"]}, "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1}}, "additionalProperties": false}},
+    "created_by": {"type": "string"},
+    "reviewed_by": {"type": ["string", "null"]},
+    "created_at": {"type": "string"}
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "textCharRange": {
+      "type": "object",
+      "required": ["type", "start", "end"],
+      "properties": {
+        "type": {"const": "text_char_range"},
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    }
+  }
+}

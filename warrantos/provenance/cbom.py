@@ -61,14 +61,24 @@ class ClaimRecord:
     text: str
     support_ids: List[str] = field(default_factory=list)
     status: str = "unreviewed"
+    support_state: Optional[str] = None
+    binding_ids: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, object]:
-        return {
+        record = {
             "claim_id": self.claim_id,
             "text": self.text,
             "support_ids": list(self.support_ids),
             "status": self.status,
         }
+        if self.support_state is not None:
+            from .claim_support import SUPPORT_STATES
+            if self.support_state not in SUPPORT_STATES:
+                raise ValueError("unknown support_state: %s" % self.support_state)
+            record["support_state"] = self.support_state
+        if self.binding_ids:
+            record["binding_ids"] = list(self.binding_ids)
+        return record
 
 
 @dataclass(frozen=True)

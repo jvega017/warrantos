@@ -6,11 +6,32 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
+**Candidate status:** the package source declares 0.11.0 and this checkout is
+`warrantos-0.11.0-local-rc.1`, with no `v0.11.0` tag. It is not production qualified. The
+canonical statement is `release-manifest.json`.
+
+### Changed
+
+- Added explicit claim-support states and linked source-snapshot/claim-binding
+  schemas. The legacy `supported` CLI label remains for compatibility but now
+  serialises as `support_state: citation_present`; it is not semantic proof.
+- Added release-truth drift checks across code, manifest and public surfaces.
+- Packaged the source-snapshot and claim-binding JSON schemas as importable
+  warrantos.schemas resources with a stdlib loader and copy-drift tests.
+
+
 ### Added
 
 - **P0.3 Cryptographic Binding for v2 Warrant Bundles.** The checkpoint now binds `prose_sha256` and `cbom_sha256` into the Merkle root before signing, so tampering with prose or claims after attestation is cryptographically detectable. v2 checkpoints use `warrantos-checkpoint-v2`. Verification is backward-compatible; v0 and v1 bundles remain verifiable as `VALID` when integrity holds, but are now tagged `LEGACY_UNBOUND` in audit logs.
 
 ### Security
+
+- Added exact source-byte, text-extraction, claim-range and passage-range
+  verification plus an installed `warrantos-evidence` workflow. A semantic
+  verdict remains attributable to the declared reviewer rather than being
+  presented as WarrantOS-detected truth.
+- Added `warrantos-trust-root/v1` and fail-closed release verification against
+  an externally pinned Ed25519 public key. No production key is bundled.
 
 - **P0 Advisory: v0.10.0 and earlier warrants do not bind prose and CBOM to the Merkle root.** An adversary with access to a signed bundle can modify the prose or claims after attestation and the signature remains valid. The integrity check would fail (changed ledger) but a verifier who only spot-checks the signature would miss the mutation. Affected users should update to 0.11.0, re-attest their bundles (which automatically upgrades to v2), and verify the new `prose_sha256` and `cbom_sha256` fields in the checkpoint. See `SECURITY.md` for details.
 

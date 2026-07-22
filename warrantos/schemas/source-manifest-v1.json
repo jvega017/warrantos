@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://warrantos.dev/schema/source-manifest-v1.json",
+  "title": "WarrantOS source snapshot",
+  "type": "object",
+  "required": ["schema", "source_snapshot_id", "canonical_uri", "retrieved_at", "content_sha256"],
+  "properties": {
+    "schema": {"const": "warrantos-source-manifest/v1"},
+    "source_snapshot_id": {"type": "string", "minLength": 1},
+    "canonical_uri": {"type": "string", "minLength": 1},
+    "retrieved_at": {"type": "string", "minLength": 1},
+    "published_at": {"type": ["string", "null"]},
+    "effective_from": {"type": ["string", "null"]},
+    "effective_to": {"type": ["string", "null"]},
+    "media_type": {"type": "string"},
+    "content_sha256": {"type": "string", "pattern": "^sha256:[0-9a-fA-F]{64}$"},
+    "extraction_sha256": {"type": ["string", "null"], "pattern": "^sha256:[0-9a-fA-F]{64}$"},
+    "publisher": {"type": "string"},
+    "authority_class": {"type": "string"},
+    "classification": {"type": "string"}
+  },
+  "additionalProperties": false
+}

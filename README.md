@@ -5,11 +5,18 @@ Every citation-trigger in an AI-assisted document ships with a source, a `[CITE 
 *`claude-provenance` on GitHub and as the legacy Claude Code plugin; `warrantos` on PyPI and the CLI.*
 
 [![ci](https://github.com/jvega017/warrantos/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/warrantos/actions/workflows/ci.yml)
-[![layers: 20B / 0P](https://img.shields.io/badge/layers-20B%20%2F%200P-brightgreen)](docs/STATUS.md)
-![version: 0.11.0](https://img.shields.io/badge/version-0.11.0-brightgreen)
+[![maturity: local release candidate](https://img.shields.io/badge/maturity-local%20release%20candidate-yellow)](docs/RELEASE-TRUTH.md)
+![version: 0.11.0 local rc.1](https://img.shields.io/badge/version-0.11.0%20local%20rc.1-yellow)
 ![python: 3.11--3.13](https://img.shields.io/badge/python-3.11--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
 
+> **Release truth:** this checkout is candidate `warrantos-0.11.0-local-rc.1`, not a tagged or
+> production-qualified release. `release-manifest.json` is canonical; see
+> [`docs/RELEASE-TRUTH.md`](docs/RELEASE-TRUTH.md).
+>
+> **Support vocabulary:** the legacy CLI label `claims supported` means a
+> citation token was present. New records call that `citation_present`.
+> `support_verified` requires an explicit linked claim-binding record.
 ## Ten seconds
 
 ```text
@@ -45,6 +52,21 @@ pipx install warrantos      # isolated CLI install
 uvx warrantos demo          # zero-install trial run
 pip install warrantos       # plain pip works too
 ```
+These commands install the published distribution, not necessarily this development
+checkout. Before relying on v2 artefact binding, confirm both `warrantos --version` and
+the emitted checkpoint schema. There is currently no `v0.11.0` tag.
+
+### Evidence binding and production verification
+
+The installed `warrantos-evidence` command creates content-addressed source
+snapshots, binds exact claim and source character ranges, and independently
+reproduces their digests before recording a review verdict. A citation detected
+by `warrantos check` remains only `citation_present` until this explicit path is
+completed.
+
+Production-facing verification uses `warrantos-evidence verify-release` with a
+deployment-owned `warrantos-trust-root/v1` file. WarrantOS intentionally ships
+no production key. See [`docs/PRODUCTION-DEPLOYMENT.md`](docs/PRODUCTION-DEPLOYMENT.md).
 
 ## Lint your docs for AI slop
 
@@ -86,7 +108,7 @@ Every checked run can be sealed into a portable `.warrant` bundle that a third p
 ## How it works
 
 WarrantOS reads one document at the writer's desk, before it ships.
-It detects citation-trigger patterns (years, percentages, magnitude, statutory references, attribution, causal language, superlatives, etc.) and checks each for a source in the same sentence or the line directly below, or an explicit `[CITE NEEDED]`.
+It detects citation-trigger patterns (years, percentages, magnitude, statutory references, attribution, causal language, superlatives, etc.) and records a nearby source token as `citation_present`, or an explicit `[CITE NEEDED]`. It does not call that semantic support verification.
 It scans for chat scaffold and process residue that bled into the artefact.
 It returns one verdict (`PASS`, `HOLD`, `BLOCK`, or `NOT_ASSESSABLE`) and writes every miss to an append-only, tamper-evident ledger you can hand an auditor.
 Stdlib only, MIT, no API, no account.

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,7 +10,8 @@ name = "warrantos"
 dynamic = ["version"]
 description = "WarrantOS: a governance harness for AI-assisted writing that ships clean prose and a separate auditable provenance ledger"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [
     { name = "Juan Vega" }
@@ -31,7 +32,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Information Technology",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
@@ -80,6 +80,7 @@ warrantos = "warrantos.cli.warrantos_cli:main"
 provenance = "warrantos.cli.provenance_cli:main"
 warrantos-mcp = "warrantos.provenance.mcp_server:run_stdio_server"
 warrantos-verify-hook = "warrantos.hooks.claude_code_verify_hook:main"
+warrantos-evidence = "warrantos.cli.evidence_cli:main"
 
 [tool.setuptools.dynamic]
 version = { attr = "warrantos.__version__" }
@@ -101,4 +102,4 @@ exclude = [
 # Ship the honest-demo fixtures inside the package so `warrantos demo` works
 # from a clean `pip install` (examples/ is not packaged). Without this the
 # bundled first-run demo would file-not-found for installed users.
-warrantos = ["demo_assets/*.md", "demo_assets/*.json"]
+warrantos = ["demo_assets/*.md", "demo_assets/*.json", "schemas/*.json"]

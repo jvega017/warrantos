@@ -50,14 +50,30 @@ commonly appear in AI-drafted text. They are not a fact-checker.
   agreement) in the label-reproducibility probe. Treat LLM-grader confidence
   accordingly; it is a signal, not a verdict.
 
-## Build state
+## Build and release state
 
-This is **v0.9.1**. Two layers are explicit `NOT_BUILT` v1.0 deferrals
-that require domain input from the adopter and cannot be fabricated:
-Data Classification (a sensitivity taxonomy) and Retention/Tombstones. Two more
-are `STARTER` (Safety/Contamination, Evaluation/Calibration) and need extension
-before production use. See [`STATUS.md`](STATUS.md) for the per-layer state.
+This checkout declares **0.11.0 local release candidate rc.1**. It is not represented by a
+`v0.11.0` tag and is not production qualified. The legacy 20 `BUILT` rows in
+`STATUS.md` describe internal implementation and enforcement only. They do not
+establish independent security review, open-domain claim recall, stable error
+rates, external interoperability, certification or operational reliability.
 
+The canonical machine-readable statement is `../release-manifest.json`.
+
+## Claim-support states
+
+A citation token is `citation_present`, not verified support. WarrantOS now
+provides additive source-snapshot and claim-binding schemas for upstream
+systems, but the standard CLI does not yet perform source resolution, passage
+location or semantic entailment. The explicit vocabulary is:
+`citation_present`, `source_resolved`, `passage_located`, `support_asserted`,
+`support_verified`, `support_contested`, and `contradicted`.
+
+`verify_binding()` reproduces exact bytes, locators and passage digests and
+records a verdict declared by a distinct reviewer string. It does **not**
+authenticate that reviewer's identity. An embedding runtime such as Vega must
+bind the verdict to a host- or IdP-authenticated principal before describing it
+as authenticated semantic review.
 ## Attestation and cryptography
 
 - The integrity core (`provenance.merkle`) and `.warrant` integrity verification

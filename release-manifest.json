@@ -1,0 +1,62 @@
+{
+  "schema": "warrantos-release-manifest/v1",
+  "version": "0.11.0",
+  "release_status": "local-release-candidate",
+  "candidate_id": "warrantos-0.11.0-local-rc.1",
+  "candidate_built_from_commit": null,
+  "source_commit_binding": "recorded out of band by the signed distribution artifact manifest; this tracked manifest does not claim a self-referential commit",
+  "git_tag": null,
+  "latest_tag": "v0.10.0",
+  "changelog_section": "Unreleased",
+  "checkpoint_schema": "warrantos-checkpoint-v2",
+  "artefact_binding": {
+    "prose_sha256": true,
+    "cbom_sha256": true,
+    "ledger_root": true
+  },
+  "claim_support_ceiling": "citation_present without an explicit claim-binding record",
+  "binding_protocol": {
+    "schema": "warrantos-claim-binding/v1",
+    "locator": "text_char_range",
+    "content_addressed_sources": true,
+    "passage_digest_verified": true,
+    "semantic_verdict_source": "declared distinct reviewer; standalone binding API does not authenticate identity",
+    "semantic_verdict_authenticated": false
+  },
+  "production_verification": {
+    "trust_root_schema": "warrantos-trust-root/v1",
+    "pinned_signer_required": true,
+    "bundled_production_key": false,
+    "external_timestamp_anchor": false
+  },
+  "claim_support_vocabulary": [
+    "citation_present",
+    "source_resolved",
+    "passage_located",
+    "support_asserted",
+    "support_verified",
+    "support_contested",
+    "contradicted"
+  ],
+  "maturity": {
+    "implemented": true,
+    "enforced": true,
+    "evaluated": true,
+    "production_qualified": false
+  },
+  "identity_boundary": {
+    "standalone_binding_reviewer_authenticated": false,
+    "host_authentication_must_be_supplied_by_embedding_runtime": true
+  },
+  "production_qualified": false,
+  "truth_surfaces": [
+    "README.md",
+    "docs/STATUS.md",
+    "docs/STACK.md",
+    "docs/LIMITATIONS.md",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "docs/PRODUCTION-DEPLOYMENT.md",
+    "warrantos/cli/warrantos_cli.py"
+  ]
+}

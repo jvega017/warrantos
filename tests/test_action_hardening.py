@@ -146,6 +146,7 @@ class TestRequireHashesInstall(unittest.TestCase):
 
 
 @unittest.skipIf(shutil.which("bash") is None, "bash not available")
+@unittest.skipIf(os.name == "nt", "GitHub composite action shell contract is exercised on Unix runners")
 class TestPathsParsingLoop(unittest.TestCase):
     """Execute the action's real slop run block against a recording shim."""
 

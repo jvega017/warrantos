@@ -38,8 +38,8 @@ flowchart LR
         G1[G1 prose boundary]
         G2[G2 claim provenance]
         G3[G3 self-grounding]
-        G4[G4 contamination - STARTER]
-        G5[G5 calibration - STARTER]
+        G4[G4 contamination - domain-extended]
+        G5[G5 calibration - internally evaluated]
     end
 
     subgraph L8[Layer 8: Human review & override]
@@ -79,10 +79,10 @@ Reading the diagram: context flows top-to-bottom through classification,
 admissibility, and the writer pack; the draft and the writer's output flow
 through the five output integrity gates; the eight verdict signals consolidate
 into one of four states; the override ledger sits beside the verdict layer so
-human authority is recorded as structured evidence, not free text. `NOT_BUILT`
-foundation rows (Data Classification, Retention/Tombstones) wrap the whole
-stack and are documented as adopter-supplied; they do not appear in the
-runtime path.
+human authority is recorded as structured evidence, not free text. Cross-cutting classification, retention, integrity, compliance and metrics
+controls wrap the runtime path. Their internal implementation status does not
+make the stack production qualified; adopter policy and independent operational
+evidence remain required.
 
 For the per-layer build state at the current version, see
 [`STATUS.md`](STATUS.md). For the layer-to-module mapping table, see
@@ -183,11 +183,8 @@ Five gates run over the writer's output:
   where the writer model and the verifier model are the same family;
   wired into `warrantos check` via `--writer-model` / `--verifier-model`.
   Informational FLAG per SPEC-L7-N003, not BLOCK.
-- **G4 Safety and Contamination** (STARTER): eight starter prompt-
-  injection patterns ship; production deployments must extend with a
-  documented threat-model corpus. v1.0 deferral.
-- **G5 Evaluation and Calibration** (STARTER): gate becomes meaningful
-  when an LLM grader is configured (the heuristic emits no confidence).
+- **G4 Safety and Contamination** (BUILT, not production qualified): a policy-domain labelled corpus and patterns ship; adopters must extend them against their threat model.
+- **G5 Evaluation and Calibration** (BUILT, not production qualified): internal corpus calibration ships; the offline heuristic emits no confidence and external evaluation remains required.
 
 ## Layer 8: Human Review and Decision Authority
 
@@ -216,27 +213,30 @@ certify, instead of certifying on incomplete information.
 
 ## Foundation rows (cross-cutting)
 
-Five foundation rows wrap the eight layers:
+The current implementation reports all 20 legacy rows as `BUILT`. That label
+has a narrow ceiling: the code and internal enforcement probes exist. It does
+not mean certification or production qualification.
 
-- **F-policy** (BUILT): six SPEC-F-S002 actor roles enumerated in the
-  machine-readable registry `provenance.roles` with a runtime
-  `validate_actor_identity()` check; normative SPEC committed at
-  [`SPEC.md`](SPEC.md).
-- **F-classification: Data Classification** (NOT_BUILT): adopter-supplied
-  sensitivity taxonomy required.
-- **F-audit: Audit Logging** (BUILT): SQLite cross-run + per-run JSON +
-  shadow log.
-- **F-retention: Retention and Tombstones** (NOT_BUILT): adopter-supplied
-  retention windows required.
-- **F-compliance: Compliance and Standards** (PARTIAL): RFC 2119
-  conformance language in SPEC IDs; no automated compliance check.
-- **F-override: Human Override** (BUILT): see Layer 8.
-- **F-metrics: Metrics and Monitoring** (PARTIAL): shadow log only;
-  full metrics pipeline is v1.0+.
+- Policy and roles: implemented; principals remain declarative rather than
+  host-authenticated.
+- Data classification: a four-tier starter registry is implemented; adopters
+  must extend the taxonomy.
+- Audit and integrity: append-only SQLite controls and v2 bundle binding are
+  implemented; operator-controlled keys still require external anchoring for
+  non-repudiation against the operator.
+- Retention: append-only tombstones are implemented; retention windows remain
+  adopter policy.
+- Compliance: self-assessment mappings exist; there is no accredited
+  certification.
+- Metrics and calibration: internal corpora and shadow metrics exist; these are
+  not evidence of production performance.
 
-For the live status counts, run `warrantos status` or read
-[`STATUS.md`](STATUS.md).
+The stack is not production qualified.
 
+Claim support is also split from legacy `supported` wording. Citation detection
+is `citation_present`; source resolution, passage location, support assertion,
+`support_verified`, contest and contradiction are separate states carried by linked
+source and claim-binding records.
 ## Product Positioning
 
 Use this wording:

@@ -1,0 +1,2 @@
+include release-manifest.json
+recursive-include schema *.json

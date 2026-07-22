@@ -11,21 +11,12 @@ that closes Codex C1: NOT_ASSESSABLE fires when a final-prose artefact
 lacks the minimum coupling evidence (actor_identity) needed to certify
 the override/identity leg of the coupling thesis.
 
-Honest limits carried forward from PATH-X3-EXECUTION-PLAN.md section 4:
+Current assurance limits:
 
-- Layer 5 writer pack and Layer 6 clean-room generation are NOT BUILT.
-  The harness operates over an already-written draft. Layer 5/6 are Path
-  X4 work.
-- Layer 7 G3, G4, G5 are NOT BUILT.
-- The offline heuristic verifier CANNOT emit `contradicted` by
-  construction (documented in MEMORY.md from Probe A 2026-05-22/23 and
-  in grade.py module docstring). The harness's BLOCK-on-contradicted
-  branch fires only when an LLM grader is configured via
-  ANTHROPIC_API_KEY or a callable cross-model backend is supplied.
-- The salience-based HOLD line uses `provenance.salience.is_load_bearing`
-  with the documented LOAD_BEARING_THRESHOLD = 0.5. The threshold is
-  inherited from the existing salience module rather than reinvented
-  here.
+- Claim detection is heuristic and does not cover all factual claims.
+- A nearby citation establishes `citation_present` only. Source resolution,
+  passage location and semantic support require explicit linked records.
+- Offline grading uses token overlap and cannot establish general entailment.
 
 Usage
 -----
@@ -903,6 +894,7 @@ def to_claim_record(claim_row: Dict[str, Any], context_ids_admitted: List[str]) 
         text=claim_row["sentence"],
         support_ids=[],  # Day 5 does not perform binding; Path X4.
         status=status,
+        support_state="citation_present" if claim_row.get("citation") else None,
     )
 
 
@@ -2075,6 +2067,10 @@ def _cmd_check_single(args, draft_path):
         "claims_detected": len(claim_rows),
         "claims_supported": sum(1 for c in claim_rows if c.get("citation")),
         "claims_unsupported": sum(1 for c in claim_rows if not c.get("citation")),
+        "claim_support_states": {
+            "citation_present": sum(1 for c in claim_rows if c.get("citation")),
+            "support_verified": 0,
+        },
         "verifier_rows": verifier_rows,
         "verifier_total": len(verifier_rows),
         "by_verifier_verdict": verifier_counts,
