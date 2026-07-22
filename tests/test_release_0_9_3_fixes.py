@@ -18,6 +18,7 @@ import io
 import os
 import sys
 import tempfile
+import tomllib
 import unittest
 from pathlib import Path
 
@@ -36,6 +37,15 @@ class TestVersionSingleSource(unittest.TestCase):
         except metadata.PackageNotFoundError:
             self.skipTest("warrantos is not installed; metadata unavailable")
         self.assertEqual(packaged, warrantos.__version__)
+
+    def test_wheel_declares_browser_verifier_data_files(self):
+        root = Path(__file__).resolve().parents[1]
+        configuration = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8"))
+        data_files = configuration["tool"]["setuptools"]["data-files"]
+        self.assertEqual(
+            data_files["share/warrantos/web"],
+            ["web/verify.html", "web/README.md"],
+        )
 
 
 class TestWarrantosDbEnvDefault(unittest.TestCase):

@@ -110,7 +110,7 @@ warrantos attest final.md --run-dir .warrant/runs/<id> --out final.warrant
 warrantos verify-external final.warrant --prose final.md   # exits non-zero on any failure
 ```
 
-Every checked run can be sealed into a portable `.warrant` bundle that a third party verifies offline: no access to your ledger, no network call, fail-closed, with a zero-backend browser verifier (`web/verify.html`) for readers who have only the file. Details in [`docs/VERIFICATION.md`](docs/VERIFICATION.md); the control mapping to ISO/IEC 42001 and the NIST AI RMF is in [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
+Every checked run can be sealed into a portable `.warrant` bundle that a third party verifies offline: no access to your ledger, no network call, fail-closed, with a zero-backend browser verifier (`web/verify.html`) for readers who have only the file. Wheel installs also include it under the environment's `share/warrantos/web/` directory. Details in [`docs/VERIFICATION.md`](docs/VERIFICATION.md); the control mapping to ISO/IEC 42001 and the NIST AI RMF is in [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md).
 
 ## How it works
 

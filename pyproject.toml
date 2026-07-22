@@ -108,3 +108,9 @@ warrantos = [
     "schemas/*.json",
     "hooks/hooks.json",
 ]
+
+[tool.setuptools.data-files]
+# Keep the no-backend verifier available after a normal wheel install as well
+# as in the source checkout and sdist. It installs under
+# <environment>/share/warrantos/web/ so recipients do not need the repository.
+"share/warrantos/web" = ["web/verify.html", "web/README.md"]

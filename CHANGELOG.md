@@ -12,6 +12,8 @@ canonical statement is `release-manifest.json`.
 
 ### Changed
 
+- Included the offline browser verifier and its usage note in wheel installs
+  under `share/warrantos/web/`, closing the source-only packaging gap.
 - Repaired the candidate Quickstart, contributor setup and Action examples so
   checkout names, module paths, supported Python versions and newline-delimited
   paths match the shipped interfaces.
