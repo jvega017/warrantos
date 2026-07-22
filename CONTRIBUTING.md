@@ -1,74 +1,67 @@
-# Contributing to claude-provenance
+# Contributing to WarrantOS
 
-Thanks for the interest. This project ships honest governance machinery; contributions that preserve that honesty are very welcome. Contributions that paper over it are not.
+WarrantOS is governance machinery. Contributions must state the control they
+enforce, the executable evidence for it, and what remains outside the claim.
 
 ## Before you start
 
-1. **Read [`docs/STATUS.md`](docs/STATUS.md) first.** The per-layer build state names what is `BUILT`, `PARTIAL`, `STARTER`, and `NOT_BUILT`. If your contribution moves a row, the PR description must say so explicitly. If it does not move a row, do not claim it does.
-2. **Read [`docs/OVERVIEW.md`](docs/OVERVIEW.md) for the eight-layer model and the design language.** Code and tests cite SPEC IDs of the form `SPEC-L*-S*` and invariants of the form `INV-*`. The normative SPEC document (`SPEC-v0.2`) is not yet committed to this repository; the SPEC IDs in code, test names, and status notes are the source of truth at v0.9.0b1. PRs that conflict with an existing SPEC ID should call that out in the description so the maintainer can resolve it.
-3. **The two `NOT_BUILT` foundation rows (Data Classification, Retention/Tombstones) require domain input.** They cannot be fabricated. If you want to close them for your adopter context, propose the taxonomy first in an issue.
+1. Read [status](docs/STATUS.md), [limitations](docs/LIMITATIONS.md) and the
+   [stack](docs/STACK.md).
+2. Open an issue for a new governance-bearing feature or schema change.
+3. Do not move a control from implemented to enforced, evaluated or production
+   qualified without the corresponding evidence.
+4. Do not add sensitive material, credentials or private source content to a
+   fixture.
 
 ## Local development
 
+WarrantOS supports CPython 3.11 through 3.13.
+
 ```bash
 git clone https://github.com/jvega017/warrantos.git
-cd claude-provenance
-python -m pip install -e ".[mcp]"
-```
-
-No third-party runtime dependencies for the core. The `[mcp]` extra is only needed if you are working on the MCP server.
-
-## Running the test suite
-
-```bash
+cd warrantos
+python -m pip install -e ".[attestation,mcp]"
 python -m unittest discover -s tests -v
+python tools/check_release_truth.py --publication local
 ```
 
-The suite is stdlib unittest. No pytest dependency. The CI matrix runs on Python 3.8 through 3.13; your local run should pass on the version you use day-to-day before you open a PR.
+The core runtime is standard-library only. Extras are needed only for the
+features they name.
 
-## Running the per-layer status check
+## Test and documentation contract
 
-```bash
-python cli/warrantos_cli.py status
-python cli/warrantos_cli.py status --markdown > docs/STATUS.md
-```
+- Tests live under `tests/test_*.py` and use `unittest`.
+- Use `tempfile.TemporaryDirectory()` for filesystem tests.
+- Add hostile cases for fail-closed controls, not only happy paths.
+- Run `warrantos status` to inspect the generated layer status.
+- Update `CHANGELOG.md`, `release-manifest.json` and affected truth surfaces.
+- Release-truth CI checks version and control claims. A public promotion also
+  requires the GitHub Action lock and Claude plugin versions to equal the
+  release version.
+- Test copy-paste commands from a clean directory. Do not document a path or
+  script that the package does not ship.
 
-If your PR changes a layer's build state, regenerate `docs/STATUS.md` and commit the result. CI does not currently fail on drift, but reviewers will check.
+## Pull request evidence
 
-## Writing tests
+The PR description must answer:
 
-- Tests live in `tests/test_*.py`. One module per logical surface.
-- The standing rule: **an internal error must never break the calling session.** Tests verify both correct behaviour AND graceful degradation.
-- For deferred features (G4, G5, classifier corpus), the test verifies that the stub raises the documented error. Removing such a stub without writing the real feature is a regression.
-- Cross-platform: tests must pass on Linux CI. Use `tempfile.TemporaryDirectory()`, not hard-coded Windows paths.
+1. What control or adopter outcome changed?
+2. Which command or test demonstrates it?
+3. Which failure mode is now blocked?
+4. What still is not guaranteed?
+5. Does this change a schema, release surface or compatibility promise?
 
-## Adding a new gate or layer feature
+## Style and safety
 
-1. Open an issue first using the `feature` template. Name the SPEC ID it addresses (or the new one you want).
-2. Write the test first (TDD strongly preferred for any governance-bearing code).
-3. Wire it into the pipeline (`cli/warrantos_cli.py`) and the MCP server if relevant (`provenance/mcp_server.py`).
-4. Update `docs/STATUS.md` to reflect the new state.
-5. Update `CHANGELOG.md` under the appropriate version's "Added", "Changed", or "Deferred" section.
-6. The PR description must answer: "what does this guarantee that was not guaranteed before, and what does it still not guarantee".
+- Use Australian English where practical.
+- Avoid em dashes in documentation.
+- Never log or reproduce secret values.
+- Do not weaken an existing gate to make a test pass without documenting the
+  policy change.
+- Preserve append-only audit semantics.
 
-## Honest documentation rule
+Report vulnerabilities through [SECURITY.md](SECURITY.md), not a public issue
+or pull request.
 
-- Do not write that a feature "ships in v0.X" when v0.X is the version under development. Either it ships in this PR or it does not.
-- Do not soften a `NOT_BUILT` row to `PARTIAL` without changing the code.
-- Do not increase a test count in prose; CI is the source of truth.
-
-## Australian English
-
-The author writes in Australian English (`-ise`/`-isation`, `programme`, `organisation`, `behaviour`, `modelling`). Existing docs follow this convention. PRs that re-Americanise existing prose will be reverted; PRs that add new prose in either dialect are fine.
-
-## No em dashes
-
-Trailing house style: no em dashes anywhere in the docs. Use a colon, a comma, or a new sentence. The reviewer will mark them; the linter will eventually catch them.
-
-## Security issues
-
-Do not file as a public PR or issue. See [`SECURITY.md`](SECURITY.md) for the responsible-disclosure process.
-
-## Licence
-
-By contributing, you agree your contribution will be released under the MIT licence that covers the rest of the repository.
+By contributing, you agree that your contribution is released under the MIT
+licence.

@@ -12,6 +12,14 @@ canonical statement is `release-manifest.json`.
 
 ### Changed
 
+- Repaired the candidate Quickstart, contributor setup and Action examples so
+  checkout names, module paths, supported Python versions and newline-delimited
+  paths match the shipped interfaces.
+- Made `warrantos demo` retain its complete run, create `demo.warrant`, verify
+  it against the exact draft bytes and print a repeatable verification command.
+- Added release-truth enforcement for GitHub Action lock and Claude plugin
+  version parity. Local candidate surfaces may identify the latest published
+  version, but public promotion requires every surface to match the candidate.
 - Added explicit claim-support states and linked source-snapshot/claim-binding
   schemas. The legacy `supported` CLI label remains for compatibility but now
   serialises as `support_state: citation_present`; it is not semantic proof.

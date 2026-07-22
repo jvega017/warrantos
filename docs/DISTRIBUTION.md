@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: jvega017/warrantos@main
+      - uses: jvega017/warrantos@v0.10.0
 ```
 
 The default run scans the whole repository for AI scaffold and
@@ -29,9 +29,11 @@ conversational residue (`warrantos slop . --fail-over 0`) and fails the job
 on any hit. All inputs, with defaults:
 
 ```yaml
-      - uses: jvega017/warrantos@main
+      - uses: jvega017/warrantos@v0.10.0
         with:
-          paths: "docs drafts"        # files or directories, space-separated (default ".")
+          paths: |                    # one file or directory per line
+            docs
+            policy drafts
           mode: "both"                # "slop" (default), "check", or "both"
           profile: "brief-light"      # boundary profile for check mode
           fail-over: "0"              # slop-score threshold; 0 fails on any residue
@@ -40,8 +42,11 @@ on any hit. All inputs, with defaults:
 
 In `check` mode the action runs `warrantos check --ci` per Markdown file,
 so the job exits non-zero on a `HOLD`, `BLOCK`, or `NOT_ASSESSABLE`
-verdict. Pin the ref to a tag (for example
-`jvega017/warrantos@v0.10.0`) once you depend on it.
+verdict. Paths are newline-delimited, so a path containing spaces remains one
+path. Pin the Action to an immutable tag. The local 0.11.0b2 candidate remains
+locked to the latest public 0.10.0 package until candidate promotion; the
+public-release gate refuses promotion until the Action lock matches the release
+version.
 
 ## pre-commit
 

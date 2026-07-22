@@ -73,16 +73,31 @@ class TestDemoCommand(unittest.TestCase):
         buf = io.StringIO()
         old = sys.stdout
         sys.stdout = buf
-        try:
-            rc = warrantos_cli.main(["demo"])
-        finally:
-            sys.stdout = old
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "retained demo with spaces"
+            try:
+                rc = warrantos_cli.main(["demo", "--output", str(output)])
+            finally:
+                sys.stdout = old
+            self.assertTrue((output / "demo.warrant").is_file())
+            self.assertTrue((output / "draft.md").is_file())
+            self.assertEqual(len(list((output / ".warrant" / "runs").iterdir())), 1)
         out = buf.getvalue()
         self.assertEqual(rc, 0)
         self.assertIn("BLOCK", out)
+        self.assertIn("OVERALL:   VALID", out)
+        self.assertIn("Retained demo:", out)
         # The bundled demo must surface the unsupported-claim signal, not just
         # boundary residue, so it stays a faithful end-to-end demonstration.
         self.assertIn("claims detected", out)
+
+    def test_demo_refuses_to_mix_with_existing_output(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "existing"
+            output.mkdir()
+            with self.assertRaisesRegex(ValueError, "already exists"):
+                warrantos_cli.main(["demo", "--output", str(output)])
+            self.assertEqual(list(output.iterdir()), [])
 
 
 class TestUnicodeReportNoCrash(unittest.TestCase):

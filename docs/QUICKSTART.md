@@ -1,180 +1,122 @@
 # Quickstart
 
-Five minutes from a fresh clone to a working verdict.
+This guide is for the current WarrantOS 0.11.0b2 local release candidate. It
+does not claim that the candidate is available from PyPI or under an immutable
+public tag.
 
-## Install
-
-`claude-provenance` is not yet on PyPI. Install from source until the first published release lands:
+## Install the candidate from its source checkout
 
 ```bash
 git clone https://github.com/jvega017/warrantos.git
-cd claude-provenance
-python -m pip install -e ".[mcp]"
+cd warrantos
+python -m pip install -e ".[attestation]"
+warrantos --version
 ```
 
-Core install has **zero third-party dependencies**. Stdlib only. The `[mcp]` extra pulls in the optional `mcp` SDK; it is only needed for Claude Code / Claude Desktop integration. The Python API and CLI work without it.
+The core package is standard-library only. The `attestation` extra provides
+Ed25519 signing and verification. Use `[mcp]` only when you need the optional
+MCP server.
 
-> When the package is published, `pip install claude-provenance` will work. Until then, the source-checkout path above is the supported install.
+When 0.11.0b2 is actually published, the release documentation will replace
+this source-install command with the exact tagged package command. Until then,
+do not infer that the public 0.10.0 package contains candidate behaviour.
 
-## Verify the install
+## Run the retained demonstration
 
 ```bash
-warrantos --help
+warrantos demo --output warrantos-demo
 ```
 
-Should print the help for the integration CLI. If you prefer running without installing, every entry point also works as a module:
+The demonstration deliberately produces a `BLOCK` decision, then retains:
+
+- the synthetic draft, context and actor records;
+- the complete `.warrant/runs/<run_id>` check output;
+- `demo.warrant`;
+- an offline verification result over the exact draft bytes.
+
+Re-run the printed verification command. For the explicitly unsigned synthetic
+demo it has this shape:
 
 ```bash
-python -m cli.warrantos_cli --help
+warrantos verify-external warrantos-demo/demo.warrant \
+  --prose warrantos-demo/draft.md --allow-unsigned
 ```
 
-## Run the bundled demo
+`BLOCK` and `VALID` answer different questions. `BLOCK` means the draft is not
+fit to ship under the declared prose/claim policy. `VALID` means the retained
+attestation has not been substituted and binds the selected draft. Neither
+state proves that the draft is factually true.
 
-You are already in the cloned repo from the install step. Run:
+## Check your own document
+
+Generate starter metadata:
 
 ```bash
-warrantos check examples/quickstart-demo/draft.md \
-  --context examples/quickstart-demo/context.json \
-  --actor-identity examples/quickstart-demo/actor.json \
+warrantos init --dir warrantos-inputs
+```
+
+Then run:
+
+```bash
+warrantos check YOUR_DRAFT.md \
+  --context warrantos-inputs/context.json \
+  --actor-identity warrantos-inputs/actor.json \
   --profile final-prose
 ```
 
-Expected verdict: **`HOLD`** with one unsupported load-bearing claim.
-The bundled command exercises Layer 1, Layer 4, Layer 7 G1, Layer 7
-G2 (detection), CBOM assembly, and the four-state verdict
-consolidator. Add `--verify` to run the G2 verifier and
-`--writer-model`/`--verifier-model` to run G3; G4 and G5 ship as
-STARTER and are not exercised by the bundled demo. See
-[`examples/quickstart-demo/README.md`](../examples/quickstart-demo/README.md)
-for the explanation of each line of output.
+The command prints the exact run directory. Turn that run into a portable
+attestation and verify it:
 
-## What just happened
+```bash
+warrantos attest YOUR_DRAFT.md \
+  --run-dir .warrant/runs/RUN_ID --out YOUR_DRAFT.warrant
+warrantos verify-external YOUR_DRAFT.warrant --prose YOUR_DRAFT.md \
+  --allow-unsigned
+```
 
-The CLI ran your draft through these layers of the WarrantOS pipeline:
+Remove `--allow-unsigned` for a signed release. Supply the expected public key
+out of band with `--key` when signer attribution matters.
 
-1. **Layer 1** classified the three context items into eleven canonical
-   classes. The `policy-red-team` review finding was forced to
-   `review_finding` even though its text looks like a casual note,
-   because the `source_agent` matched the SPEC-L1-S005 registry.
-2. **Layer 7 G1** scanned your draft for prose-boundary violations
-   (e.g. "based on your feedback"). The demo has none.
-3. **Layer 7 G2** detected factual claims. The first sentence has a
-   URL citation, so it counts as supported. The second sentence
-   asserts a 250-million-dollar saving with no source, so it counts
-   as unsupported and load-bearing.
-4. The CBOM v0.2 was assembled with the actor identity map you
-   supplied and saved to `.warrant/runs/<run_id>/cbom.json`.
-5. The consolidated verdict logic returned `HOLD` because of the
-   unsupported claim.
+## Verdicts and truth boundary
 
-## The four-verdict model
-
-| Verdict | Trigger | What you do |
-|---|---|---|
-| `PASS` | No boundary violation, no unsupported load-bearing claim, no contradicted claim, no NOT_ASSESSABLE | Ship the artefact |
-| `HOLD` | Unsupported or unverifiable load-bearing claim | Add a citation or downgrade the claim |
-| `BLOCK` | Boundary violation in final-prose, or a contradicted verifier verdict | Rewrite the offending text |
-| `NOT_ASSESSABLE` | Final-prose without `--actor-identity` | Supply actor identity or use a non-final-prose profile |
-
-## What runs locally vs what costs API credits
-
-| Stage | Cost |
+| Verdict | Meaning |
 |---|---|
-| Layer 1 classifier | Local; no cost |
-| Layer 2 ledger writes | Local; no cost |
-| Layer 4 admissibility | Local; no cost |
-| Layer 7 G1 boundary scan | Local; no cost |
-| Layer 7 G2 claim **detection** | Local; no cost |
-| Layer 7 G2 claim **verification, offline mode** (default) | Local; no cost |
-| Layer 7 G2 claim **verification, LLM mode** | Anthropic API credits per claim when `ANTHROPIC_API_KEY` is set AND `--verify` is passed |
-| CBOM assembly + footer | Local; no cost |
-| MCP server | Local; no cost |
+| `PASS` | No configured gate found a release-blocking condition. |
+| `HOLD` | A load-bearing claim is unsupported or cannot be assessed. |
+| `BLOCK` | A configured hard gate failed, such as a prose-boundary violation or contradiction. |
+| `NOT_ASSESSABLE` | Required assessment inputs, such as actor identity, are absent. |
 
-The default invocation is free. You only pay API credits when you
-explicitly opt into the LLM grader. See [`COST.md`](COST.md) for the
-spend-control flags and recommended profiles.
+WarrantOS does not detect truth. Standalone WarrantOS can establish exact-byte
+integrity and the evidence-only `passage_reproduced` state, but authenticated semantic support must be
+supplied by an embedding runtime such as Vega.
 
-## What this tool does and does NOT claim
+## CI and integration
 
-WarrantOS does **not** prove your artefacts are correct. It
-guarantees three operational properties:
+The repository ships a composite GitHub Action and pre-commit hooks. The local
+0.11.0b2 candidate Action intentionally remains locked to the latest published
+0.10.0 distribution until promotion. The public-release gate fails if the
+Action lock and plugin surfaces are not bumped to the promoted version.
 
-1. Unsupported claims are surfaced, not invisible.
-2. Process material cannot reach final prose without a recorded
-   transformation.
-3. Overrides cannot reach the public artefact without a structured
-   rationale (SPEC-L8-S004) and a reader-facing footer
-   (SPEC-L8-S005).
+Use newline-delimited Action paths, including for names containing spaces:
 
-The remaining failure modes are addressed by human review and the
-WarrantOS coupling thesis summarised in
-[`docs/OVERVIEW.md`](OVERVIEW.md). Treat this tool as the operational
-form of that thesis, not as a correctness oracle.
-
-## Wiring a pre-publish gate (shadow first, then blocking)
-
-WarrantOS ships a standalone pre-publish gate script,
-`tools/warrantos-pre-publish-gate.ps1`, that runs
-`warrantos check --profile brief-light --ci` over a draft and appends the
-JSON verdict to a shadow log. It is designed for a two-stage rollout so a
-gate never blocks publishing before you have evidence it behaves on your
-real traffic.
-
-**Stage 1: shadow (log only, never blocks).** This is the default. The
-script observes every draft and records the verdict, but always exits 0,
-so the surrounding publish flow proceeds regardless:
-
-```powershell
-.\tools\warrantos-pre-publish-gate.ps1 -DraftPath C:\path\to\draft.txt
+```yaml
+- uses: jvega017/warrantos@v0.10.0
+  with:
+    mode: both
+    paths: |
+      docs
+      policy drafts
 ```
 
-Each run appends one JSON line to
-`08_Outputs/publish-gate-shadow.log` with `"mode": "shadow"` and
-`"shadow_status": "observed"`. Let this accumulate over your real
-publishing cadence (a week or two of drafts) and inspect the log. Confirm
-the gate would not produce false `HOLD`/`BLOCK`/`NOT_ASSESSABLE` verdicts
-on legitimate drafts.
+Do not use mutable `@main` for a governance gate. See
+[Distribution surfaces](DISTRIBUTION.md) and [production deployment](PRODUCTION-DEPLOYMENT.md).
 
-**Stage 2: blocking (arm the gate).** Only once the shadow log shows the
-gate behaves correctly, add the `-Block` flag. In blocking mode the
-script exits **non-zero** on a `HOLD`, `BLOCK`, or `NOT_ASSESSABLE`
-verdict, so a caller (a wrapper, a CI step) can refuse to publish:
+## Next references
 
-```powershell
-.\tools\warrantos-pre-publish-gate.ps1 -DraftPath C:\path\to\draft.txt -Block
-```
-
-The `-Block` flag is the single, deliberate switch from observation to
-enforcement. The script never edits your publish pipeline or harness
-configuration; wiring its non-zero exit into a publish step is a separate
-step you control.
-
-> Optional: `warrantos check --sensitivity-check` runs the
-> F-classification sensitivity gate over a draft first and refuses
-> (exit 3) when the draft is classified Sensitive/Protected or
-> Credentials by the starter keyword heuristics. Extend the heuristics in
-> `warrantos/provenance/classification.py` for your own data taxonomy.
-
-## Where to go next
-
-- **One-page tour of every layer**:
-  [`docs/OVERVIEW.md`](OVERVIEW.md)
-- **Adding the MCP server to Claude Code / Claude Desktop**:
-  [`docs/MCP-CONFIG.md`](MCP-CONFIG.md)
-- **Verifying claims without an Anthropic API key**:
-  [`docs/NO-API-KEY.md`](NO-API-KEY.md): local LLM, Claude Code
-  hook, or MCP sampling (deferred to v0.10).
-- **Keeping API costs predictable**:
-  [`docs/COST.md`](COST.md)
-- **What gates exist and how to extend them**:
-  [`docs/STACK.md`](STACK.md)
-- **Layer 1 context admissibility rules**:
-  [`docs/CONTEXT-ADMISSIBILITY.md`](CONTEXT-ADMISSIBILITY.md)
-
-## Reporting issues
-
-[`https://github.com/jvega017/warrantos/issues`](https://github.com/jvega017/warrantos/issues)
-
-The CHANGELOG keeps an explicit "still deferred" list with rationale
-for each item. If a gap matters to your use case, please open an issue
-referencing the CHANGELOG section.
+- [Overview](OVERVIEW.md)
+- [Status](STATUS.md)
+- [Limitations](LIMITATIONS.md)
+- [MCP configuration](MCP-CONFIG.md)
+- [Cost controls](COST.md)
+- [Security policy](../SECURITY.md)
+- [Issue tracker](https://github.com/jvega017/warrantos/issues)

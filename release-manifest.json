@@ -8,6 +8,11 @@
   "git_tag": null,
   "latest_tag": "v0.10.0",
   "changelog_section": "Unreleased",
+  "distribution_surface_versions": {
+    "github_action_package": "0.10.0",
+    "claude_plugin": "0.10.0",
+    "status": "latest-public-release-until-candidate-promotion"
+  },
   "checkpoint_schema": "warrantos-checkpoint-v2",
   "artefact_binding": {
     "prose_sha256": true,

@@ -23,7 +23,7 @@ Every citation-trigger in an AI-assisted document ships with a source, a `[CITE 
 ## Ten seconds
 
 ```text
-$ warrantos demo
+$ warrantos demo --output warrantos-demo
 WarrantOS honest demo
 ---------------------
 Checking a synthetic AI-style draft that deliberately contains
@@ -33,9 +33,9 @@ Expect a BLOCK verdict.
 warrantos check
   run id:        run_6e466f721f8a
   profile:       final-prose
-  claims detected: 6
+  claims detected: 7
   claims supported: 0
-  claims unsupported: 6
+  claims unsupported: 7
   boundary: blocked (7 violations)
   overrides on record: 0
 
@@ -46,18 +46,22 @@ VERDICT: BLOCK
   - BLOCK: boundary violation [assistant_closer severity=high] line 19: I hope this helps
 ```
 
-Real output, trimmed. The full run lists all seven violations and the paths of the audit artefacts it wrote.
+Real output, trimmed. The full run lists all seven violations, retains the
+draft and run directory, creates `demo.warrant`, verifies it against the exact
+draft bytes, and prints a repeatable verification command.
 
 ## Install
 
 ```bash
-pipx install warrantos      # isolated CLI install
-uvx warrantos demo          # zero-install trial run
+pipx install warrantos      # isolated install of the published stable version
+uvx warrantos demo          # zero-install trial of the published stable version
 pip install warrantos       # plain pip works too
 ```
 These commands install the published distribution, not necessarily this development
 checkout. Before relying on v2 artefact binding, confirm both `warrantos --version` and
 the emitted checkpoint schema. There is currently no `v0.11.0b2` tag.
+The retained `demo --output` flow shown above belongs to this source candidate
+and must not be attributed to public 0.10.0 until the candidate is promoted.
 
 ### Evidence binding and production verification
 

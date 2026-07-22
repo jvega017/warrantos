@@ -133,7 +133,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", metavar="<command>")
 
-    sub.add_parser(
+    demo_p = sub.add_parser(
         "demo",
         help="Run the bundled honest demo (a real BLOCK verdict, no setup).",
         description=(
@@ -141,6 +141,14 @@ def build_parser() -> argparse.ArgumentParser:
             "deliberately contains unsupported claims and scaffold residue. "
             "Returns a BLOCK verdict. Zero setup: the fixtures ship with the "
             "package, so this works from a clean install."
+        ),
+    )
+    demo_p.add_argument(
+        "--output",
+        help=(
+            "Directory that will retain the draft, context, run records, and "
+            ".warrant bundle. Defaults to a new warrantos-demo-* directory "
+            "under the current working directory."
         ),
     )
 
@@ -1732,14 +1740,10 @@ def _cmd_init(args) -> int:
 
 
 def _cmd_demo(args) -> int:
-    """Run the bundled honest demo from package data. Zero setup required.
-
-    The three fixtures ship as package-data inside warrantos/demo_assets/, so
-    this works from a clean `pip install` with no repository checkout. The run
-    is isolated to a temporary directory so it never writes into the user's
-    working tree.
-    """
+    """Run and retain the bundled check, attestation, and verification demo."""
+    import shutil
     import tempfile
+    from uuid import uuid4
     from importlib import resources
 
     assets = resources.files("warrantos") / "demo_assets"
@@ -1750,26 +1754,60 @@ def _cmd_demo(args) -> int:
         "unsupported factual claims and conversational scaffold residue.\n"
         "Expect a BLOCK verdict.\n\n"
     )
+    if args.output:
+        final_path = Path(args.output).expanduser().resolve()
+    else:
+        final_path = (Path.cwd() / ("warrantos-demo-" + uuid4().hex[:12])).resolve()
+    if final_path.exists():
+        raise ValueError("demo output path already exists: %s" % final_path)
+    final_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = Path(tempfile.mkdtemp(
+        prefix="." + final_path.name + "-staging-", dir=final_path.parent,
+    ))
+    for name in ("draft.md", "context.json", "actor.json"):
+        (tmp_path / name).write_text(
+            (assets / name).read_text(encoding="utf-8"), encoding="utf-8"
+        )
     original_cwd = os.getcwd()
-    with tempfile.TemporaryDirectory(prefix="warrantos-demo-") as tmp:
-        tmp_path = Path(tmp)
-        for name in ("draft.md", "context.json", "actor.json"):
-            (tmp_path / name).write_text(
-                (assets / name).read_text(encoding="utf-8"), encoding="utf-8"
-            )
-        # Run from inside the temp dir so the B5 path-containment guard (which
-        # confines outputs under cwd) is satisfied and the demo never writes
-        # into the user's working tree. Relative paths keep everything contained.
-        try:
-            os.chdir(tmp_path)
-            return main([
-                "check", "draft.md",
-                "--context", "context.json",
-                "--actor-identity", "actor.json",
-                "--profile", "final-prose",
-            ])
-        finally:
-            os.chdir(original_cwd)
+    completed = False
+    try:
+        os.chdir(tmp_path)
+        check_code = main([
+            "check", "draft.md", "--context", "context.json",
+            "--actor-identity", "actor.json", "--profile", "final-prose",
+        ])
+        if check_code != 0:
+            return check_code
+        run_directories = sorted((tmp_path / ".warrant" / "runs").iterdir())
+        if len(run_directories) != 1:
+            raise RuntimeError("demo expected exactly one check run")
+        warrant_path = tmp_path / "demo.warrant"
+        attest_code = main([
+            "attest", "draft.md", "--run-dir", str(run_directories[0]),
+            "--out", str(warrant_path),
+        ])
+        if attest_code != 0:
+            return attest_code
+        verify_code = main([
+            "verify-external", str(warrant_path), "--prose", "draft.md",
+            "--allow-unsigned",
+        ])
+        if verify_code != 0:
+            return verify_code
+        os.chdir(original_cwd)
+        tmp_path.replace(final_path)
+        completed = True
+    finally:
+        os.chdir(original_cwd)
+        if not completed:
+            shutil.rmtree(tmp_path, ignore_errors=True)
+    sys.stdout.write(
+        "\nRetained demo: %s\n"
+        "Re-run verification: warrantos verify-external \"%s\" "
+        "--prose \"%s\" --allow-unsigned\n"
+        % (final_path, final_path / "demo.warrant", final_path / "draft.md")
+    )
+    return verify_code
 
 
 def main(argv: Optional[List[str]] = None) -> int:
