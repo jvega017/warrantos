@@ -9,16 +9,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
-ACQUISITION_SURFACES = (
-    "README.md",
-    "docs/index.md",
-    "docs/QUICKSTART.md",
-    "docs/DISTRIBUTION.md",
-    "docs/FULL-OVERVIEW.md",
-    "docs/MCP-CONFIG.md",
-    "docs/NO-API-KEY.md",
-    "docs/VERIFICATION.md",
-)
+ARCHIVAL_ACQUISITION_SURFACES = {
+    "docs/FULL-OVERVIEW.md": "ARCHIVED ACQUISITION WARNING",
+    "docs/IMPROVEMENT-ROADMAP-2026-06-11.md": "ARCHIVED ACQUISITION WARNING",
+}
 
 BLOCKED_ACQUISITION_PATTERNS = {
     "package-index install": re.compile(
@@ -40,6 +34,31 @@ BLOCKED_ACQUISITION_PATTERNS = {
 }
 
 
+def _published_markdown_inventory(root: Path) -> tuple[str, ...]:
+    """Return the GitHub README plus every Markdown page published by MkDocs."""
+    config_path = root / "mkdocs.yml"
+    if not config_path.is_file():
+        raise ValueError("mkdocs.yml is missing; published acquisition surfaces are unknown")
+    config = config_path.read_text(encoding="utf-8-sig")
+    matches = re.findall(r"(?m)^docs_dir:\s*([^\s#]+)\s*$", config)
+    if len(matches) > 1:
+        raise ValueError("mkdocs.yml declares docs_dir more than once")
+    raw_docs_dir = matches[0].strip("\"'") if matches else "docs"
+    docs_dir = Path(raw_docs_dir)
+    if docs_dir.is_absolute() or ".." in docs_dir.parts:
+        raise ValueError("mkdocs.yml docs_dir must stay inside the repository")
+    published_root = root / docs_dir
+    if not published_root.is_dir():
+        raise ValueError(f"mkdocs.yml docs_dir does not exist: {raw_docs_dir}")
+    published = tuple(
+        path.relative_to(root).as_posix()
+        for path in sorted(published_root.rglob("*.md"))
+    )
+    if not published:
+        raise ValueError("mkdocs.yml docs_dir contains no Markdown pages")
+    return ("README.md", *published)
+
+
 def _check_acquisition_truth(root: Path, manifest: dict) -> list[str]:
     """Reject active acquisition CTAs while the latest public release is unsafe."""
     errors: list[str] = []
@@ -51,8 +70,21 @@ def _check_acquisition_truth(root: Path, manifest: dict) -> list[str]:
     if distribution.get("recommended_current_path") != "authenticated-0.11.0b2-candidate-bundle":
         errors.append("current acquisition path must be the authenticated 0.11.0b2 candidate bundle")
 
-    for relative in ACQUISITION_SURFACES:
+    try:
+        acquisition_surfaces = _published_markdown_inventory(root)
+    except ValueError as exc:
+        errors.append(f"published acquisition inventory unavailable: {exc}")
+        return errors
+
+    for relative in acquisition_surfaces:
         text = (root / relative).read_text(encoding="utf-8-sig")
+        archival_marker = ARCHIVAL_ACQUISITION_SURFACES.get(relative)
+        if archival_marker is not None:
+            if archival_marker not in text:
+                errors.append(
+                    f"{relative}: archival acquisition allowance requires {archival_marker!r}"
+                )
+            continue
         for label, pattern in BLOCKED_ACQUISITION_PATTERNS.items():
             if pattern.search(text):
                 errors.append(f"{relative}: blocked {label} CTA present during the P0 advisory")
@@ -112,6 +144,12 @@ def check(publication: str = "local") -> list[str]:
             "required": ("install.ps1", "warrantos demo --output", "passage_reproduced"),
             "forbidden": ("cd claude-provenance", "python -m cli.warrantos_cli",
                           "warrantos-pre-publish-gate.ps1", "08_Outputs/"),
+        },
+        "docs/MCP-CONFIG.md": {
+            "required": ("cd warrantos", "CPython 3.11 through 3.13",
+                         "warrantos.provenance.mcp_server"),
+            "forbidden": ("cd claude-provenance", "Python version below 3.8",
+                          '"provenance.mcp_server"'),
         },
         "CONTRIBUTING.md": {
             "required": ("# Contributing to WarrantOS", "CPython 3.11 through 3.13",

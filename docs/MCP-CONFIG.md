@@ -5,11 +5,13 @@ inside any Claude session.
 
 ## Install with the MCP extra
 
-`claude-provenance` is not yet on PyPI. Install from source until the first published release:
+The authenticated candidate bundle does not install the optional MCP transport.
+For source-checkout developer evaluation only, install from the current
+WarrantOS repository:
 
 ```bash
 git clone https://github.com/jvega017/warrantos.git
-cd claude-provenance
+cd warrantos
 python -m pip install -e ".[mcp]"
 ```
 
@@ -39,8 +41,8 @@ Claude Code runs outside it), use the explicit Python path:
 {
   "mcpServers": {
     "warrantos": {
-      "command": "python",
-      "args": ["-m", "provenance.mcp_server"]
+      "command": "/absolute/path/to/venv/bin/python",
+      "args": ["-m", "warrantos.provenance.mcp_server"]
     }
   }
 }
@@ -154,8 +156,9 @@ evaluation until 0.11.0b2 is publicly promoted; do not resolve the obsolete
 public `claude-provenance` extra or use the stale `provenance.mcp_server` module
 path.
 
-**Server starts then exits immediately.** Run it from a terminal to
-see the error. The most common cause is a Python version below 3.8.
+**Server starts then exits immediately.** Run it from a terminal to see the
+error. The supported matrix is CPython 3.11 through 3.13. Older interpreters
+and unqualified newer interpreters are not supported.
 
 **Tool calls return `error: unknown tool`.** A typo in the tool name.
 The four canonical names are `warrant_check`, `warrant_classify`,

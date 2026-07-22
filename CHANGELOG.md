@@ -12,6 +12,10 @@ canonical statement is `release-manifest.json`.
 
 ### Changed
 
+- Corrected the MCP developer checkout and CPython 3.11-3.13 compatibility
+  guidance, and made acquisition-truth scanning derive every published Markdown
+  page from the MkDocs documentation root. Only explicitly allowlisted pages
+  with an archival warning may preserve historical acquisition commands.
 - Blocked public package-index, GitHub Action and pre-commit acquisition CTAs
   while their immutable version remains affected by the 0.10.0 P0 advisory.
   Current adopter documentation now recommends only the authenticated 0.11.0b2

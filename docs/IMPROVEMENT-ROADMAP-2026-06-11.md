@@ -1,5 +1,10 @@
 # WarrantOS improvement roadmap: v0.9.1 to a trustworthy v1.0
 
+> **ARCHIVED ACQUISITION WARNING:** This dated roadmap preserves historical
+> release commands and sequencing as evidence. It is not current installation
+> guidance. Use [`QUICKSTART.md`](QUICKSTART.md) for the authenticated candidate
+> path.
+
 Prepared 2026-06-11. Grounded in the two structured analyses (incomplete layers; claim/verdict pipeline) and the limits flagged in live testing on Juan's machine.
 
 ## BLUF

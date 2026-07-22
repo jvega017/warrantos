@@ -4,7 +4,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.check_release_truth import _check_acquisition_truth, check
+from tools.check_release_truth import (
+    _check_acquisition_truth,
+    _published_markdown_inventory,
+    check,
+)
 
 
 class ReleasePublicationGateTests(unittest.TestCase):
@@ -55,7 +59,7 @@ class ReleasePublicationGateTests(unittest.TestCase):
                 "docs/index.md": "authenticated 0.11.0b2\nExpectedManifestSha256\n",
                 "docs/QUICKSTART.md": "authenticated 0.11.0b2\nExpectedManifestSha256\n",
                 "docs/DISTRIBUTION.md": "authenticated\n0.11.0b2\nP0 artefact-binding\n",
-                "docs/FULL-OVERVIEW.md": "candidate bundle only\n",
+                "docs/FULL-OVERVIEW.md": "ARCHIVED ACQUISITION WARNING\ncandidate bundle only\n",
                 "docs/MCP-CONFIG.md": "source developer evaluation only\n",
                 "docs/NO-API-KEY.md": "candidate bundle only\n",
                 "docs/VERIFICATION.md": "candidate bundle only\n",
@@ -64,6 +68,7 @@ class ReleasePublicationGateTests(unittest.TestCase):
                 path = root / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(text, encoding="utf-8")
+            (root / "mkdocs.yml").write_text("docs_dir: docs\n", encoding="utf-8")
             for label, unsafe in unsafe_rows.items():
                 with self.subTest(label=label):
                     path = root / "README.md"
@@ -86,7 +91,7 @@ class ReleasePublicationGateTests(unittest.TestCase):
                 "docs/index.md": "authenticated 0.11.0b2\nExpectedManifestSha256\n",
                 "docs/QUICKSTART.md": "authenticated 0.11.0b2\nExpectedManifestSha256\n",
                 "docs/DISTRIBUTION.md": "authenticated\n0.11.0b2\nP0 artefact-binding\n",
-                "docs/FULL-OVERVIEW.md": "candidate bundle only\n",
+                "docs/FULL-OVERVIEW.md": "ARCHIVED ACQUISITION WARNING\ncandidate bundle only\n",
                 "docs/MCP-CONFIG.md": "candidate bundle only\n",
                 "docs/NO-API-KEY.md": "candidate bundle only\n",
                 "docs/VERIFICATION.md": "candidate bundle only\n",
@@ -95,16 +100,56 @@ class ReleasePublicationGateTests(unittest.TestCase):
                 path = root / relative
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(text, encoding="utf-8")
-            for relative in (
-                "docs/FULL-OVERVIEW.md", "docs/MCP-CONFIG.md",
-                "docs/NO-API-KEY.md", "docs/VERIFICATION.md",
-            ):
-                with self.subTest(relative=relative):
-                    path = root / relative
-                    path.write_text("pip install claude-provenance\n", encoding="utf-8")
-                    errors = _check_acquisition_truth(root, manifest)
-                    self.assertTrue(any(relative in error for error in errors), errors)
-                    path.write_text(safe[relative], encoding="utf-8")
+            (root / "mkdocs.yml").write_text("docs_dir: docs\n", encoding="utf-8")
+            new_page = root / "docs" / "NEW-PUBLISHED-PAGE.md"
+            new_page.write_text("pip install claude-provenance\n", encoding="utf-8")
+            self.assertIn(
+                "docs/NEW-PUBLISHED-PAGE.md",
+                _published_markdown_inventory(root),
+            )
+            errors = _check_acquisition_truth(root, manifest)
+            self.assertTrue(
+                any("docs/NEW-PUBLISHED-PAGE.md" in error for error in errors),
+                errors,
+            )
+
+    def test_archival_allowance_is_explicit_and_marker_bound(self):
+        root = Path(__file__).resolve().parents[1]
+        inventory = _published_markdown_inventory(root)
+        self.assertIn("docs/FULL-OVERVIEW.md", inventory)
+        self.assertIn("docs/IMPROVEMENT-ROADMAP-2026-06-11.md", inventory)
+        self.assertIn(
+            "ARCHIVED ACQUISITION WARNING",
+            (root / "docs/FULL-OVERVIEW.md").read_text(encoding="utf-8"),
+        )
+        self.assertIn(
+            "ARCHIVED ACQUISITION WARNING",
+            (root / "docs/IMPROVEMENT-ROADMAP-2026-06-11.md").read_text(encoding="utf-8"),
+        )
+
+    def test_missing_mkdocs_inventory_fails_closed(self):
+        manifest = {
+            "distribution_surface_versions": {
+                "public_recommendation": "blocked-p0-advisory",
+                "recommended_current_path": "authenticated-0.11.0b2-candidate-bundle",
+            }
+        }
+        with tempfile.TemporaryDirectory() as td:
+            errors = _check_acquisition_truth(Path(td), manifest)
+        self.assertTrue(
+            any("published acquisition inventory unavailable" in error for error in errors),
+            errors,
+        )
+
+    def test_mcp_config_uses_current_checkout_and_runtime_contract(self):
+        text = (Path(__file__).resolve().parents[1] / "docs/MCP-CONFIG.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("cd warrantos", text)
+        self.assertIn("CPython 3.11 through 3.13", text)
+        self.assertIn("warrantos.provenance.mcp_server", text)
+        self.assertNotIn("cd claude-provenance", text)
+        self.assertNotIn('"provenance.mcp_server"', text)
 
 
 if __name__ == "__main__":
