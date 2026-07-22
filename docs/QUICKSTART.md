@@ -4,27 +4,34 @@ This guide is for the current WarrantOS 0.11.0b2 local release candidate. It
 does not claim that the candidate is available from PyPI or under an immutable
 public tag.
 
-## Install the candidate from its source checkout
+## Install the authenticated candidate bundle
 
-```bash
-git clone https://github.com/jvega017/warrantos.git
-cd warrantos
-python -m pip install -e ".[attestation]"
-warrantos --version
+The public 0.10.0 package, GitHub Action and pre-commit ref are affected by the
+P0 artefact-binding advisory and are not recommended. A source checkout is a
+development environment, not an authenticated adopter release.
+
+The only recommended current adopter path is the **authenticated 0.11.0b2
+candidate bundle** distributed with Vega Runtime. Obtain its installer and
+manifest digests out of band, then authenticate the installer before execution:
+
+```powershell
+$expectedInstallerSha256 = "<out-of-band install.ps1 SHA-256>"
+$expectedManifestSha256 = "<out-of-band artifact-manifest.json SHA-256>"
+if ((Get-FileHash -LiteralPath .\install.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedInstallerSha256) { throw "Untrusted installer bytes" }
+.\install.ps1 -ExpectedManifestSha256 $expectedManifestSha256
+.\.venv\Scripts\warrantos --version
 ```
 
-The core package is standard-library only. The `attestation` extra provides
-Ed25519 signing and verification. Use `[mcp]` only when you need the optional
-MCP server.
-
-When 0.11.0b2 is actually published, the release documentation will replace
-this source-install command with the exact tagged package command. Until then,
-do not infer that the public 0.10.0 package contains candidate behaviour.
+The parent-shell check authenticates `install.ps1`; the installer then verifies
+the signed manifest and exact WarrantOS and Vega wheel digests. The current
+supported bootstrap is PowerShell. macOS and Linux adopters should wait for the
+tagged public promotion. Do not infer that public 0.10.0 contains candidate
+behaviour.
 
 ## Run the retained demonstration
 
-```bash
-warrantos demo --output warrantos-demo
+```powershell
+.\.venv\Scripts\warrantos demo --output .\warrantos-demo
 ```
 
 The demonstration deliberately produces a `BLOCK` decision, then retains:
@@ -37,9 +44,9 @@ The demonstration deliberately produces a `BLOCK` decision, then retains:
 Re-run the printed verification command. For the explicitly unsigned synthetic
 demo it has this shape:
 
-```bash
-warrantos verify-external warrantos-demo/demo.warrant \
-  --prose warrantos-demo/draft.md --allow-unsigned
+```powershell
+.\.venv\Scripts\warrantos verify-external .\warrantos-demo\demo.warrant `
+  --prose .\warrantos-demo\draft.md --allow-unsigned
 ```
 
 `BLOCK` and `VALID` answer different questions. `BLOCK` means the draft is not
@@ -92,24 +99,14 @@ supplied by an embedding runtime such as Vega.
 
 ## CI and integration
 
-The repository ships a composite GitHub Action and pre-commit hooks. The local
-0.11.0b2 candidate Action intentionally remains locked to the latest published
-0.10.0 distribution until promotion. The public-release gate fails if the
-Action lock and plugin surfaces are not bumped to the promoted version.
+Do not enable the public GitHub Action or pre-commit hook while their immutable
+public ref resolves to 0.10.0. The repository keeps those surfaces version-locked
+for reproducibility, but they are deliberately **not an acquisition
+recommendation** during the P0 advisory. The public-release gate requires the
+Action lock and plugin surfaces to move to 0.11.0b2 before promotion.
 
-Use newline-delimited Action paths, including for names containing spaces:
-
-```yaml
-- uses: jvega017/warrantos@v0.10.0
-  with:
-    mode: both
-    paths: |
-      docs
-      policy drafts
-```
-
-Do not use mutable `@main` for a governance gate. See
-[Distribution surfaces](DISTRIBUTION.md) and [production deployment](PRODUCTION-DEPLOYMENT.md).
+See [Distribution surfaces](DISTRIBUTION.md) for the blocked-state contract and
+[production deployment](PRODUCTION-DEPLOYMENT.md) for the trust-root boundary.
 
 ## Next references
 

@@ -12,6 +12,10 @@ canonical statement is `release-manifest.json`.
 
 ### Changed
 
+- Blocked public package-index, GitHub Action and pre-commit acquisition CTAs
+  while their immutable version remains affected by the 0.10.0 P0 advisory.
+  Current adopter documentation now recommends only the authenticated 0.11.0b2
+  candidate bundle, and release-truth tests reject unsafe CTA regression.
 - Included the offline browser verifier and its usage note in wheel installs
   under `share/warrantos/web/`, closing the source-only packaging gap.
 - Repaired the candidate Quickstart, contributor setup and Action examples so

@@ -50,18 +50,33 @@ Real output, trimmed. The full run lists all seven violations, retains the
 draft and run directory, creates `demo.warrant`, verifies it against the exact
 draft bytes, and prints a repeatable verification command.
 
-## Install
+## Install the current candidate safely
 
-```bash
-pipx install warrantos      # isolated install of the published stable version
-uvx warrantos demo          # zero-install trial of the published stable version
-pip install warrantos       # plain pip works too
+The public 0.10.0 package and GitHub Action are **not recommended**. They are
+affected by the P0 artefact-binding advisory in [`SECURITY.md`](SECURITY.md).
+Do not use an unversioned package-index command, `uvx` trial, pre-commit ref or
+the 0.10.0 Action as a current WarrantOS acquisition path.
+
+The only recommended adopter path today is the **authenticated 0.11.0b2
+candidate bundle** distributed with Vega Runtime. Obtain `install.ps1`,
+`artifact-manifest.json`, the expected installer SHA-256 and the expected
+manifest SHA-256 through the named release channel. Authenticate the installer
+in the parent PowerShell process before it runs:
+
+```powershell
+$expectedInstallerSha256 = "<out-of-band install.ps1 SHA-256>"
+$expectedManifestSha256 = "<out-of-band artifact-manifest.json SHA-256>"
+if ((Get-FileHash -LiteralPath .\install.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expectedInstallerSha256) { throw "Untrusted installer bytes" }
+.\install.ps1 -ExpectedManifestSha256 $expectedManifestSha256
+.\.venv\Scripts\warrantos --version
+.\.venv\Scripts\warrantos demo --output .\warrantos-demo
 ```
-These commands install the published distribution, not necessarily this development
-checkout. Before relying on v2 artefact binding, confirm both `warrantos --version` and
-the emitted checkpoint schema. There is currently no `v0.11.0b2` tag.
-The retained `demo --output` flow shown above belongs to this source candidate
-and must not be attributed to public 0.10.0 until the candidate is promoted.
+
+The installer re-authenticates the signed manifest and both wheel digests before
+creating the environment. Running it without the parent-shell hash check is not
+an authenticated bootstrap. There is currently no `v0.11.0b2` tag. macOS and
+Linux adopters should wait for the tagged public promotion rather than treating
+an unauthenticated wheel or source checkout as a supported release.
 
 ### Evidence binding and production verification
 
@@ -96,12 +111,14 @@ This repository holds itself to both: the docs scan slop-free and tells-clean.
 
 ## Gate your agent
 
-```bash
-pip install "warrantos[mcp]"
-warrantos-mcp                # stdio MCP server for Claude Code / Claude Desktop
-```
-
-The Claude Code Stop hook (`warrantos-verify-hook`) checks what the model wrote before the turn ends: stdlib only, no network, never breaks the session. Wiring instructions in [`docs/MCP-CONFIG.md`](docs/MCP-CONFIG.md); the hook surfaces live in [`warrantos/hooks/`](warrantos/hooks/).
+The candidate contains the MCP and Claude Code integration code, but the
+authenticated bundle installer does not install the optional MCP transport.
+Treat MCP setup as developer evaluation only until 0.11.0b2 is publicly
+promoted; do not resolve the advisory-affected public extra. The Claude Code
+Stop hook (`warrantos-verify-hook`) checks what the model wrote before the turn
+ends: stdlib only, no network, never breaks the session. Wiring and development
+instructions live in [`docs/MCP-CONFIG.md`](docs/MCP-CONFIG.md); the hook
+surfaces live in [`warrantos/hooks/`](warrantos/hooks/).
 
 ## Audit trail for governance
 

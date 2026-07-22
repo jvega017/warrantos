@@ -11,7 +11,9 @@
   "distribution_surface_versions": {
     "github_action_package": "0.10.0",
     "claude_plugin": "0.10.0",
-    "status": "latest-public-release-until-candidate-promotion"
+    "status": "latest-public-release-until-candidate-promotion",
+    "public_recommendation": "blocked-p0-advisory",
+    "recommended_current_path": "authenticated-0.11.0b2-candidate-bundle"
   },
   "checkpoint_schema": "warrantos-checkpoint-v2",
   "artefact_binding": {

@@ -1,6 +1,12 @@
 # WarrantOS full overview
 
 > **Provenance of this page.** This is the README body as it stood before the 0.10 front-page rewrite, preserved so no detail is lost. The repository [`README.md`](../README.md) is now the short front door; this page keeps the fuller narrative, the tooling map, the four-verdict model, the release history, and the configuration reference. The badge row and the limitations paragraph stay in the README.
+>
+> **ARCHIVED ACQUISITION WARNING:** Commands and release statements on this
+> historical page are preserved evidence, not current installation guidance.
+> Public 0.10.0 is affected by the P0 artefact-binding advisory. Use only the
+> authenticated 0.11.0b2 candidate-bundle path in
+> [`QUICKSTART.md`](QUICKSTART.md) until public promotion.
 
 ## No claim ships without a warrant.
 

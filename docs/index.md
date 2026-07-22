@@ -4,15 +4,18 @@ Every factual claim in an AI-assisted document ships with a source, a `[CITE NEE
 
 `claude-provenance` on GitHub and as the legacy Claude Code plugin; `warrantos` on PyPI and the CLI.
 
-## Install
+## Current acquisition
 
-```bash
-pipx install warrantos      # isolated CLI install
-uvx warrantos demo          # zero-install trial run
-pip install warrantos       # plain pip works too
-```
+The public 0.10.0 package and Action are affected by the P0 artefact-binding
+advisory and are not recommended. The only recommended current adopter path is
+the **authenticated 0.11.0b2 candidate bundle**. Its PowerShell installer must
+be authenticated in the parent process with the out-of-band installer and
+manifest digests before `-ExpectedManifestSha256` is passed to `install.ps1`.
 
-New here? Start with the [Quickstart](QUICKSTART.md) for a five-minute tour, or [Overview](OVERVIEW.md) for what ships in this repository.
+Start with the [Quickstart](QUICKSTART.md) for the exact fail-closed bootstrap.
+Use the [Overview](OVERVIEW.md) to inspect what ships, and read the
+[security advisory](https://github.com/jvega017/warrantos/security/policy)
+before relying on an older distribution.
 
 ## Three ways in
 

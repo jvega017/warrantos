@@ -9,6 +9,59 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+ACQUISITION_SURFACES = (
+    "README.md",
+    "docs/index.md",
+    "docs/QUICKSTART.md",
+    "docs/DISTRIBUTION.md",
+)
+
+BLOCKED_ACQUISITION_PATTERNS = {
+    "package-index install": re.compile(
+        r"(?mi)^\s*(?:pipx\s+install|pip\s+install)\s+[\"']?warrantos(?:[\"'\[\s]|$)"
+    ),
+    "zero-install package execution": re.compile(
+        r"(?mi)^\s*uvx\s+(?:--from\s+\S+\s+)?warrantos\b"
+    ),
+    "advisory-affected GitHub Action": re.compile(
+        r"jvega017/warrantos@v0\.10\.0", re.I
+    ),
+    "advisory-affected pre-commit ref": re.compile(
+        r"(?mi)^\s*rev:\s*v0\.10\.0\s*$"
+    ),
+}
+
+
+def _check_acquisition_truth(root: Path, manifest: dict) -> list[str]:
+    """Reject active acquisition CTAs while the latest public release is unsafe."""
+    errors: list[str] = []
+    distribution = manifest.get("distribution_surface_versions") or {}
+    blocked = distribution.get("public_recommendation") == "blocked-p0-advisory"
+    if not blocked:
+        errors.append("public acquisition recommendation must remain blocked during the P0 advisory")
+        return errors
+    if distribution.get("recommended_current_path") != "authenticated-0.11.0b2-candidate-bundle":
+        errors.append("current acquisition path must be the authenticated 0.11.0b2 candidate bundle")
+
+    for relative in ACQUISITION_SURFACES:
+        text = (root / relative).read_text(encoding="utf-8-sig")
+        for label, pattern in BLOCKED_ACQUISITION_PATTERNS.items():
+            if pattern.search(text):
+                errors.append(f"{relative}: blocked {label} CTA present during the P0 advisory")
+
+    required_contracts = {
+        "README.md": ("authenticated 0.11.0b2", "ExpectedManifestSha256"),
+        "docs/index.md": ("authenticated 0.11.0b2", "ExpectedManifestSha256"),
+        "docs/QUICKSTART.md": ("authenticated 0.11.0b2", "ExpectedManifestSha256"),
+        "docs/DISTRIBUTION.md": ("authenticated\n0.11.0b2", "P0 artefact-binding"),
+    }
+    for relative, tokens in required_contracts.items():
+        text = (root / relative).read_text(encoding="utf-8-sig")
+        for token in tokens:
+            if token not in text:
+                errors.append(f"{relative}: missing acquisition-safety token {token!r}")
+    return errors
+
 def check(publication: str = "local") -> list[str]:
     if publication not in {"local", "public"}:
         raise ValueError("publication must be local or public")
@@ -19,6 +72,7 @@ def check(publication: str = "local") -> list[str]:
     if not package or package.group(1) != version:
         errors.append("package version does not match manifest")
     distribution = manifest.get("distribution_surface_versions") or {}
+    errors.extend(_check_acquisition_truth(ROOT, manifest))
     action_source = re.search(
         r"(?m)^warrantos==([^\s]+)$",
         (ROOT / "action-requirements.in").read_text(encoding="utf-8-sig"),
@@ -47,7 +101,7 @@ def check(publication: str = "local") -> list[str]:
         errors.append("Claude plugin, marketplace, and release manifest versions disagree")
     onboarding = {
         "docs/QUICKSTART.md": {
-            "required": ("cd warrantos", "warrantos demo --output", "passage_reproduced"),
+            "required": ("install.ps1", "warrantos demo --output", "passage_reproduced"),
             "forbidden": ("cd claude-provenance", "python -m cli.warrantos_cli",
                           "warrantos-pre-publish-gate.ps1", "08_Outputs/"),
         },
@@ -105,6 +159,8 @@ def check(publication: str = "local") -> list[str]:
             errors.append("public publication requires the GitHub Action to install the release version")
         if plugin_version != version:
             errors.append("public publication requires Claude plugin surfaces to match the release version")
+        if distribution.get("public_recommendation") == "blocked-p0-advisory":
+            errors.append("public publication requires the P0 acquisition block to be replaced by a promoted-version contract")
         public_text = "\n".join(
             (ROOT / name).read_text(encoding="utf-8-sig").casefold()
             for name in ("README.md", "SECURITY.md", "docs/STATUS.md", "docs/LIMITATIONS.md")

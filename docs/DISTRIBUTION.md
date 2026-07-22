@@ -1,67 +1,32 @@
 # Distribution surfaces
 
-Copy-paste snippets for wiring WarrantOS into CI, pre-commit, and one-off
-runs. Every surface below installs the published `warrantos` package from
-PyPI; none of them requires a source checkout.
+The public distribution surfaces are temporarily **not recommended**. Their
+immutable public version is 0.10.0, which is affected by the P0 artefact-binding
+advisory. The only recommended current adopter path is the **authenticated
+0.11.0b2 candidate bundle** described in [Quickstart](QUICKSTART.md).
+
+The sections below document the blocked surfaces and what must change at
+promotion. They deliberately contain no runnable 0.10.0 acquisition snippets.
 
 ## GitHub Action
 
-The repository root ships a composite action (`action.yml`). Reference it
-directly by repository and ref. It is **not yet published to the GitHub
-Actions Marketplace**, so it will not appear in Marketplace search; the
-direct `owner/repo@ref` reference below works regardless.
-
-Minimal workflow (`.github/workflows/warrantos.yml`):
-
-```yaml
-name: warrantos
-on: [push, pull_request]
-jobs:
-  gate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
-      - uses: jvega017/warrantos@v0.10.0
-```
-
-The default run scans the whole repository for AI scaffold and
-conversational residue (`warrantos slop . --fail-over 0`) and fails the job
-on any hit. All inputs, with defaults:
-
-```yaml
-      - uses: jvega017/warrantos@v0.10.0
-        with:
-          paths: |                    # one file or directory per line
-            docs
-            policy drafts
-          mode: "both"                # "slop" (default), "check", or "both"
-          profile: "brief-light"      # boundary profile for check mode
-          fail-over: "0"              # slop-score threshold; 0 fails on any residue
-          python-version: "3.12"
-```
+The repository root ships a composite action (`action.yml`), but its immutable
+public package lock is the advisory-affected release. Do not reference the
+Action from a governance workflow until the 0.11.0b2 promotion updates the
+Action source, hash lock and release manifest together. It is also not yet
+published to the GitHub Actions Marketplace.
 
 In `check` mode the action runs `warrantos check --ci` per Markdown file,
 so the job exits non-zero on a `HOLD`, `BLOCK`, or `NOT_ASSESSABLE`
 verdict. Paths are newline-delimited, so a path containing spaces remains one
-path. Pin the Action to an immutable tag. The local 0.11.0b2 candidate remains
-locked to the latest public 0.10.0 package until candidate promotion; the
-public-release gate refuses promotion until the Action lock matches the release
-version.
+path. The public-release gate refuses promotion until the Action lock matches
+the release version and the acquisition block is removed.
 
 ## pre-commit
 
-The repository ships `.pre-commit-hooks.yaml` with two hooks. Add to your
-`.pre-commit-config.yaml`:
-
-```yaml
-repos:
-  - repo: https://github.com/jvega017/warrantos
-    rev: v0.10.0
-    hooks:
-      - id: warrantos-slop         # blocks scaffold residue in staged Markdown
-      - id: warrantos-check        # full pipeline; manual stage, opt-in
-      - id: warrantos-tells        # style tells; manual stage, opt-in
-```
+The repository ships `.pre-commit-hooks.yaml`, but there is no currently
+recommended immutable public ref. Wait for the 0.11.0b2 promotion before adding
+the hook to a repository.
 
 `warrantos-slop` runs on every commit that stages Markdown and fails when
 any scaffold or conversational residue is present (`--fail-over 0`).
@@ -73,20 +38,12 @@ automatically; invoke it deliberately on the draft you are about to ship:
 pre-commit run --hook-stage manual warrantos-check --files YOUR_DRAFT.md
 ```
 
-## pipx and uvx
+## Package-index tools
 
-For an isolated install of the CLI:
-
-```bash
-pipx install warrantos
-```
-
-For a zero-install one-off run (uv resolves and caches the package):
-
-```bash
-uvx warrantos demo
-uvx warrantos slop YOUR_DRAFT.md --fail-over 0
-```
+Do not use an unversioned package-index or zero-install command while 0.10.0 is
+the latest public distribution. After 0.11.0b2 promotion, this page will publish
+exact version-pinned `pipx`, `uvx` and ordinary installer commands only after
+the three-OS public-package smoke matrix passes.
 
 ## Citation
 
