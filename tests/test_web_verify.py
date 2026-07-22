@@ -131,6 +131,32 @@ class TestCSP(unittest.TestCase):
             )
 
 
+class TestAccessibleInteraction(unittest.TestCase):
+    """Guard the verifier's keyboard and status-announcement contract."""
+
+    def test_file_picker_is_a_real_button(self):
+        html = _html()
+        self.assertIn('<button class="choose" id="choose" type="button">', html)
+        self.assertIn('<label class="sr-only" for="file">', html)
+        self.assertNotIn("drop.onclick", html)
+
+    def test_result_is_announced_and_focusable(self):
+        html = _html()
+        self.assertRegex(
+            html,
+            r'id="result"[^>]+role="status"[^>]+aria-live="polite"[^>]+tabindex="-1"',
+        )
+        self.assertIn("card.focus();", html)
+
+    def test_parse_error_uses_status_region_not_alert(self):
+        html = _html()
+        self.assertIn("renderInputError", html)
+        self.assertNotIn('alert("Not valid JSON")', html)
+
+    def test_visible_keyboard_focus_is_defined(self):
+        self.assertIn(":focus-visible", _html())
+
+
 class TestFixtures(unittest.TestCase):
     """Verify the fixture files exist and have the expected structure."""
 
