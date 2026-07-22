@@ -102,4 +102,9 @@ exclude = [
 # Ship the honest-demo fixtures inside the package so `warrantos demo` works
 # from a clean `pip install` (examples/ is not packaged). Without this the
 # bundled first-run demo would file-not-found for installed users.
-warrantos = ["demo_assets/*.md", "demo_assets/*.json", "schemas/*.json"]
+warrantos = [
+    "demo_assets/*.md",
+    "demo_assets/*.json",
+    "schemas/*.json",
+    "hooks/hooks.json",
+]

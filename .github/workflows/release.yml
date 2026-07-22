@@ -76,6 +76,33 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  sdist-test:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Exercise the exact source distribution
+        shell: bash
+        run: |
+          mkdir sdist-check
+          tar -xzf dist/packages/warrantos-*.tar.gz -C sdist-check
+          root="$(find sdist-check -mindepth 1 -maxdepth 1 -type d -print -quit)"
+          test -f "${root}/warrantos/hooks/hooks.json"
+          python -m venv sdist-environment
+          sdist-environment/bin/python -m pip install "${root}[attestation]"
+          sdist-environment/bin/python -m pip check
+          sdist-environment/bin/python -c "from importlib.resources import files; assert files('warrantos.hooks').joinpath('hooks.json').is_file()"
+          sdist-environment/bin/warrantos --version
+          sdist-environment/bin/warrantos demo
+
   dependency-audit:
     needs: build
     runs-on: ubuntu-latest
@@ -102,7 +129,7 @@ jobs:
             --disable-pip --no-deps --strict
 
   publish-testpypi:
-    needs: [build, dependency-audit]
+    needs: [build, dependency-audit, sdist-test]
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:

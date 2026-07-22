@@ -23,6 +23,9 @@ canonical statement is `release-manifest.json`.
 - Included the zero-backend browser verifier and release tooling in the source
   distribution, and added build attestations, CycloneDX output, resolved
   dependency audit and a three-OS by three-Python installed-package smoke matrix.
+- Removed the unusable partial test tree from the sdist, included the Claude hook
+  descriptor in source and wheel distributions, and made release CI install and
+  smoke-test the exact built sdist before any TestPyPI promotion.
 
 
 ### Added
