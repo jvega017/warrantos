@@ -32,11 +32,11 @@ Usage:
         [--profile final-prose|brief-light|paper-full|audit]
         [--verify]
 
-To schedule (NOT done automatically by this script; Juan registers
+To schedule (NOT done automatically by this script; the operator registers
 when ready):
 
     schtasks /Create /TN 'Warrantos-Shadow-Observe' /SC DAILY /ST 07:00 \\
-      /TR "python C:\\Users\\jvega\\Claude-Workspace\\03_Projects\\Claude-Provenance\\tools\\warrantos-shadow-observe.py" \\
+      /TR "python C:\\path\\to\\warrantos\\tools\\warrantos-shadow-observe.py" \\
       /RL LIMITED
 
 Stdlib only. Python 3.8 compatible.

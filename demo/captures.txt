@@ -5,7 +5,7 @@ Checking a synthetic AI-style draft that deliberately contains
 unsupported factual claims and conversational scaffold residue.
 Expect a BLOCK verdict.
 
-warrantos: output directory resolved to: C:\Users\jvega\AppData\Local\Temp\warrantos-demo-he5a954g\.warrant\runs\run_c6421e797c88
+warrantos: output directory resolved to: <temporary-workspace>\.warrant\runs\run_c6421e797c88
 warrantos check
   run id:        run_c6421e797c88
   profile:       final-prose
@@ -28,7 +28,7 @@ VERDICT: BLOCK
   - BLOCK: boundary violation [assistant_closer severity=high] line 19: I hope this helps
   - BLOCK: boundary violation [assistant_closer severity=high] line 19: Let me know if
 
-artefacts written to: C:\Users\jvega\AppData\Local\Temp\warrantos-demo-he5a954g\.warrant\runs\run_c6421e797c88
+artefacts written to: <temporary-workspace>\.warrant\runs\run_c6421e797c88
 
 $ python -m warrantos.cli.warrantos_cli slop README.md docs
 SLOP SCORE: 2.7/10  (7 finding(s) across 19 file(s) scanned)
@@ -45,4 +45,3 @@ docs/FULL-OVERVIEW.md      9  placeholder       [TODO: ...]
 
 $ python -m warrantos.cli.warrantos_cli slop --badge README.md
 https://img.shields.io/badge/slop-free-brightgreen
-
