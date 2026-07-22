@@ -1,6 +1,6 @@
 # Compatibility and deprecation policy
 
-WarrantOS 0.11.0b1 supports CPython 3.11–3.13 on Windows, macOS and Linux. The core
+WarrantOS 0.11.0b2 supports CPython 3.11–3.13 on Windows, macOS and Linux. The core
 package is dependency-free; optional extras declare their own dependencies.
 
 Within a schema major version, new fields are additive and existing required fields

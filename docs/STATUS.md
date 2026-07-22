@@ -1,6 +1,6 @@
 # WarrantOS implementation status
 
-**Canonical release state:** 0.11.0b1 local release candidate rc.1 (`git_tag: null`; latest
+**Canonical release state:** 0.11.0b2 local release candidate rc.1 (`git_tag: null`; latest
 tag: `v0.10.0`). See `../release-manifest.json` and `RELEASE-TRUTH.md`.
 
 `BUILT` below is a legacy implementation-conformance label only. It means the

@@ -8,7 +8,7 @@ class TagVersionTests(unittest.TestCase):
         version = package_version()
         self.assertEqual(check_tag("v" + version), [])
         self.assertTrue(check_tag("v0.11.0"))
-        self.assertTrue(check_tag("0.11.0b1"))
+        self.assertTrue(check_tag("0.11.0b2"))
 
 
 if __name__ == "__main__":
