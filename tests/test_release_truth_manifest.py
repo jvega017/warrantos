@@ -17,7 +17,7 @@ class ReleaseTruthManifestTests(unittest.TestCase):
     def test_local_release_candidate_is_not_claimed_as_tagged_or_qualified(self):
         manifest = json.loads((ROOT / "release-manifest.json").read_text(encoding="utf-8"))
         self.assertEqual(manifest["release_status"], "local-release-candidate")
-        self.assertEqual(manifest["candidate_id"], "warrantos-0.11.0-local-rc.1")
+        self.assertEqual(manifest["candidate_id"], "warrantos-0.11.0b1-local-rc.1")
         self.assertIsNone(manifest["git_tag"])
         self.assertFalse(manifest["production_qualified"])
 

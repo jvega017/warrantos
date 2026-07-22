@@ -1,62 +1,125 @@
 name: release
 
-# Tag-triggered release. Push a tag like v0.9.0b1 to build, create a GitHub
-# Release with the artefacts, and publish to PyPI via OIDC Trusted Publishing.
-#
-# One-time setup before the first tag (maintainer):
-#   1. Register the project name on PyPI (pypi.org/manage/account/publishing/)
-#      as a Trusted Publisher: owner jvega017, repo claude-provenance,
-#      workflow release.yml, environment pypi.
-#   2. Create a GitHub Environment named "pypi".
-# No API token is stored anywhere; the OIDC exchange handles authentication.
-
 on:
   push:
-    tags:
-      - "v*"
+    tags: ["v*"]
 
 env:
-  # Opt the SHA-pinned Node20 actions into the Node24 runtime now (GitHub's
-  # documented opt-in for the 2026-06-16 forced migration). Keeps the security
-  # SHA-pins intact; only the JS runtime they execute under changes.
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
+  quality:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.11", "3.12", "3.13"]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python tools/check_tag_version.py "${{ github.ref_name }}"
+      - run: python -m pip install -e ".[attestation]"
+      - run: python tools/check_release_truth.py
+      - run: python -m unittest discover -s tests -v
+
   build:
+    needs: quality
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # create the GitHub Release
+      contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.12"
-      - name: Build and validate
+      - name: Require exact tag/version identity
+        run: python tools/check_tag_version.py "${GITHUB_REF_NAME}"
+      - name: Verify release truth and full attestation path
         run: |
-          python -m pip install --upgrade pip build twine
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[attestation]"
+          python tools/check_release_truth.py
+          python -m unittest discover -s tests -v
+      - name: Build once and validate
+        run: |
+          python -m pip install build twine
           python -m build
           python -m twine check dist/*
-      - name: Create the GitHub Release with artefacts
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
-        with:
-          files: dist/*
-          generate_release_notes: true
+          python -m pip install --force-reinstall dist/*.whl
+          warrantos --version
+          warrantos demo
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: dist
           path: dist/*
+          if-no-files-found: error
 
-  publish-pypi:
+  publish-testpypi:
     needs: build
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: testpypi
     permissions:
-      id-token: write   # OIDC for Trusted Publishing
+      id-token: write
       contents: read
     steps:
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: dist
           path: dist
-      - name: Publish to PyPI (Trusted Publishing, no stored token)
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  smoke-test-testpypi:
+    needs: publish-testpypi
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Install exact beta from TestPyPI
+        shell: bash
+        run: |
+          python -m pip install --index-url https://test.pypi.org/simple/ "warrantos==${GITHUB_REF_NAME#v}"
+          warrantos --version
+          warrantos demo
+
+  publish-pypi:
+    needs: smoke-test-testpypi
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # release/v1
+
+  github-release:
+    needs: publish-pypi
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: dist
+          path: dist
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          files: dist/*
+          generate_release_notes: true

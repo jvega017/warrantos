@@ -6,8 +6,8 @@ and Semantic Versioning.
 
 ## [Unreleased]
 
-**Candidate status:** the package source declares 0.11.0 and this checkout is
-`warrantos-0.11.0-local-rc.1`, with no `v0.11.0` tag. It is not production qualified. The
+**Candidate status:** the package source declares 0.11.0b1 and this checkout is
+`warrantos-0.11.0b1-local-rc.1`, with no `v0.11.0b1` tag. It is not production qualified. The
 canonical statement is `release-manifest.json`.
 
 ### Changed
@@ -33,7 +33,7 @@ canonical statement is `release-manifest.json`.
 - Added `warrantos-trust-root/v1` and fail-closed release verification against
   an externally pinned Ed25519 public key. No production key is bundled.
 
-- **P0 Advisory: v0.10.0 and earlier warrants do not bind prose and CBOM to the Merkle root.** An adversary with access to a signed bundle can modify the prose or claims after attestation and the signature remains valid. The integrity check would fail (changed ledger) but a verifier who only spot-checks the signature would miss the mutation. Affected users should update to 0.11.0, re-attest their bundles (which automatically upgrades to v2), and verify the new `prose_sha256` and `cbom_sha256` fields in the checkpoint. See `SECURITY.md` for details.
+- **P0 Advisory: v0.10.0 and earlier warrants do not bind prose and CBOM to the Merkle root.** An adversary with access to a signed bundle can modify the prose or claims after attestation and the signature remains valid. The integrity check would fail (changed ledger) but a verifier who only spot-checks the signature would miss the mutation. Affected users should update to 0.11.0b1 or later, re-attest their bundles (which automatically upgrades to v2), and verify the new `prose_sha256` and `cbom_sha256` fields in the checkpoint. See `SECURITY.md` for details.
 
 ## [0.10.0] - 2026-07-08
 

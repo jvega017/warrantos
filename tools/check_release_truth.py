@@ -21,7 +21,7 @@ def check() -> list[str]:
         "docs/STACK.md": ["not production qualified", "citation_present", "support_verified"],
         "docs/LIMITATIONS.md": [version, "local release candidate", "citation_present", "support_verified"],
         "CHANGELOG.md": [version, "local-rc.1", "claim-support states", "pinned Ed25519 public key"],
-        "SECURITY.md": [version, "local release candidate", "no `v0.11.0` tag", "external pinned trust root"],
+        "SECURITY.md": [version, "local release candidate", "no `v0.11.0b1` tag", "external pinned trust root"],
         "docs/PRODUCTION-DEPLOYMENT.md": ["not tagged or production qualified", "warrantos-trust-root/v1", "No production key", "support_verified"],
         "warrantos/cli/warrantos_cli.py": ["citation_present", "semantic support require explicit linked records"],
     }

@@ -6,7 +6,7 @@
 
 | Version | Supported | Notes |
 |---|---|---|
-| `0.11.0` local release candidate rc.1 | Candidate only | v2 bundle binding and pinned-trust verification are implemented and tested; no `v0.11.0` tag or production qualification |
+| `0.11.0b1` local release candidate rc.1 | Candidate only | v2 bundle binding and pinned-trust verification are implemented and tested; no `v0.11.0b1` tag or production qualification |
 | `0.10.0` and earlier | No | Latest tagged version; P0 Advisory: `.warrant` bundles do not bind prose and CBOM to the checkpoint. See below. |
 
 
@@ -19,12 +19,12 @@ production-readiness guarantee. `release-manifest.json` is canonical.
 **Vulnerability:** The Merkle checkpoint in `.warrant` bundles attests to the ledger entries (claims and verifications) only. It does not include a binding to the prose (`prose_sha256`) or CBOM (`cbom_sha256`). An adversary with access to a signed bundle can mutate the prose or claims after the bundle is signed, and the signature verification will pass because the checkpoint and signature have not changed.
 
 **Mitigation:**
-1. Use a reviewed local release candidate that declares `0.11.0`, or wait for a tagged release containing the v2 binding. Confirm the emitted checkpoint is `warrantos-checkpoint-v2`.
+1. Use a reviewed local release candidate that declares `0.11.0b1`, or wait for a tagged release containing the v2 binding. Confirm the emitted checkpoint is `warrantos-checkpoint-v2`.
 2. Re-attest your checked runs with `warrantos attest` (generates v2 bundles automatically).
 3. Discard old `.warrant` files or mark them `LEGACY_UNBOUND` in your audit trail.
 4. When verifying external bundles, inspect the checkpoint `version` field: `warrantos-checkpoint-v2` is safe, `warrantos-checkpoint-v1` or `warrantos-checkpoint-v0` require manual audit of prose and CBOM integrity before relying on the signature.
 
-**Technical details:** In local release candidate rc.1 declaring 0.11.0, `build_checkpoint()` in `merkle.py` accepts optional `prose_sha256` and `cbom_sha256` parameters and includes them in the checkpoint object before signing. Production-facing verification additionally requires an external pinned trust root. The lower-level compatibility API can inspect unsigned bundles only when `allow_unsigned=True`; such output is not a production attestation.
+**Technical details:** In local release candidate rc.1 declaring 0.11.0b1, `build_checkpoint()` in `merkle.py` accepts optional `prose_sha256` and `cbom_sha256` parameters and includes them in the checkpoint object before signing. Production-facing verification additionally requires an external pinned trust root. The lower-level compatibility API can inspect unsigned bundles only when `allow_unsigned=True`; such output is not a production attestation.
 
 ## How to report a vulnerability
 

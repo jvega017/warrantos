@@ -1,8 +1,8 @@
 {
   "schema": "warrantos-release-manifest/v1",
-  "version": "0.11.0",
+  "version": "0.11.0b1",
   "release_status": "local-release-candidate",
-  "candidate_id": "warrantos-0.11.0-local-rc.1",
+  "candidate_id": "warrantos-0.11.0b1-local-rc.1",
   "candidate_built_from_commit": null,
   "source_commit_binding": "recorded out of band by the signed distribution artifact manifest; this tracked manifest does not claim a self-referential commit",
   "git_tag": null,

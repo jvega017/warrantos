@@ -1,6 +1,6 @@
 # Production deployment prerequisites
 
-Candidate `warrantos-0.11.0-local-rc.1` is not tagged or production qualified.
+Candidate `warrantos-0.11.0b1-local-rc.1` is not tagged or production qualified.
 The following controls are deployment prerequisites, not bundled assurances.
 No production key is bundled with WarrantOS.
 

@@ -3,9 +3,9 @@
 The machine-readable source for the current development checkout is
 `release-manifest.json`.
 
-As inspected on 2026-07-20, this working tree declares package version 0.11.0 but has no
-`v0.11.0` Git tag and keeps the 0.11.0 security work in the Unreleased
-changelog section. It is candidate `warrantos-0.11.0-local-rc.1` and must be
+As inspected on 2026-07-22, this working tree declares package version 0.11.0b1 but has no
+`v0.11.0b1` Git tag and keeps the 0.11.0 security work in the Unreleased
+changelog section. It is candidate `warrantos-0.11.0b1-local-rc.1` and must be
 described as a local release candidate,
 not as a completed tagged release. The latest tag in this checkout is v0.10.0.
 

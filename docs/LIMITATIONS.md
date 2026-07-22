@@ -52,8 +52,8 @@ commonly appear in AI-drafted text. They are not a fact-checker.
 
 ## Build and release state
 
-This checkout declares **0.11.0 local release candidate rc.1**. It is not represented by a
-`v0.11.0` tag and is not production qualified. The legacy 20 `BUILT` rows in
+This checkout declares **0.11.0b1 local release candidate rc.1**. It is not represented by a
+`v0.11.0b1` tag and is not production qualified. The legacy 20 `BUILT` rows in
 `STATUS.md` describe internal implementation and enforcement only. They do not
 establish independent security review, open-domain claim recall, stable error
 rates, external interoperability, certification or operational reliability.

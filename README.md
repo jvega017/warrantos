@@ -6,11 +6,11 @@ Every citation-trigger in an AI-assisted document ships with a source, a `[CITE 
 
 [![ci](https://github.com/jvega017/warrantos/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/warrantos/actions/workflows/ci.yml)
 [![maturity: local release candidate](https://img.shields.io/badge/maturity-local%20release%20candidate-yellow)](docs/RELEASE-TRUTH.md)
-![version: 0.11.0 local rc.1](https://img.shields.io/badge/version-0.11.0%20local%20rc.1-yellow)
+![version: 0.11.0b1 local rc.1](https://img.shields.io/badge/version-0.11.0b1%20local%20rc.1-yellow)
 ![python: 3.11--3.13](https://img.shields.io/badge/python-3.11--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
 
-> **Release truth:** this checkout is candidate `warrantos-0.11.0-local-rc.1`, not a tagged or
+> **Release truth:** this checkout is candidate `warrantos-0.11.0b1-local-rc.1`, not a tagged or
 > production-qualified release. `release-manifest.json` is canonical; see
 > [`docs/RELEASE-TRUTH.md`](docs/RELEASE-TRUTH.md).
 >
@@ -54,7 +54,7 @@ pip install warrantos       # plain pip works too
 ```
 These commands install the published distribution, not necessarily this development
 checkout. Before relying on v2 artefact binding, confirm both `warrantos --version` and
-the emitted checkpoint schema. There is currently no `v0.11.0` tag.
+the emitted checkpoint schema. There is currently no `v0.11.0b1` tag.
 
 ### Evidence binding and production verification
 
@@ -122,6 +122,10 @@ Stdlib only, MIT, no API, no account.
 | [`docs/COMPLIANCE.md`](docs/COMPLIANCE.md) | ISO/IEC 42001 and NIST AI RMF self-assessment mapping |
 | [`docs/VERIFICATION.md`](docs/VERIFICATION.md) | Offline `.warrant` verification in full |
 | [`docs/FULL-OVERVIEW.md`](docs/FULL-OVERVIEW.md) | The pre-0.10 README body: full narrative, tooling map, release history |
+| [`PRIVACY.md`](PRIVACY.md) | Local data handling, telemetry and opt-in network paths |
+| [`SUPPORT.md`](SUPPORT.md) | Support boundary and safe issue-reporting requirements |
+| [`docs/COMPATIBILITY.md`](docs/COMPATIBILITY.md) | Supported runtimes, schemas and deprecation policy |
+| [`docs/RELEASE-PROCESS.md`](docs/RELEASE-PROCESS.md) | Tagged build-once promotion through TestPyPI and PyPI |
 
 ## What this does not do
 
