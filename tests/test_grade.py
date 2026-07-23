@@ -75,6 +75,178 @@ class TestHeuristicGraderWithSource(unittest.TestCase):
         self.assertTrue(hasattr(v, "grader"))
 
 
+class TestHeuristicGraderNumericContradiction(unittest.TestCase):
+    """The narrow, anchored same-kind numeric-contradiction check added to
+    HeuristicGrader: it may fire on a genuine year/percentage/number
+    mismatch, but must never fire on formatting variants, omissions, or
+    unrelated low-overlap sentences that merely happen to share a number
+    of the same kind."""
+
+    def setUp(self):
+        self.grader = HeuristicGrader()
+
+    def test_year_mismatch_is_contradicted(self):
+        claim = "The register shows the programme launched in 2021 following cabinet approval."
+        source = (
+            "The register shows the programme launched in 2022 following "
+            "cabinet approval, a year late."
+        )
+        v = self.grader.grade(claim, source, None)
+        self.assertEqual(v.verdict, "contradicted")
+        self.assertEqual(v.grader, "fetch+heuristic")
+        self.assertIn("2021", v.rationale)
+        self.assertIn("2022", v.rationale)
+        self.assertLessEqual(len(v.rationale), 200)
+
+    def test_percentage_mismatch_is_contradicted(self):
+        claim = "Customer satisfaction reached 40 per cent according to the annual survey."
+        source = (
+            "Customer satisfaction reached 25 per cent according to the "
+            "annual survey, a sharp decline."
+        )
+        v = self.grader.grade(claim, source, None)
+        self.assertEqual(v.verdict, "contradicted")
+        self.assertIsNotNone(v.confidence)
+        self.assertIn("25", v.rationale)
+        self.assertIn("40", v.rationale)
+
+    def test_plain_number_mismatch_is_contradicted(self):
+        # Mirrors the "enrolled 12,000" vs "enrolled 1,200" shape: the
+        # claim's number also reappears elsewhere in the source (as the
+        # unmet projection), so a naive "is this substring anywhere in the
+        # source" check would wrongly call it verified.
+        claim = "The pilot enrolled 12,000 participants by 2021."
+        source = (
+            "The pilot enrolled only 1,200 participants by 2021, far short "
+            "of the 12,000 originally projected."
+        )
+        v = self.grader.grade(claim, source, None)
+        self.assertEqual(v.verdict, "contradicted")
+
+    def test_percent_format_variants_not_flagged(self):
+        # "40%" vs "40 per cent" must normalise to the same value.
+        claim = "Efficiency improved by 40% following the upgrade, auditors reported."
+        source = (
+            "Efficiency improved by 40 per cent following the upgrade, "
+            "according to auditors."
+        )
+        v = self.grader.grade(claim, source, None)
+        self.assertNotEqual(v.verdict, "contradicted")
+
+    def test_magnitude_format_variants_not_flagged(self):
+        # "2 million" vs "2,000,000" must normalise to the same value.
+        claim = "The scheme paid out 2 million dollars during the trial, records show."
+        source = "The scheme paid out 2,000,000 dollars during the trial, records confirm."
+        v = self.grader.grade(claim, source, None)
+        self.assertNotEqual(v.verdict, "contradicted")
+
+    def test_source_with_no_numbers_leaves_verdict_unchanged(self):
+        claim = "Revenue reached 4 billion dollars in 2023."
+        source = "The policy document discusses governance frameworks and accountability."
+        v = self.grader.grade(claim, source, None)
+        # Same outcome as before the numeric-contradiction check existed:
+        # no numeric mention in the source means nothing to compare, so
+        # this falls through to the existing not_addressed path.
+        self.assertEqual(v.verdict, "not_addressed")
+
+    def test_low_overlap_sentences_with_different_numbers_not_flagged(self):
+        # A same-kind mismatch exists (40% vs 25%) anchored near a shared
+        # word ("growth"), but the rest of the sentence shares almost no
+        # content words, so the overlap gate must block the contradiction.
+        claim = "The report highlighted 40 per cent growth in exports during the review."
+        source = (
+            "A completely unrelated document discusses zoo animal "
+            "populations and shows 25 per cent growth in visitor numbers."
+        )
+        v = self.grader.grade(claim, source, None)
+        self.assertNotEqual(v.verdict, "contradicted")
+
+
+class TestHeuristicGraderDirectionContradiction(unittest.TestCase):
+    """The narrow, anchored directional-antonym contradiction check added
+    to HeuristicGrader: it may fire when a number the source confirms
+    verbatim sits next to a directional word in the claim (e.g. "fell")
+    and an opposite-polarity directional word in the source (e.g. "rose"),
+    but must never fire on matching directions, unrelated metrics, or a
+    negated directional word."""
+
+    def setUp(self):
+        self.grader = HeuristicGrader()
+
+    def test_fell_rose_same_number_is_contradicted(self):
+        claim = "Processing times fell by 18 per cent after the 2021 reform."
+        source = (
+            "Processing times rose by 18 per cent after the 2021 reform, "
+            "according to the performance dashboard."
+        )
+        v = self.grader.grade(claim, source, None)
+        self.assertEqual(v.verdict, "contradicted")
+        self.assertEqual(v.grader, "fetch+heuristic")
+        self.assertIn("fell", v.rationale)
+        self.assertIn("rose", v.rationale)
+        self.assertLessEqual(len(v.rationale), 200)
+
+    def test_grew_shrank_same_number_is_contradicted(self):
+        claim = "Regional offices grew to 40 branches by 2022."
+        source = "Regional offices shrank to 40 branches by 2022, the annual report shows."
+        v = self.grader.grade(claim, source, None)
+        self.assertEqual(v.verdict, "contradicted")
+
+    def test_same_direction_same_number_not_contradicted(self):
+        # Both sides say "rose" -- no antonym conflict, must not fire.
+        claim = "Citizen satisfaction rose to 78 per cent in 2022."
+        source = "The 2022 customer survey found citizen satisfaction rose to 78 per cent."
+        v = self.grader.grade(claim, source, None)
+        self.assertNotEqual(v.verdict, "contradicted")
+
+    def test_antonym_present_but_different_metric_not_flagged(self):
+        # The source contains an antonym of the claim's direction word, but
+        # attached to a different, unrelated number/subject -- the overlap
+        # gate (and the requirement that the antonym sit near the SAME
+        # matched number) must block this.
+        claim = "Broadband coverage rose to 95 per cent of households by 2022."
+        source = (
+            "A separate unrelated survey found smartphone ownership fell to "
+            "30 per cent among older residents in 2019."
+        )
+        v = self.grader.grade(claim, source, None)
+        self.assertNotEqual(v.verdict, "contradicted")
+
+    def test_negated_direction_word_not_flagged(self):
+        # "did not rise" -- negation near the source's directional word
+        # means it cannot be trusted as a confirmed opposite direction.
+        claim = "Compliance rates rose to 92 per cent in 2022."
+        source = (
+            "Compliance rates did not rise to 92 per cent in 2022; "
+            "the figure was never reached, auditors noted."
+        )
+        v = self.grader.grade(claim, source, None)
+        self.assertNotEqual(v.verdict, "contradicted")
+
+    def test_both_polarities_present_near_anchor_not_flagged(self):
+        # Source mentions both "fell" and a higher figure near the same
+        # anchor -- ambiguous, so the check must stay silent rather than
+        # guess which direction word is the "real" one.
+        claim = "AI spending rose to 700 million dollars in 2023."
+        source = (
+            "AI spending fell to 700 million dollars in 2023, down from a "
+            "higher figure the prior year."
+        )
+        v = self.grader.grade(claim, source, None)
+        self.assertNotEqual(v.verdict, "contradicted")
+
+    def test_low_overlap_with_opposite_direction_not_flagged(self):
+        # Same number and opposite direction word, but almost no other
+        # content words in common -- the overlap gate must block this.
+        claim = "The department reported that survey completions rose to 60 per cent in 2021."
+        source = (
+            "A completely unrelated council newsletter mentions that pothole "
+            "complaints fell to 60 per cent in 2021 after roadworks began."
+        )
+        v = self.grader.grade(claim, source, None)
+        self.assertNotEqual(v.verdict, "contradicted")
+
+
 class TestHeuristicGraderWithoutSource(unittest.TestCase):
     """HeuristicGrader when no source_text is available (heuristic path)."""
 

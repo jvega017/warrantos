@@ -597,8 +597,10 @@ def print_grader_report(metrics, grader_label, n_items) -> None:
         "and should not be quoted as general accuracy.\n"
         "Sources used are synthetic, self-contained sources that isolate grader\n"
         "reasoning from fetch reliability, which is a separate unmeasured axis.\n"
-        "The HeuristicGrader cannot emit 'contradicted'; expect mislabelling on\n"
-        "that gold block as a structural finding, not a defect."
+        "The HeuristicGrader can only emit 'contradicted' for a narrow, anchored\n"
+        "same-kind numeric mismatch or a closed-vocabulary directional antonym\n"
+        "anchored to a matching number; contradictions outside that scope remain\n"
+        "a structural finding, not a defect."
     )
     print(_WIDE_SEP)
 
