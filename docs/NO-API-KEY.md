@@ -16,6 +16,8 @@ inheritance.
 
 ## §1. Local LLM grader
 
+*Status: implemented on main; ships in v0.12.0 (not yet released to PyPI).*
+
 The grader speaks the OpenAI-compatible `/v1/chat/completions` shape
 so it works with any of: Ollama, llama.cpp's server, LM Studio, vLLM,
 and most local-LLM tools.

@@ -6,7 +6,7 @@ Every citation-trigger in an AI-assisted document ships with a source, a `[CITE 
 
 [![ci](https://github.com/jvega017/warrantos/actions/workflows/ci.yml/badge.svg)](https://github.com/jvega017/warrantos/actions/workflows/ci.yml)
 [![layers: 20B / 0P](https://img.shields.io/badge/layers-20B%20%2F%200P-brightgreen)](docs/STATUS.md)
-![version: 0.12.0](https://img.shields.io/badge/version-0.12.0-brightgreen)
+![version: 0.11.0](https://img.shields.io/badge/version-0.11.0-brightgreen)
 ![python: 3.11--3.13](https://img.shields.io/badge/python-3.11--3.13-blue)
 ![deps: stdlib only](https://img.shields.io/badge/deps-stdlib%20only-green)
 
@@ -48,7 +48,7 @@ pip install warrantos       # plain pip works too
 
 ## Verify claims without an API key
 
-**v0.12.0**: WarrantOS works standalone with a local LLM. The easiest path is Ollama.
+**Coming in v0.12.0 (unreleased — on main, not yet on PyPI):** WarrantOS works standalone with a local LLM. The easiest path is Ollama.
 
 ```bash
 # 1. Run Ollama (one-time setup)
